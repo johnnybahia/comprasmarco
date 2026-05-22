@@ -432,6 +432,48 @@ table tr:hover td { background: #f5f7fb; }
 .cep-row input { flex: 1; }
 .cep-row button { white-space: nowrap; }
 
+/* ── BADGES DIVERGÊNCIA / NF ── */
+.badge-red   { background: #fde8e8; color: #a01a1a; }
+.badge-gray  { background: #e8eaf0; color: #4a5268; }
+
+/* ── NF PANEL — tabela de recebimento ── */
+.nf-info-grid {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(200px,1fr));
+  gap: 12px; margin-bottom: 20px;
+  background: var(--surface2); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 16px;
+}
+.nf-info-item label {
+  font-size: 10px; font-weight: 600; letter-spacing: 1px;
+  text-transform: uppercase; color: var(--text3); display: block; margin-bottom: 3px;
+}
+.nf-info-item span { font-size: 13px; font-weight: 500; color: var(--text); }
+
+/* Células editáveis da tabela NF */
+.nf-edit-input {
+  width: 100%; padding: 5px 8px;
+  border: 1px solid var(--border); border-radius: 4px;
+  font-size: 12px; font-family: 'IBM Plex Mono', monospace;
+  color: var(--text); background: var(--surface); outline: none;
+  transition: border-color .15s;
+}
+.nf-edit-input:focus { border-color: var(--navy); }
+
+/* Linhas com divergência na tabela NF */
+.div-row td { background: #fff8f8 !important; }
+
+/* Comparação no detalhe histórico */
+.rec-section {
+  margin-top: 20px; border-top: 2px solid var(--accent);
+  padding-top: 16px;
+}
+.rec-header {
+  display: flex; align-items: center; gap: 10px; margin-bottom: 12px;
+}
+.rec-header h4 {
+  font-size: 13px; font-weight: 600; color: var(--navy); margin: 0;
+}
+
 @media (max-width: 700px) {
   .form-grid.cols-2,
   .form-grid.cols-3 { grid-template-columns: 1fr; }
@@ -469,10 +511,11 @@ table tr:hover td { background: #f5f7fb; }
 <div id="app-screen">
   <div class="topbar">
     <div class="topbar-brand">Compras</div>
-    <div class="topbar-nav">
-      <button class="nav-btn active" onclick="navegarPara('pedido',this)">Novo Pedido</button>
-      <button class="nav-btn" onclick="navegarPara('historico',this)">Histórico</button>
-      <button class="nav-btn" onclick="navegarPara('cadastros',this)">Cadastros</button>
+    <div class="topbar-nav" id="topbar-nav">
+      <button class="nav-btn active" id="nav-pedido" onclick="navegarPara('pedido',this)">Novo Pedido</button>
+      <button class="nav-btn" id="nav-historico" onclick="navegarPara('historico',this)">Histórico</button>
+      <button class="nav-btn" id="nav-cadastros" onclick="navegarPara('cadastros',this)">Cadastros</button>
+      <button class="nav-btn" id="nav-nf" onclick="navegarPara('nf',this)">📥 Lançar NF</button>
     </div>
     <div class="topbar-user">
       <span class="user-name" id="user-display"></span>
@@ -644,11 +687,11 @@ table tr:hover td { background: #f5f7fb; }
             <thead>
               <tr>
                 <th>ID</th><th>Data</th><th>Filial</th><th>Fornecedor</th>
-                <th>Transportadora</th><th>Total</th><th>Status</th><th></th>
+                <th>Transportadora</th><th>Total</th><th>Status</th><th>NF</th><th></th>
               </tr>
             </thead>
             <tbody id="hist-tbody">
-              <tr><td colspan="8"><div class="empty-state"><div class="icon">🔍</div>Use os filtros acima</div></td></tr>
+              <tr><td colspan="9"><div class="empty-state"><div class="icon">🔍</div>Use os filtros acima</div></td></tr>
             </tbody>
           </table>
         </div>
@@ -657,6 +700,7 @@ table tr:hover td { background: #f5f7fb; }
       <div class="card" id="hist-detalhe" style="display:none">
         <div class="card-title">Detalhe do Pedido</div>
         <div class="hist-meta" id="hist-meta-grid"></div>
+
         <div class="table-wrap">
           <table>
             <thead>
@@ -666,9 +710,12 @@ table tr:hover td { background: #f5f7fb; }
           </table>
         </div>
         <div class="totals-row" style="margin-top:12px">
-          <span class="total-label">Total</span>
+          <span class="total-label">Total do Pedido</span>
           <span class="total-value" id="hist-total-val"></span>
         </div>
+
+        <!-- Seção de recebimentos NF (carregada dinamicamente) -->
+        <div id="hist-rec-section"></div>
       </div>
     </div>
 
@@ -919,6 +966,81 @@ table tr:hover td { background: #f5f7fb; }
       </div>
     </div>
 
+    <!-- ── LANÇAR NF ── -->
+    <div class="panel" id="panel-nf">
+      <div class="page-title">Lançar Nota Fiscal de Recebimento</div>
+
+      <div class="card">
+        <div class="card-title">Identificar Pedido</div>
+        <div class="form-grid" style="grid-template-columns:220px 1fr auto;align-items:end;gap:10px">
+          <div class="field">
+            <label>Número do Pedido *</label>
+            <input type="text" id="nf-ped-id" placeholder="Ex: PED-00001"
+              style="text-transform:uppercase;font-family:'IBM Plex Mono',monospace"
+              onkeydown="if(event.key==='Enter')buscarPedidoNF()">
+          </div>
+          <div class="field">
+            <label>NF / Documento Fiscal *</label>
+            <input type="text" id="nf-numero" placeholder="Número da nota fiscal">
+          </div>
+          <div>
+            <button class="btn btn-primary" onclick="buscarPedidoNF()">🔍 Buscar Pedido</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Detalhes pré-carregados após buscar o pedido -->
+      <div id="nf-pedido-card" style="display:none">
+        <div class="card">
+          <div class="card-title">Dados do Pedido Original</div>
+          <div class="nf-info-grid" id="nf-info-grid"></div>
+          <div id="nf-ja-recebido-aviso" style="display:none;margin-bottom:12px">
+            <span class="badge badge-orange">⚠ Este pedido já possui NF lançada. Um novo lançamento será registrado em paralelo.</span>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-title">Itens — Comparação Pedido × Recebido</div>
+          <p style="font-size:12px;color:var(--text3);margin-bottom:12px">
+            Confira e ajuste as quantidades e preços realmente recebidos. Células em vermelho indicam divergência.
+          </p>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Código</th>
+                  <th>Descrição</th>
+                  <th>Unid.</th>
+                  <th style="text-align:right">Qtd Pedida</th>
+                  <th style="background:#fff3e0">Qtd Recebida</th>
+                  <th style="text-align:right">Preço Pedido</th>
+                  <th style="background:#fff3e0">Preço Recebido</th>
+                  <th style="text-align:right">Subtotal Rec.</th>
+                </tr>
+              </thead>
+              <tbody id="nf-itens-tbody"></tbody>
+            </table>
+          </div>
+          <div class="totals-row" style="margin-top:12px">
+            <span class="total-label">Total Recebido</span>
+            <span class="total-value" id="nf-total-rec">R$ 0,00</span>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-title">Observações do Recebimento</div>
+          <div class="field">
+            <textarea id="nf-obs" placeholder="Avarias, ausências, divergências observadas..." style="min-height:80px"></textarea>
+          </div>
+        </div>
+
+        <div class="form-actions">
+          <button class="btn btn-success" onclick="confirmarLancarNF()">✔ Confirmar Recebimento</button>
+          <button class="btn btn-outline" onclick="limparNF()">Cancelar</button>
+        </div>
+      </div>
+    </div>
+
   </div><!-- /main -->
 </div><!-- /app-screen -->
 
@@ -987,12 +1109,26 @@ function iniciarApp() {
   document.getElementById('app-screen').style.display = 'block';
   document.getElementById('user-display').textContent = sessao.nome;
   sessionStorage.setItem('sessao', JSON.stringify(sessao));
-  carregarCaches();
-  carregarTabelaCadastro('fornecedor');
-  carregarTabelaCadastro('materia');
-  carregarTabelaCadastro('transportadora');
-  carregarTabelaCadastro('filial');
-  carregarTabelaCadastro('usuario');
+
+  // Restringe navegação pelo perfil
+  const isFilial = sessao.perfil === 'FILIAL';
+  document.getElementById('nav-pedido').style.display    = isFilial ? 'none' : '';
+  document.getElementById('nav-historico').style.display = isFilial ? 'none' : '';
+  document.getElementById('nav-cadastros').style.display = isFilial ? 'none' : '';
+
+  if (isFilial) {
+    // Usuário de filial: vai direto para lançar NF
+    document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+    document.getElementById('panel-nf').classList.add('active');
+    document.getElementById('nav-nf').classList.add('active');
+  } else {
+    carregarCaches();
+    carregarTabelaCadastro('fornecedor');
+    carregarTabelaCadastro('materia');
+    carregarTabelaCadastro('transportadora');
+    carregarTabelaCadastro('filial');
+    carregarTabelaCadastro('usuario');
+  }
 }
 
 function sair() {
@@ -1562,12 +1698,21 @@ function carregarTodosPedidos() {
 function renderHistorico(pedidos) {
   const tbody = document.getElementById('hist-tbody');
   if (!pedidos || pedidos.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="8"><div class="empty-state"><div class="icon">🔍</div>Nenhum pedido encontrado</div></td></tr>';
+    tbody.innerHTML = '<tr><td colspan="9"><div class="empty-state"><div class="icon">🔍</div>Nenhum pedido encontrado</div></td></tr>';
     return;
   }
   tbody.innerHTML = pedidos.map((p,i) => {
     const data  = p.DATA ? new Date(p.DATA).toLocaleDateString('pt-BR') : '—';
     const total = p.VALOR_TOTAL ? 'R$ ' + parseFloat(p.VALOR_TOTAL).toFixed(2) : '—';
+    let nfBadge = '<span class="badge badge-gray">Aguardando</span>';
+    if (p.temNF) {
+      if (p.temDivQtd || p.temDivPreco) {
+        const divTxt = [p.temDivQtd && 'Qtd', p.temDivPreco && 'Preço'].filter(Boolean).join('+');
+        nfBadge = `<span class="badge badge-red" title="Divergência em ${divTxt}">⚠ Div. ${divTxt}</span>`;
+      } else {
+        nfBadge = '<span class="badge badge-green">✓ Recebido</span>';
+      }
+    }
     return `<tr style="cursor:pointer" onclick="verDetalhe(${i})">
       <td><code>${p.ID_PEDIDO||''}</code></td>
       <td>${data}</td>
@@ -1575,7 +1720,8 @@ function renderHistorico(pedidos) {
       <td>${escHTML(String(p.NOME_FORNECEDOR||p.COD_FORNECEDOR||''))}</td>
       <td>${escHTML(String(p.NOME_TRANSPORTADORA||'—'))}</td>
       <td><strong>${total}</strong></td>
-      <td><span class="badge badge-green">${p.STATUS||'—'}</span></td>
+      <td><span class="badge badge-blue">${p.STATUS||'—'}</span></td>
+      <td>${nfBadge}</td>
       <td><button class="btn btn-outline btn-sm" onclick="event.stopPropagation();verDetalhe(${i})">Ver</button></td>
     </tr>`;
   }).join('');
@@ -1617,6 +1763,83 @@ function verDetalhe(idx) {
 
   document.getElementById('hist-total-val').textContent =
     'R$ ' + parseFloat(p.VALOR_TOTAL||0).toLocaleString('pt-BR',{minimumFractionDigits:2});
+
+  // Carrega recebimentos NF do pedido
+  const recSec = document.getElementById('hist-rec-section');
+  recSec.innerHTML = '<div class="rec-section"><div class="empty-state" style="padding:16px"><div class="icon">⏳</div>Carregando NF...</div></div>';
+  google.script.run
+    .withSuccessHandler(recs => renderRecebimentosDetalhe(recs, p.VALOR_TOTAL))
+    .withFailureHandler(() => { recSec.innerHTML = ''; })
+    .getRecebimentosDoPedido(p.ID_PEDIDO);
+}
+
+function renderRecebimentosDetalhe(recs, valorPedido) {
+  const recSec = document.getElementById('hist-rec-section');
+  if (!recs || recs.length === 0) {
+    recSec.innerHTML = '<div class="rec-section"><div class="rec-header"><h4>Recebimento de NF</h4><span class="badge badge-gray">Nenhuma NF lançada</span></div></div>';
+    return;
+  }
+
+  recSec.innerHTML = recs.map((r, ri) => {
+    const dataRec = r.DATA_RECEBIMENTO ? new Date(r.DATA_RECEBIMENTO).toLocaleDateString('pt-BR') : '—';
+    const temDivQ = String(r.DIVERGENCIA_QTD).trim()   === 'SIM';
+    const temDivP = String(r.DIVERGENCIA_PRECO).trim() === 'SIM';
+    const temDiv  = temDivQ || temDivP;
+    const badge   = temDiv
+      ? `<span class="badge badge-red">⚠ Divergência: ${[temDivQ&&'Qtd',temDivP&&'Preço'].filter(Boolean).join(' + ')}</span>`
+      : '<span class="badge badge-green">✓ Sem divergência</span>';
+
+    const linhasItens = (r.itens || []).map(item => {
+      const divQ = String(item.DIV_QTD).trim()   === 'SIM';
+      const divP = String(item.DIV_PRECO).trim()  === 'SIM';
+      const cls  = (divQ || divP) ? ' class="div-row"' : '';
+      return `<tr${cls}>
+        <td><code>${escHTML(String(item.COD_MP||''))}</code></td>
+        <td>${escHTML(String(item.DESCRICAO||''))}</td>
+        <td>${parseFloat(item.QTD_PEDIDA||0).toLocaleString('pt-BR',{minimumFractionDigits:3})}</td>
+        <td style="background:${divQ?'#ffe8e8':'var(--surface2)'}">
+          <strong>${parseFloat(item.QTD_RECEBIDA||0).toLocaleString('pt-BR',{minimumFractionDigits:3})}</strong>
+          ${divQ ? ' <span class="badge badge-red" style="font-size:10px">≠</span>' : ''}
+        </td>
+        <td>R$ ${parseFloat(item.PRECO_PEDIDO||0).toFixed(2)}</td>
+        <td style="background:${divP?'#ffe8e8':'var(--surface2)'}">
+          <strong>R$ ${parseFloat(item.PRECO_RECEBIDO||0).toFixed(2)}</strong>
+          ${divP ? ' <span class="badge badge-red" style="font-size:10px">≠</span>' : ''}
+        </td>
+        <td><strong>R$ ${parseFloat(item.SUBTOTAL_RECEBIDO||0).toFixed(2)}</strong></td>
+      </tr>`;
+    }).join('');
+
+    return `<div class="rec-section">
+      <div class="rec-header">
+        <h4>NF #${ri+1} — ${escHTML(String(r.NF_NUMERO||'—'))}</h4>
+        ${badge}
+        <span style="font-size:12px;color:var(--text3);margin-left:auto">${r.ID_RECEBIMENTO} · ${dataRec} · ${escHTML(String(r.USUARIO||''))}</span>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr>
+            <th>Código</th><th>Descrição</th>
+            <th>Qtd Pedida</th><th style="background:#fff3e0">Qtd Recebida</th>
+            <th>Preço Pedido</th><th style="background:#fff3e0">Preço Recebido</th>
+            <th>Subtotal Rec.</th>
+          </tr></thead>
+          <tbody>${linhasItens}</tbody>
+        </table>
+      </div>
+      <div class="totals-row" style="margin-top:8px">
+        <span class="total-label" style="font-size:11px">Total Pedido</span>
+        <span style="font-family:'IBM Plex Mono',monospace;font-size:14px;color:var(--text2);margin-right:20px">
+          R$ ${parseFloat(valorPedido||0).toFixed(2)}
+        </span>
+        <span class="total-label" style="font-size:11px">Total Recebido</span>
+        <span class="total-value" style="font-size:16px;color:${temDiv?'var(--error)':'var(--success)'}">
+          R$ ${parseFloat(r.VALOR_TOTAL_RECEBIDO||0).toFixed(2)}
+        </span>
+      </div>
+      ${r.OBSERVACAO ? `<p style="margin-top:8px;font-size:13px;color:var(--text2)"><strong>Obs.:</strong> ${escHTML(String(r.OBSERVACAO))}</p>` : ''}
+    </div>`;
+  }).join('');
 }
 
 // ════════════════════════════════════════════════════
@@ -1790,6 +2013,152 @@ function editarCadastro(tipo, cod) {
     })
     .withFailureHandler(() => toast('Erro ao carregar','error'))
     .buscarCodigo(tipo, cod);
+}
+
+// ════════════════════════════════════════════════════
+// LANÇAR NF
+// ════════════════════════════════════════════════════
+let _nfPedidoAtual = null; // { pedido, itens }
+
+function buscarPedidoNF() {
+  const idRaw = document.getElementById('nf-ped-id').value.trim().toUpperCase();
+  if (!idRaw) { toast('Informe o número do pedido', 'error'); return; }
+
+  toast('Buscando pedido...', 'info');
+  google.script.run
+    .withSuccessHandler(res => {
+      if (!res) { toast('Pedido não encontrado: ' + idRaw, 'error'); return; }
+      _nfPedidoAtual = res;
+      renderPedidoNF(res);
+    })
+    .withFailureHandler(err => toast('Erro: ' + err.message, 'error'))
+    .buscarPedidoParaRecebimento(idRaw);
+}
+
+function renderPedidoNF(res) {
+  const p = res.pedido;
+  const dataP = p.DATA ? new Date(p.DATA).toLocaleDateString('pt-BR') : '—';
+
+  document.getElementById('nf-info-grid').innerHTML = `
+    <div class="nf-info-item"><label>ID Pedido</label><span style="font-family:'IBM Plex Mono',monospace">${p.ID_PEDIDO||'—'}</span></div>
+    <div class="nf-info-item"><label>Data do Pedido</label><span>${dataP}</span></div>
+    <div class="nf-info-item"><label>Filial</label><span>${escHTML(String(p.NOME_FILIAL||''))} (${p.COD_FILIAL||''})</span></div>
+    <div class="nf-info-item"><label>Fornecedor</label><span>${escHTML(String(p.NOME_FORNECEDOR||''))}</span></div>
+    <div class="nf-info-item"><label>Total do Pedido</label><span>R$ ${parseFloat(p.VALOR_TOTAL||0).toFixed(2)}</span></div>
+    <div class="nf-info-item"><label>Observação</label><span>${escHTML(String(p.OBSERVACAO||'—'))}</span></div>
+  `;
+
+  // Aviso se já tem NF
+  document.getElementById('nf-ja-recebido-aviso').style.display = res.jaRecebido ? 'block' : 'none';
+
+  // Tabela de itens editáveis
+  const tbody = document.getElementById('nf-itens-tbody');
+  tbody.innerHTML = (res.itens || []).map((item, idx) => {
+    const qtdPed  = parseFloat(item.QUANTIDADE  || 0);
+    const precPed = parseFloat(item.PRECO_UNIT  || 0);
+    return `<tr id="nf-row-${idx}">
+      <td><code>${escHTML(String(item.COD_MP||''))}</code></td>
+      <td>${escHTML(String(item.DESCRICAO||''))}</td>
+      <td>${escHTML(String(item.UNIDADE||''))}</td>
+      <td style="text-align:right">${qtdPed.toLocaleString('pt-BR',{minimumFractionDigits:3})}</td>
+      <td style="background:#fff3e0">
+        <input type="number" class="nf-edit-input" id="nf-qtd-${idx}"
+          value="${qtdPed.toFixed(3)}" min="0" step="0.001"
+          oninput="calcTotalNF()">
+      </td>
+      <td style="text-align:right">R$ ${precPed.toFixed(2)}</td>
+      <td style="background:#fff3e0">
+        <input type="number" class="nf-edit-input" id="nf-prec-${idx}"
+          value="${precPed.toFixed(2)}" min="0" step="0.01"
+          oninput="calcTotalNF()">
+      </td>
+      <td style="text-align:right" id="nf-sub-${idx}"><strong>R$ ${(qtdPed*precPed).toFixed(2)}</strong></td>
+    </tr>`;
+  }).join('');
+
+  calcTotalNF();
+  document.getElementById('nf-pedido-card').style.display = 'block';
+  document.getElementById('nf-pedido-card').scrollIntoView({ behavior: 'smooth' });
+}
+
+function calcTotalNF() {
+  if (!_nfPedidoAtual) return;
+  let total = 0;
+  _nfPedidoAtual.itens.forEach((item, idx) => {
+    const qtd  = parseFloat(document.getElementById('nf-qtd-' + idx)?.value)  || 0;
+    const prec = parseFloat(document.getElementById('nf-prec-' + idx)?.value) || 0;
+    const sub  = qtd * prec;
+    total += sub;
+    const subEl = document.getElementById('nf-sub-' + idx);
+    if (subEl) subEl.innerHTML = `<strong>R$ ${sub.toFixed(2)}</strong>`;
+
+    // Marca divergência visual
+    const row = document.getElementById('nf-row-' + idx);
+    if (row) {
+      const qtdPed  = parseFloat(item.QUANTIDADE || 0);
+      const precPed = parseFloat(item.PRECO_UNIT || 0);
+      const divQ = Math.abs(qtd  - qtdPed)  > 0.001;
+      const divP = Math.abs(prec - precPed) > 0.001;
+      row.querySelectorAll('.nf-edit-input').forEach((inp, i) => {
+        inp.style.borderColor = (i === 0 ? divQ : divP) ? 'var(--error)' : '';
+        inp.style.background  = (i === 0 ? divQ : divP) ? '#fff0f0' : '#fff3e0';
+      });
+    }
+  });
+  document.getElementById('nf-total-rec').textContent =
+    'R$ ' + total.toLocaleString('pt-BR', {minimumFractionDigits:2, maximumFractionDigits:2});
+}
+
+function confirmarLancarNF() {
+  if (!_nfPedidoAtual) { toast('Nenhum pedido carregado', 'error'); return; }
+  const nfNum = document.getElementById('nf-numero').value.trim();
+  if (!nfNum) { toast('Informe o número da NF', 'error'); return; }
+
+  const p = _nfPedidoAtual.pedido;
+  const itens = _nfPedidoAtual.itens.map((item, idx) => ({
+    codMP:         item.COD_MP,
+    descricao:     item.DESCRICAO,
+    qtdPedida:     parseFloat(item.QUANTIDADE || 0),
+    qtdRecebida:   parseFloat(document.getElementById('nf-qtd-' + idx)?.value || 0),
+    precoPedido:   parseFloat(item.PRECO_UNIT || 0),
+    precoRecebido: parseFloat(document.getElementById('nf-prec-' + idx)?.value || 0)
+  }));
+
+  const dados = {
+    idPedido:        p.ID_PEDIDO,
+    nfNumero:        nfNum,
+    codFilial:       p.COD_FILIAL,
+    nomeFilial:      p.NOME_FILIAL,
+    codFornecedor:   p.COD_FORNECEDOR,
+    nomeFornecedor:  p.NOME_FORNECEDOR,
+    usuarioLogado:   sessao.nome,
+    valorTotalPedido: parseFloat(p.VALOR_TOTAL || 0),
+    observacao:      document.getElementById('nf-obs').value.trim(),
+    itens
+  };
+
+  toast('Registrando NF...', 'info');
+  google.script.run
+    .withSuccessHandler(res => {
+      if (!res.ok) { toast('Erro: ' + res.msg, 'error'); return; }
+      let msg = `✓ ${res.msg} — ${res.id}`;
+      if (res.divQtd || res.divPreco) {
+        const divs = [res.divQtd && 'quantidade', res.divPreco && 'preço'].filter(Boolean).join(' e ');
+        msg += ` ⚠ Divergência de ${divs} registrada.`;
+      }
+      toast(msg, res.divQtd || res.divPreco ? 'error' : 'success');
+      limparNF();
+    })
+    .withFailureHandler(err => toast('Erro: ' + err.message, 'error'))
+    .salvarRecebimento(dados);
+}
+
+function limparNF() {
+  _nfPedidoAtual = null;
+  document.getElementById('nf-ped-id').value  = '';
+  document.getElementById('nf-numero').value  = '';
+  document.getElementById('nf-obs').value     = '';
+  document.getElementById('nf-pedido-card').style.display = 'none';
 }
 
 // ════════════════════════════════════════════════════

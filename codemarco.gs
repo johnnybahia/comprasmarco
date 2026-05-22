@@ -12,6 +12,8 @@ const ABAS = {
   PEDIDOS:          'PEDIDOS',
   ITENS_PEDIDO:     'ITENS_PEDIDO',
   PRECO_FORNECEDOR: 'PRECO_FORNECEDOR',
+  RECEBIMENTOS:     'RECEBIMENTOS',
+  ITENS_RECEBIMENTO:'ITENS_RECEBIMENTO',
   LOG:              'LOG_ERROS'
 };
 
@@ -364,7 +366,10 @@ function montarEmailHTML(idPedido, data, dados) {
   <div style="font-family:Arial,sans-serif;max-width:700px;margin:0 auto;">
     <div style="background:#1a3c5e;color:white;padding:20px 30px;">
       <h2 style="margin:0;">Pedido de Compra</h2>
-      <p style="margin:4px 0 0;">${idPedido} — ${dataFmt}</p>
+      <p style="margin:4px 0 0;font-size:15px;">${idPedido} — ${dataFmt}</p>
+    </div>
+    <div style="background:#fff8e1;border-left:4px solid #e8a020;padding:10px 30px;font-size:13px;color:#5a4000;">
+      <strong>Para a filial:</strong> ao receber esta entrega, acesse o sistema e informe o número do pedido <strong style="font-family:monospace;font-size:14px;">${idPedido}</strong> para registrar o recebimento da NF.
     </div>
     <div style="padding:20px 30px;background:#f9f9f9;">
       <table style="width:100%;border-collapse:collapse;margin-bottom:16px;">
@@ -407,15 +412,135 @@ function montarEmailHTML(idPedido, data, dados) {
 }
 
 // ============================================================
+// RECEBIMENTO DE NF
+// ============================================================
+function buscarPedidoParaRecebimento(idPedido) {
+  try {
+    const pedidos = sheetToArray(ABAS.PEDIDOS);
+    const ped = pedidos.find(p => String(p.ID_PEDIDO).trim().toUpperCase() === String(idPedido).trim().toUpperCase());
+    if (!ped) return null;
+    const itens = sheetToArray(ABAS.ITENS_PEDIDO)
+      .filter(i => String(i.ID_PEDIDO).trim() === String(ped.ID_PEDIDO).trim());
+    const recebimentos = sheetToArray(ABAS.RECEBIMENTOS)
+      .filter(r => String(r.ID_PEDIDO).trim() === String(ped.ID_PEDIDO).trim());
+    return { pedido: ped, itens, jaRecebido: recebimentos.length > 0, recebimentos };
+  } catch(e) {
+    logErro('buscarPedidoParaRecebimento: ' + e.message);
+    return null;
+  }
+}
+
+function salvarRecebimento(dados) {
+  const lock = LockService.getScriptLock();
+  try {
+    lock.waitLock(15000);
+    const sh      = getSheet(ABAS.RECEBIMENTOS);
+    const shItens = getSheet(ABAS.ITENS_RECEBIMENTO);
+
+    const total   = sh.getLastRow();
+    const idRec   = 'REC-' + String(total).padStart(5, '0');
+    const dataHoje = new Date();
+
+    let temDivQtd   = false;
+    let temDivPreco = false;
+    let valorTotalRec = 0;
+
+    dados.itens.forEach(item => {
+      const qtdPed  = parseFloat(item.qtdPedida)    || 0;
+      const qtdRec  = parseFloat(item.qtdRecebida)  || 0;
+      const precPed = parseFloat(item.precoPedido)  || 0;
+      const precRec = parseFloat(item.precoRecebido)|| 0;
+      if (Math.abs(qtdRec  - qtdPed)  > 0.001) temDivQtd   = true;
+      if (Math.abs(precRec - precPed) > 0.001) temDivPreco = true;
+      valorTotalRec += qtdRec * precRec;
+    });
+
+    sh.appendRow([
+      idRec, dados.idPedido, dados.nfNumero, dataHoje,
+      dados.codFilial, dados.nomeFilial,
+      dados.codFornecedor, dados.nomeFornecedor,
+      dados.usuarioLogado,
+      parseFloat(dados.valorTotalPedido) || 0,
+      valorTotalRec,
+      temDivQtd   ? 'SIM' : 'NÃO',
+      temDivPreco ? 'SIM' : 'NÃO',
+      dados.observacao || ''
+    ]);
+
+    dados.itens.forEach(item => {
+      const qtdPed  = parseFloat(item.qtdPedida)    || 0;
+      const qtdRec  = parseFloat(item.qtdRecebida)  || 0;
+      const precPed = parseFloat(item.precoPedido)  || 0;
+      const precRec = parseFloat(item.precoRecebido)|| 0;
+      const divQtd   = Math.abs(qtdRec  - qtdPed)  > 0.001;
+      const divPreco = Math.abs(precRec - precPed) > 0.001;
+      shItens.appendRow([
+        idRec, dados.idPedido, item.codMP, item.descricao,
+        qtdPed, qtdRec,
+        precPed, precRec,
+        qtdPed  * precPed,
+        qtdRec  * precRec,
+        divQtd   ? 'SIM' : 'NÃO',
+        divPreco ? 'SIM' : 'NÃO'
+      ]);
+    });
+
+    return {
+      ok: true,
+      msg: 'NF lançada com sucesso',
+      id: idRec,
+      divQtd: temDivQtd,
+      divPreco: temDivPreco
+    };
+  } catch(e) {
+    logErro('salvarRecebimento: ' + e.message);
+    return { ok: false, msg: e.message };
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+function getRecebimentosDoPedido(idPedido) {
+  try {
+    const recs = sheetToArray(ABAS.RECEBIMENTOS)
+      .filter(r => String(r.ID_PEDIDO).trim() === String(idPedido).trim());
+    return recs.map(r => {
+      const itens = sheetToArray(ABAS.ITENS_RECEBIMENTO)
+        .filter(i => String(i.ID_RECEBIMENTO).trim() === String(r.ID_RECEBIMENTO).trim());
+      return { ...r, itens };
+    });
+  } catch(e) {
+    logErro('getRecebimentosDoPedido: ' + e.message);
+    return [];
+  }
+}
+
+// ============================================================
 // HISTÓRICO
 // ============================================================
+function _enriquecerPedidosComNF(pedidos) {
+  try {
+    const recs = sheetToArray(ABAS.RECEBIMENTOS);
+    return pedidos.map(p => {
+      const recPed = recs.filter(r => String(r.ID_PEDIDO).trim() === String(p.ID_PEDIDO).trim());
+      const temNF        = recPed.length > 0;
+      const temDivQtd    = recPed.some(r => String(r.DIVERGENCIA_QTD).trim()   === 'SIM');
+      const temDivPreco  = recPed.some(r => String(r.DIVERGENCIA_PRECO).trim() === 'SIM');
+      return { ...p, temNF, temDivQtd, temDivPreco };
+    });
+  } catch(e) {
+    return pedidos;
+  }
+}
+
 function getHistorico(tipo, cod) {
   try {
     const pedidos = sheetToArray(ABAS.PEDIDOS);
     const colMapa = { filial: 'COD_FILIAL', fornecedor: 'COD_FORNECEDOR' };
     if (!colMapa[tipo]) return [];
     const filtrados = pedidos.filter(p => String(p[colMapa[tipo]]).trim() === String(cod).trim());
-    return filtrados.map(p => {
+    const enriquecidos = _enriquecerPedidosComNF(filtrados);
+    return enriquecidos.map(p => {
       const itens = sheetToArray(ABAS.ITENS_PEDIDO).filter(i => i.ID_PEDIDO === p.ID_PEDIDO);
       return { ...p, itens };
     });
@@ -427,7 +552,7 @@ function getHistorico(tipo, cod) {
 
 function getTodosPedidos() {
   try {
-    return sheetToArray(ABAS.PEDIDOS);
+    return _enriquecerPedidosComNF(sheetToArray(ABAS.PEDIDOS));
   } catch(e) {
     logErro('getTodosPedidos: ' + e.message);
     return [];
@@ -448,8 +573,10 @@ function setupPlanilha() {
     FILIAIS:          ['COD','NOME','CEP','BAIRRO','ENDERECO','CIDADE','ESTADO','EMAIL_RESPONSAVEL'],
     PEDIDOS:          ['ID_PEDIDO','DATA','COD_FILIAL','NOME_FILIAL','COD_FORNECEDOR','NOME_FORNECEDOR','COD_TRANSPORTADORA','NOME_TRANSPORTADORA','PRAZO_ENTREGA','OBSERVACAO','USUARIO','VALOR_TOTAL','STATUS'],
     ITENS_PEDIDO:     ['ID_PEDIDO','COD_MP','DESCRICAO','QUANTIDADE','UNIDADE','PRECO_UNIT','SUBTOTAL'],
-    PRECO_FORNECEDOR: ['COD_FORNECEDOR','COD_MP','PRECO'],
-    LOG_ERROS:        ['DATA','MENSAGEM']
+    PRECO_FORNECEDOR:  ['COD_FORNECEDOR','COD_MP','PRECO'],
+    RECEBIMENTOS:      ['ID_RECEBIMENTO','ID_PEDIDO','NF_NUMERO','DATA_RECEBIMENTO','COD_FILIAL','NOME_FILIAL','COD_FORNECEDOR','NOME_FORNECEDOR','USUARIO','VALOR_TOTAL_PEDIDO','VALOR_TOTAL_RECEBIDO','DIVERGENCIA_QTD','DIVERGENCIA_PRECO','OBSERVACAO'],
+    ITENS_RECEBIMENTO: ['ID_RECEBIMENTO','ID_PEDIDO','COD_MP','DESCRICAO','QTD_PEDIDA','QTD_RECEBIDA','PRECO_PEDIDO','PRECO_RECEBIDO','SUBTOTAL_PEDIDO','SUBTOTAL_RECEBIDO','DIV_QTD','DIV_PRECO'],
+    LOG_ERROS:         ['DATA','MENSAGEM']
   };
 
   Object.entries(estrutura).forEach(([nome, headers]) => {
