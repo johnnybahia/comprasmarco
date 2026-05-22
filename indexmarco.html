@@ -748,8 +748,11 @@ table tr:hover td { background: #f5f7fb; }
             </div>
             <div class="field">
               <label>CNPJ</label>
-              <input type="text" id="f-forn-cnpj" placeholder="00.000.000/0000-00" maxlength="18"
-                oninput="mascaraCNPJ(this)" onblur="buscarCNPJ('forn')">
+              <div class="cep-row">
+                <input type="text" id="f-forn-cnpj" placeholder="00.000.000/0000-00" maxlength="18"
+                  oninput="mascaraCNPJ(this)">
+                <button class="btn btn-outline btn-sm" type="button" onclick="buscarCNPJ('forn')">Buscar</button>
+              </div>
             </div>
             <div class="field">
               <label>Contato</label>
@@ -932,7 +935,11 @@ table tr:hover td { background: #f5f7fb; }
             <div class="field"><label>Nome *</label><input type="text" id="f-fil-nome"></div>
             <div class="field">
               <label>CNPJ</label>
-              <input type="text" id="f-fil-cnpj" placeholder="00.000.000/0000-00" maxlength="18" oninput="mascaraCNPJ(this)">
+              <div class="cep-row">
+                <input type="text" id="f-fil-cnpj" placeholder="00.000.000/0000-00" maxlength="18"
+                  oninput="mascaraCNPJ(this)">
+                <button class="btn btn-outline btn-sm" type="button" onclick="buscarCNPJ('fil')">Buscar</button>
+              </div>
             </div>
             <div class="field">
               <label>Transportadora Padrão</label>
