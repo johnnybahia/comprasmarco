@@ -530,13 +530,12 @@ table tr:hover td { background: #f5f7fb; }
       <div class="page-title">Novo Pedido de Compra</div>
 
       <div class="card">
-        <div class="card-title">Dados do Pedido</div>
-        <div class="form-grid">
-
+        <div class="card-title">Filial de Destino</div>
+        <div class="form-grid cols-2">
           <div class="field">
             <label>Filial *</label>
             <div class="input-lookup">
-              <div class="ac-wrap" style="width:120px;flex:none">
+              <div class="ac-wrap" style="width:130px;flex:none">
                 <input type="text" id="ped-filial-cod" placeholder="Código ou nome"
                   onkeydown="if(event.key==='Enter'){fecharAC('ped-filial-cod');buscarLookup('filial','ped');}">
                 <div class="ac-dropdown" id="ac-ped-filial-cod"></div>
@@ -544,11 +543,16 @@ table tr:hover td { background: #f5f7fb; }
               <input type="text" id="ped-filial-nome" placeholder="Nome da filial" readonly>
             </div>
           </div>
+        </div>
+      </div>
 
+      <div class="card">
+        <div class="card-title">Fornecedor &amp; Entrega</div>
+        <div class="form-grid">
           <div class="field">
             <label>Fornecedor *</label>
             <div class="input-lookup">
-              <div class="ac-wrap" style="width:120px;flex:none">
+              <div class="ac-wrap" style="width:130px;flex:none">
                 <input type="text" id="ped-forn-cod" placeholder="Código ou nome"
                   onkeydown="if(event.key==='Enter'){fecharAC('ped-forn-cod');buscarLookup('fornecedor','ped');}">
                 <div class="ac-dropdown" id="ac-ped-forn-cod"></div>
@@ -560,7 +564,7 @@ table tr:hover td { background: #f5f7fb; }
           <div class="field">
             <label>Transportadora</label>
             <div class="input-lookup">
-              <div class="ac-wrap" style="width:120px;flex:none">
+              <div class="ac-wrap" style="width:130px;flex:none">
                 <input type="text" id="ped-transp-cod" placeholder="Código ou nome"
                   onkeydown="if(event.key==='Enter'){fecharAC('ped-transp-cod');buscarLookup('transportadora','ped');}">
                 <div class="ac-dropdown" id="ac-ped-transp-cod"></div>
