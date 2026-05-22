@@ -909,9 +909,30 @@ table tr:hover td { background: #f5f7fb; }
           <div class="form-grid">
             <div class="field"><label>Código *</label><input type="text" id="f-tra-cod" placeholder="Ex: TRP001"></div>
             <div class="field"><label>Nome *</label><input type="text" id="f-tra-nome"></div>
-            <div class="field"><label>Contato</label><input type="text" id="f-tra-contato"></div>
+            <div class="field">
+              <label>CNPJ</label>
+              <div class="cep-row">
+                <input type="text" id="f-tra-cnpj" placeholder="00.000.000/0000-00" maxlength="18" oninput="mascaraCNPJ(this)">
+                <button class="btn btn-outline btn-sm" type="button" onclick="buscarCNPJ('tra')">Buscar</button>
+              </div>
+            </div>
+            <div class="field"><label>Contato</label><input type="text" id="f-tra-contato" placeholder="Telefone ou pessoa"></div>
             <div class="field"><label>Prazo Médio (dias)</label><input type="number" id="f-tra-prazo" min="1"></div>
             <div class="field"><label>Observação</label><input type="text" id="f-tra-obs"></div>
+          </div>
+          <div class="form-grid" style="margin-top:14px">
+            <div class="field">
+              <label>CEP</label>
+              <div class="cep-row">
+                <input type="text" id="f-tra-cep" placeholder="00000-000" maxlength="9"
+                  oninput="mascaraCEP(this)" onblur="buscarCEP('tra')">
+                <button class="btn btn-outline btn-sm" type="button" onclick="buscarCEP('tra')">Buscar</button>
+              </div>
+            </div>
+            <div class="field"><label>Bairro</label><input type="text" id="f-tra-bairro"></div>
+            <div class="field"><label>Endereço</label><input type="text" id="f-tra-end"></div>
+            <div class="field"><label>Cidade</label><input type="text" id="f-tra-cidade"></div>
+            <div class="field"><label>Estado</label><input type="text" id="f-tra-estado" maxlength="2" style="text-transform:uppercase"></div>
           </div>
           <div class="form-actions">
             <button class="btn btn-primary" onclick="salvarCad('transportadora')">Salvar</button>
@@ -2114,7 +2135,7 @@ function salvarCad(tipo) {
       prefixo:'mat', tabela:'materia'
     },
     transportadora: {
-      campos: {COD:'f-tra-cod',NOME:'f-tra-nome',CONTATO:'f-tra-contato',PRAZO:'f-tra-prazo',OBSERVACAO:'f-tra-obs'},
+      campos: {COD:'f-tra-cod',NOME:'f-tra-nome',CNPJ:'f-tra-cnpj',CONTATO:'f-tra-contato',PRAZO:'f-tra-prazo',OBSERVACAO:'f-tra-obs',CEP:'f-tra-cep',BAIRRO:'f-tra-bairro',ENDERECO:'f-tra-end',CIDADE:'f-tra-cidade',ESTADO:'f-tra-estado'},
       prefixo:'tra', tabela:'transportadora'
     },
     filial: {
@@ -2175,7 +2196,7 @@ function limparForm(prefixo) {
   const mapIds = {
     forn: ['f-forn-cod','f-forn-nome','f-forn-cnpj','f-forn-contato','f-forn-cep','f-forn-bairro','f-forn-end','f-forn-cidade','f-forn-estado'],
     mat:  ['f-mat-cod','f-mat-desc','f-mat-unidade','f-mat-cat'],
-    tra:  ['f-tra-cod','f-tra-nome','f-tra-contato','f-tra-prazo','f-tra-obs'],
+    tra:  ['f-tra-cod','f-tra-nome','f-tra-cnpj','f-tra-contato','f-tra-prazo','f-tra-obs','f-tra-cep','f-tra-bairro','f-tra-end','f-tra-cidade','f-tra-estado'],
     fil:  ['f-fil-cod','f-fil-nome','f-fil-cnpj','f-fil-transp-cod','f-fil-transp-nome','f-fil-cep','f-fil-bairro','f-fil-end','f-fil-cidade','f-fil-estado'],
     usr:  ['f-usr-cod','f-usr-nome','f-usr-user','f-usr-senha','f-usr-email','f-usr-perfil']
   };
@@ -2240,7 +2261,7 @@ function editarCadastro(tipo, cod) {
   const camposMap = {
     fornecedor:     {COD:'f-forn-cod',NOME:'f-forn-nome',CNPJ:'f-forn-cnpj',CONTATO:'f-forn-contato',CEP:'f-forn-cep',BAIRRO:'f-forn-bairro',ENDERECO:'f-forn-end',CIDADE:'f-forn-cidade',ESTADO:'f-forn-estado'},
     materia:        {COD:'f-mat-cod',DESCRICAO:'f-mat-desc',UNIDADE:'f-mat-unidade',CATEGORIA:'f-mat-cat'},
-    transportadora: {COD:'f-tra-cod',NOME:'f-tra-nome',CONTATO:'f-tra-contato',PRAZO:'f-tra-prazo',OBSERVACAO:'f-tra-obs'},
+    transportadora: {COD:'f-tra-cod',NOME:'f-tra-nome',CNPJ:'f-tra-cnpj',CONTATO:'f-tra-contato',PRAZO:'f-tra-prazo',OBSERVACAO:'f-tra-obs',CEP:'f-tra-cep',BAIRRO:'f-tra-bairro',ENDERECO:'f-tra-end',CIDADE:'f-tra-cidade',ESTADO:'f-tra-estado'},
     filial:         {COD:'f-fil-cod',NOME:'f-fil-nome',CNPJ:'f-fil-cnpj',COD_TRANSPORTADORA:'f-fil-transp-cod',CEP:'f-fil-cep',BAIRRO:'f-fil-bairro',ENDERECO:'f-fil-end',CIDADE:'f-fil-cidade',ESTADO:'f-fil-estado'},
     usuario:        {COD:'f-usr-cod',NOME:'f-usr-nome',USUARIO:'f-usr-user',SENHA:'f-usr-senha',EMAIL:'f-usr-email',PERFIL:'f-usr-perfil'}
   };
