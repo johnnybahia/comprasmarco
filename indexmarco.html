@@ -2339,8 +2339,8 @@ function fecharModalExcluir() {
 
 function executarExclusao() {
   if (!_excluirPendente) return;
-  fecharModalExcluir();
   const { tipo, cod } = _excluirPendente;
+  fecharModalExcluir();
   google.script.run
     .withSuccessHandler(res => {
       toast(res.ok ? 'Excluído com sucesso' : 'Erro: ' + res.msg, res.ok ? 'success' : 'error');
