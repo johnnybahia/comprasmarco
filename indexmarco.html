@@ -65,17 +65,14 @@ body {
   text-align: center;
 }
 
-.login-header .logo {
-  font-family: 'IBM Plex Mono', monospace;
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 4px;
-  color: var(--accent);
-  text-transform: uppercase;
-  margin-bottom: 8px;
+.login-header .logo img {
+  height: 72px;
+  width: auto;
+  border-radius: 6px;
+  margin-bottom: 12px;
 }
 
-.login-header h1 { color: white; font-size: 20px; font-weight: 500; }
+.login-header h1 { color: white; font-size: 18px; font-weight: 400; letter-spacing: 1px; margin: 0; opacity: 0.75; }
 
 .login-body { padding: 28px 32px; }
 .login-body .field { margin-bottom: 16px; }
@@ -117,10 +114,11 @@ body {
   position: sticky; top: 0; z-index: 100;
 }
 
-.topbar-brand {
-  font-family: 'IBM Plex Mono', monospace; font-size: 11px;
-  font-weight: 600; letter-spacing: 3px; color: var(--accent);
-  text-transform: uppercase; white-space: nowrap;
+.topbar-brand img {
+  height: 34px;
+  width: auto;
+  border-radius: 4px;
+  display: block;
 }
 
 .topbar-nav { display: flex; gap: 4px; flex: 1; }
@@ -489,8 +487,8 @@ table tr:hover td { background: #f5f7fb; }
 <div id="login-screen">
   <div class="login-card">
     <div class="login-header">
-      <div class="logo">Sistema</div>
-      <h1>Compras</h1>
+      <div class="logo"><img src="https://i.ibb.co/FGGjdsM/LOGO-MARFIM.jpg" alt="Marfim"></div>
+      <h1>Sistema de Compras</h1>
     </div>
     <div class="login-body">
       <div class="field">
@@ -510,7 +508,7 @@ table tr:hover td { background: #f5f7fb; }
 <!-- APP -->
 <div id="app-screen">
   <div class="topbar">
-    <div class="topbar-brand">Compras</div>
+    <div class="topbar-brand"><img src="https://i.ibb.co/FGGjdsM/LOGO-MARFIM.jpg" alt="Marfim"></div>
     <div class="topbar-nav" id="topbar-nav">
       <button class="nav-btn active" id="nav-pedido" onclick="navegarPara('pedido',this)">Novo Pedido</button>
       <button class="nav-btn" id="nav-historico" onclick="navegarPara('historico',this)">Histórico</button>
@@ -530,13 +528,12 @@ table tr:hover td { background: #f5f7fb; }
       <div class="page-title">Novo Pedido de Compra</div>
 
       <div class="card">
-        <div class="card-title">Dados do Pedido</div>
-        <div class="form-grid">
-
+        <div class="card-title">Filial de Destino</div>
+        <div class="form-grid cols-2">
           <div class="field">
             <label>Filial *</label>
             <div class="input-lookup">
-              <div class="ac-wrap" style="width:120px;flex:none">
+              <div class="ac-wrap" style="width:130px;flex:none">
                 <input type="text" id="ped-filial-cod" placeholder="Código ou nome"
                   onkeydown="if(event.key==='Enter'){fecharAC('ped-filial-cod');buscarLookup('filial','ped');}">
                 <div class="ac-dropdown" id="ac-ped-filial-cod"></div>
@@ -544,11 +541,16 @@ table tr:hover td { background: #f5f7fb; }
               <input type="text" id="ped-filial-nome" placeholder="Nome da filial" readonly>
             </div>
           </div>
+        </div>
+      </div>
 
+      <div class="card">
+        <div class="card-title">Fornecedor &amp; Entrega</div>
+        <div class="form-grid">
           <div class="field">
             <label>Fornecedor *</label>
             <div class="input-lookup">
-              <div class="ac-wrap" style="width:120px;flex:none">
+              <div class="ac-wrap" style="width:130px;flex:none">
                 <input type="text" id="ped-forn-cod" placeholder="Código ou nome"
                   onkeydown="if(event.key==='Enter'){fecharAC('ped-forn-cod');buscarLookup('fornecedor','ped');}">
                 <div class="ac-dropdown" id="ac-ped-forn-cod"></div>
@@ -560,7 +562,7 @@ table tr:hover td { background: #f5f7fb; }
           <div class="field">
             <label>Transportadora</label>
             <div class="input-lookup">
-              <div class="ac-wrap" style="width:120px;flex:none">
+              <div class="ac-wrap" style="width:130px;flex:none">
                 <input type="text" id="ped-transp-cod" placeholder="Código ou nome"
                   onkeydown="if(event.key==='Enter'){fecharAC('ped-transp-cod');buscarLookup('transportadora','ped');}">
                 <div class="ac-dropdown" id="ac-ped-transp-cod"></div>
@@ -794,6 +796,43 @@ table tr:hover td { background: #f5f7fb; }
             <button class="btn btn-outline" onclick="limparForm('forn')">Limpar</button>
           </div>
         </div>
+        <!-- Transportadoras por Filial -->
+        <div class="card" id="card-transp-forn" style="display:none">
+          <div class="card-title">Transportadoras por Filial — <span id="transp-forn-label" style="font-weight:600;color:var(--navy)"></span></div>
+          <div class="form-grid" style="grid-template-columns:160px 1fr 160px 1fr auto;align-items:end;gap:10px;margin-bottom:14px">
+            <div class="field">
+              <label>Filial</label>
+              <div class="ac-wrap">
+                <input type="text" id="tf-filial-cod" placeholder="Código ou nome"
+                  onkeydown="if(event.key==='Enter')fecharAC('tf-filial-cod')">
+                <div class="ac-dropdown" id="ac-tf-filial-cod"></div>
+              </div>
+            </div>
+            <div class="field">
+              <label>Nome Filial</label>
+              <input type="text" id="tf-filial-nome" readonly placeholder="—">
+            </div>
+            <div class="field">
+              <label>Transportadora</label>
+              <div class="ac-wrap">
+                <input type="text" id="tf-transp-cod" placeholder="Código ou nome"
+                  onkeydown="if(event.key==='Enter')fecharAC('tf-transp-cod')">
+                <div class="ac-dropdown" id="ac-tf-transp-cod"></div>
+              </div>
+            </div>
+            <div class="field">
+              <label>Nome Transportadora</label>
+              <input type="text" id="tf-transp-nome" readonly placeholder="—">
+            </div>
+            <div>
+              <button class="btn btn-accent" onclick="adicionarTranspFornFilial()">+ Vincular</button>
+            </div>
+          </div>
+          <div class="table-wrap" id="tbl-transp-forn-filial">
+            <div class="empty-state"><div class="icon">🚚</div>Nenhuma transportadora vinculada</div>
+          </div>
+        </div>
+
         <div class="card">
           <div class="card-title">Registros</div>
           <div class="table-wrap" id="tbl-fornecedores">
@@ -886,6 +925,16 @@ table tr:hover td { background: #f5f7fb; }
           <div class="form-grid">
             <div class="field"><label>Código *</label><input type="text" id="f-fil-cod" placeholder="Ex: FIL001"></div>
             <div class="field"><label>Nome *</label><input type="text" id="f-fil-nome"></div>
+            <div class="field">
+              <label>Transportadora Padrão</label>
+              <div class="input-lookup">
+                <div class="ac-wrap" style="width:130px;flex:none">
+                  <input type="text" id="f-fil-transp-cod" placeholder="Código ou nome">
+                  <div class="ac-dropdown" id="ac-f-fil-transp-cod"></div>
+                </div>
+                <input type="text" id="f-fil-transp-nome" placeholder="Nome" readonly>
+              </div>
+            </div>
           </div>
 
           <div class="field" style="margin-top:14px">
@@ -1170,10 +1219,25 @@ function registrarAutocompletes(tipo) {
     ],
     filial: [
       { inputId: 'ped-filial-cod',  labelKey: 'NOME', onSelect: r => selecionarLookup('filial','ped',r) },
-      { inputId: 'hist-filial-cod', labelKey: 'NOME', onSelect: r => { document.getElementById('hist-filial-cod').value = r.COD; } }
+      { inputId: 'hist-filial-cod', labelKey: 'NOME', onSelect: r => { document.getElementById('hist-filial-cod').value = r.COD; } },
+      { inputId: 'tf-filial-cod',   labelKey: 'NOME', onSelect: r => {
+          document.getElementById('tf-filial-cod').value  = r.COD;
+          document.getElementById('tf-filial-nome').value = r.NOME;
+        }
+      }
     ],
     transportadora: [
-      { inputId: 'ped-transp-cod',  labelKey: 'NOME', onSelect: r => selecionarLookup('transportadora','ped',r) }
+      { inputId: 'ped-transp-cod',   labelKey: 'NOME', onSelect: r => selecionarLookup('transportadora','ped',r) },
+      { inputId: 'f-fil-transp-cod', labelKey: 'NOME', onSelect: r => {
+          document.getElementById('f-fil-transp-cod').value  = r.COD;
+          document.getElementById('f-fil-transp-nome').value = r.NOME;
+        }
+      },
+      { inputId: 'tf-transp-cod',    labelKey: 'NOME', onSelect: r => {
+          document.getElementById('tf-transp-cod').value  = r.COD;
+          document.getElementById('tf-transp-nome').value = r.NOME;
+        }
+      }
     ],
     materia: [
       { inputId: 'item-cod', labelKey: 'DESCRICAO', onSelect: r => {
@@ -1273,6 +1337,10 @@ function selecionarLookup(tipo, prefixo, registro) {
   document.getElementById(prefixo + '-' + nomeMap[tipo]).value = registro.NOME || '';
   if (tipo === 'fornecedor' && prefixo === 'ped') {
     tentarPreencherPreco();
+    tentarPreencherTransportadora();
+  }
+  if (tipo === 'filial' && prefixo === 'ped') {
+    tentarPreencherTransportadora();
   }
 }
 
@@ -1339,6 +1407,100 @@ function tentarPreencherPreco() {
     })
     .withFailureHandler(() => {})
     .buscarPrecoFornecedor(codForn, codMP);
+}
+
+// ════════════════════════════════════════════════════
+// TRANSPORTADORA POR FORNECEDOR × FILIAL
+// ════════════════════════════════════════════════════
+let _fornAtivo = null;
+
+function abrirCardTranspForn(codForn, nomeForn) {
+  _fornAtivo = codForn;
+  document.getElementById('transp-forn-label').textContent = codForn + ' — ' + nomeForn;
+  document.getElementById('card-transp-forn').style.display = 'block';
+  document.getElementById('tf-filial-cod').value  = '';
+  document.getElementById('tf-filial-nome').value = '';
+  document.getElementById('tf-transp-cod').value  = '';
+  document.getElementById('tf-transp-nome').value = '';
+  carregarTabelaTranspForn(codForn);
+}
+
+function carregarTabelaTranspForn(codForn) {
+  const tbl = document.getElementById('tbl-transp-forn-filial');
+  tbl.innerHTML = '<div class="empty-state"><div class="icon">⏳</div>Carregando...</div>';
+  google.script.run
+    .withSuccessHandler(rows => {
+      if (!rows || rows.length === 0) {
+        tbl.innerHTML = '<div class="empty-state"><div class="icon">🚚</div>Nenhuma transportadora vinculada</div>';
+        return;
+      }
+      tbl.innerHTML = `<table>
+        <thead><tr><th>Filial</th><th>Nome Filial</th><th>Transportadora</th><th>Nome Transportadora</th><th></th></tr></thead>
+        <tbody>${rows.map(r => `<tr>
+          <td><code>${escHTML(r.COD_FILIAL)}</code></td>
+          <td>${escHTML(r.NOME_FILIAL)}</td>
+          <td><code>${escHTML(r.COD_TRANSPORTADORA)}</code></td>
+          <td>${escHTML(r.NOME_TRANSPORTADORA)}</td>
+          <td><button class="btn-icon danger" onclick="removerTranspFornFilial('${escHTML(r.COD_FILIAL)}')" title="Remover">✕</button></td>
+        </tr>`).join('')}</tbody>
+      </table>`;
+    })
+    .withFailureHandler(() => tbl.innerHTML = '<div class="empty-state">Erro ao carregar</div>')
+    .listarTranspPorFornecedor(codForn);
+}
+
+function adicionarTranspFornFilial() {
+  if (!_fornAtivo) { toast('Selecione ou salve um fornecedor primeiro', 'error'); return; }
+  const codFilial = document.getElementById('tf-filial-cod').value.trim();
+  const codTransp = document.getElementById('tf-transp-cod').value.trim();
+  if (!codFilial) { toast('Informe a filial', 'error'); return; }
+  if (!codTransp) { toast('Informe a transportadora', 'error'); return; }
+  google.script.run
+    .withSuccessHandler(res => {
+      toast(res.ok ? res.msg : 'Erro: ' + res.msg, res.ok ? 'success' : 'error');
+      if (res.ok) {
+        document.getElementById('tf-filial-cod').value  = '';
+        document.getElementById('tf-filial-nome').value = '';
+        document.getElementById('tf-transp-cod').value  = '';
+        document.getElementById('tf-transp-nome').value = '';
+        carregarTabelaTranspForn(_fornAtivo);
+      }
+    })
+    .withFailureHandler(err => toast('Erro: ' + err.message, 'error'))
+    .salvarTranspFornFilial(_fornAtivo, codFilial, codTransp);
+}
+
+function removerTranspFornFilial(codFilial) {
+  if (!confirm('Remover vínculo desta filial?')) return;
+  google.script.run
+    .withSuccessHandler(res => {
+      if (res.ok) carregarTabelaTranspForn(_fornAtivo);
+      else toast('Erro ao remover', 'error');
+    })
+    .withFailureHandler(() => toast('Erro', 'error'))
+    .excluirTranspFornFilial(_fornAtivo, codFilial);
+}
+
+function tentarPreencherTransportadora() {
+  const codForn   = document.getElementById('ped-forn-cod').value.trim();
+  const codFilial = document.getElementById('ped-filial-cod').value.trim();
+  if (!codForn || !codFilial) return;
+  // Não sobrescreve se já preenchido manualmente
+  if (document.getElementById('ped-transp-cod').value.trim()) return;
+  google.script.run
+    .withSuccessHandler(codT => {
+      if (!codT) {
+        // Fallback: transportadora padrão da filial
+        const fil = (_cache.filial || []).find(f => String(f.COD).trim() === codFilial);
+        codT = fil ? (fil.COD_TRANSPORTADORA || '') : '';
+      }
+      if (codT) {
+        const tFound = (_cache.transportadora || []).find(t => String(t.COD).trim() === codT.trim());
+        if (tFound) selecionarLookup('transportadora', 'ped', tFound);
+      }
+    })
+    .withFailureHandler(() => {})
+    .buscarTranspFornFilial(codForn, codFilial);
 }
 
 // ════════════════════════════════════════════════════
@@ -1868,7 +2030,8 @@ function salvarCad(tipo) {
       campos: {
         COD:'f-fil-cod', NOME:'f-fil-nome',
         CEP:'f-fil-cep', BAIRRO:'f-fil-bairro',
-        ENDERECO:'f-fil-end', CIDADE:'f-fil-cidade', ESTADO:'f-fil-estado'
+        ENDERECO:'f-fil-end', CIDADE:'f-fil-cidade', ESTADO:'f-fil-estado',
+        COD_TRANSPORTADORA:'f-fil-transp-cod'
       },
       prefixo:'fil', tabela:'filial',
       emailInputId:'fil-email-inp', emailHiddenId:'fil-email-tags',
@@ -1903,8 +2066,10 @@ function salvarCad(tipo) {
       toast(res.ok ? res.msg : 'Erro: ' + res.msg, res.ok ? 'success' : 'error');
       if (res.ok) {
         if (tipo === 'materia') {
-          // Abre card de preços para a matéria recém-salva
           abrirCardPrecos(dados.COD, dados.DESCRICAO);
+        }
+        if (tipo === 'fornecedor') {
+          abrirCardTranspForn(dados.COD, dados.NOME);
         }
         limparForm(cfg.prefixo);
         carregarTabelaCadastro(cfg.tabela);
@@ -1920,7 +2085,7 @@ function limparForm(prefixo) {
     forn: ['f-forn-cod','f-forn-nome','f-forn-contato','f-forn-cep','f-forn-bairro','f-forn-end','f-forn-cidade','f-forn-estado'],
     mat:  ['f-mat-cod','f-mat-desc','f-mat-unidade','f-mat-cat'],
     tra:  ['f-tra-cod','f-tra-nome','f-tra-contato','f-tra-prazo','f-tra-obs'],
-    fil:  ['f-fil-cod','f-fil-nome','f-fil-cep','f-fil-bairro','f-fil-end','f-fil-cidade','f-fil-estado'],
+    fil:  ['f-fil-cod','f-fil-nome','f-fil-transp-cod','f-fil-transp-nome','f-fil-cep','f-fil-bairro','f-fil-end','f-fil-cidade','f-fil-estado'],
     usr:  ['f-usr-cod','f-usr-nome','f-usr-user','f-usr-senha','f-usr-email','f-usr-perfil']
   };
   (mapIds[prefixo] || []).forEach(id => { document.getElementById(id).value = ''; });
@@ -1929,6 +2094,8 @@ function limparForm(prefixo) {
   if (prefixo === 'forn') {
     document.getElementById('forn-email-tags').value = '';
     renderEmailTags('forn-email-inp','forn-email-tags');
+    document.getElementById('card-transp-forn').style.display = 'none';
+    _fornAtivo = null;
   }
   if (prefixo === 'fil') {
     document.getElementById('fil-email-tags').value = '';
@@ -1945,7 +2112,7 @@ function carregarTabelaCadastro(tipo) {
     fornecedor:     { id:'tbl-fornecedores',    cols:['COD','NOME','EMAIL','CONTATO','CEP','CIDADE','ESTADO'] },
     materia:        { id:'tbl-materias',         cols:['COD','DESCRICAO','UNIDADE','CATEGORIA'] },
     transportadora: { id:'tbl-transportadoras',  cols:['COD','NOME','CONTATO','PRAZO'] },
-    filial:         { id:'tbl-filiais',          cols:['COD','NOME','CEP','CIDADE','ESTADO','EMAIL_RESPONSAVEL'] },
+    filial:         { id:'tbl-filiais',          cols:['COD','NOME','CEP','CIDADE','ESTADO','COD_TRANSPORTADORA','EMAIL_RESPONSAVEL'] },
     usuario:        { id:'tbl-usuarios',         cols:['COD','NOME','USUARIO','EMAIL','PERFIL'] }
   };
 
@@ -1962,6 +2129,8 @@ function carregarTabelaCadastro(tipo) {
       const headers = cfg.cols.map(c => `<th>${c}</th>`).join('') + '<th></th>';
       const extraBtn = tipo === 'materia'
         ? (cod, desc) => `<button class="btn btn-outline btn-sm" style="margin-left:4px" onclick="abrirCardPrecos('${escHTML(cod)}','${escHTML(desc||'')}')">Preços</button>`
+        : tipo === 'fornecedor'
+        ? (cod, nome) => `<button class="btn btn-outline btn-sm" style="margin-left:4px" onclick="abrirCardTranspForn('${escHTML(cod)}','${escHTML(nome||'')}')">Transp.</button>`
         : () => '';
       const body = rows.map(row => {
         const cells = cfg.cols.map(c => `<td>${escHTML(String(row[c]||''))}</td>`).join('');
@@ -1981,7 +2150,7 @@ function editarCadastro(tipo, cod) {
     fornecedor:     {COD:'f-forn-cod',NOME:'f-forn-nome',CONTATO:'f-forn-contato',CEP:'f-forn-cep',BAIRRO:'f-forn-bairro',ENDERECO:'f-forn-end',CIDADE:'f-forn-cidade',ESTADO:'f-forn-estado'},
     materia:        {COD:'f-mat-cod',DESCRICAO:'f-mat-desc',UNIDADE:'f-mat-unidade',CATEGORIA:'f-mat-cat'},
     transportadora: {COD:'f-tra-cod',NOME:'f-tra-nome',CONTATO:'f-tra-contato',PRAZO:'f-tra-prazo',OBSERVACAO:'f-tra-obs'},
-    filial:         {COD:'f-fil-cod',NOME:'f-fil-nome',CEP:'f-fil-cep',BAIRRO:'f-fil-bairro',ENDERECO:'f-fil-end',CIDADE:'f-fil-cidade',ESTADO:'f-fil-estado'},
+    filial:         {COD:'f-fil-cod',NOME:'f-fil-nome',COD_TRANSPORTADORA:'f-fil-transp-cod',CEP:'f-fil-cep',BAIRRO:'f-fil-bairro',ENDERECO:'f-fil-end',CIDADE:'f-fil-cidade',ESTADO:'f-fil-estado'},
     usuario:        {COD:'f-usr-cod',NOME:'f-usr-nome',USUARIO:'f-usr-user',SENHA:'f-usr-senha',EMAIL:'f-usr-email',PERFIL:'f-usr-perfil'}
   };
   const subMap = {
@@ -2005,9 +2174,16 @@ function editarCadastro(tipo, cod) {
       if (tipo === 'filial') {
         const emails = (res.EMAIL_RESPONSAVEL || '').split(';').map(e => e.trim()).filter(Boolean);
         setEmailTags(emails, 'fil-email-inp', 'fil-email-tags');
+        // Resolve nome da transportadora vinculada
+        const codT = res.COD_TRANSPORTADORA || '';
+        const tFound = (_cache.transportadora || []).find(t => String(t.COD).trim() === codT.trim());
+        document.getElementById('f-fil-transp-nome').value = tFound ? tFound.NOME : '';
       }
       if (tipo === 'materia') {
         abrirCardPrecos(res.COD, res.DESCRICAO);
+      }
+      if (tipo === 'fornecedor') {
+        abrirCardTranspForn(res.COD, res.NOME);
       }
       document.getElementById('sub-' + subMap[tipo]).scrollIntoView({ behavior:'smooth' });
     })
