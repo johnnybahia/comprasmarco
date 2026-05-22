@@ -365,9 +365,12 @@ function montarEmailHTML(idPedido, data, dados) {
 
   return `
   <div style="font-family:Arial,sans-serif;max-width:700px;margin:0 auto;">
-    <div style="background:#1a3c5e;color:white;padding:20px 30px;">
-      <h2 style="margin:0;">Pedido de Compra</h2>
-      <p style="margin:4px 0 0;font-size:15px;">${idPedido} — ${dataFmt}</p>
+    <div style="background:#1a3c5e;color:white;padding:20px 30px;display:flex;align-items:center;gap:20px;">
+      <img src="https://i.ibb.co/FGGjdsM/LOGO-MARFIM.jpg" alt="Marfim" style="height:52px;width:auto;border-radius:4px;flex-shrink:0;">
+      <div>
+        <h2 style="margin:0;font-size:20px;letter-spacing:0.5px;">Pedido de Compra</h2>
+        <p style="margin:4px 0 0;font-size:14px;color:rgba(255,255,255,0.75);">${idPedido} — ${dataFmt}</p>
+      </div>
     </div>
     <div style="background:#fff8e1;border-left:4px solid #e8a020;padding:10px 30px;font-size:13px;color:#5a4000;">
       <strong>Para a filial:</strong> ao receber esta entrega, acesse o sistema e informe o número do pedido <strong style="font-family:monospace;font-size:14px;">${idPedido}</strong> para registrar o recebimento da NF.
@@ -406,8 +409,19 @@ function montarEmailHTML(idPedido, data, dados) {
       </table>
       ${dados.observacao ? `<p style="margin-top:16px;"><strong>Observações:</strong> ${dados.observacao}</p>` : ''}
     </div>
-    <div style="background:#eee;padding:12px 30px;font-size:12px;color:#666;">
-      Email gerado automaticamente pelo Sistema de Compras.
+    <div style="background:#1a3c5e;padding:20px 30px;">
+      <table style="width:100%;border-collapse:collapse;">
+        <tr>
+          <td style="vertical-align:middle;width:110px;">
+            <img src="https://i.ibb.co/FGGjdsM/LOGO-MARFIM.jpg" alt="Marfim" style="height:60px;width:auto;display:block;border-radius:4px;">
+          </td>
+          <td style="vertical-align:middle;padding-left:18px;border-left:1px solid rgba(255,255,255,0.2);">
+            <p style="margin:0;font-size:14px;font-weight:700;color:white;letter-spacing:0.5px;">Marco Aurélio Bonalume</p>
+            <p style="margin:4px 0 0;font-size:12px;color:rgba(255,255,255,0.65);">Departamento de Compras — Marfim</p>
+            <p style="margin:6px 0 0;font-size:11px;color:rgba(255,255,255,0.4);">Este email foi gerado automaticamente pelo Sistema de Compras.</p>
+          </td>
+        </tr>
+      </table>
     </div>
   </div>`;
 }

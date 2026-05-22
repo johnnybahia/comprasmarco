@@ -65,17 +65,14 @@ body {
   text-align: center;
 }
 
-.login-header .logo {
-  font-family: 'IBM Plex Mono', monospace;
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 4px;
-  color: var(--accent);
-  text-transform: uppercase;
-  margin-bottom: 8px;
+.login-header .logo img {
+  height: 72px;
+  width: auto;
+  border-radius: 6px;
+  margin-bottom: 12px;
 }
 
-.login-header h1 { color: white; font-size: 20px; font-weight: 500; }
+.login-header h1 { color: white; font-size: 18px; font-weight: 400; letter-spacing: 1px; margin: 0; opacity: 0.75; }
 
 .login-body { padding: 28px 32px; }
 .login-body .field { margin-bottom: 16px; }
@@ -117,10 +114,11 @@ body {
   position: sticky; top: 0; z-index: 100;
 }
 
-.topbar-brand {
-  font-family: 'IBM Plex Mono', monospace; font-size: 11px;
-  font-weight: 600; letter-spacing: 3px; color: var(--accent);
-  text-transform: uppercase; white-space: nowrap;
+.topbar-brand img {
+  height: 34px;
+  width: auto;
+  border-radius: 4px;
+  display: block;
 }
 
 .topbar-nav { display: flex; gap: 4px; flex: 1; }
@@ -489,8 +487,8 @@ table tr:hover td { background: #f5f7fb; }
 <div id="login-screen">
   <div class="login-card">
     <div class="login-header">
-      <div class="logo">Sistema</div>
-      <h1>Compras</h1>
+      <div class="logo"><img src="https://i.ibb.co/FGGjdsM/LOGO-MARFIM.jpg" alt="Marfim"></div>
+      <h1>Sistema de Compras</h1>
     </div>
     <div class="login-body">
       <div class="field">
@@ -510,7 +508,7 @@ table tr:hover td { background: #f5f7fb; }
 <!-- APP -->
 <div id="app-screen">
   <div class="topbar">
-    <div class="topbar-brand">Compras</div>
+    <div class="topbar-brand"><img src="https://i.ibb.co/FGGjdsM/LOGO-MARFIM.jpg" alt="Marfim"></div>
     <div class="topbar-nav" id="topbar-nav">
       <button class="nav-btn active" id="nav-pedido" onclick="navegarPara('pedido',this)">Novo Pedido</button>
       <button class="nav-btn" id="nav-historico" onclick="navegarPara('historico',this)">Histórico</button>
