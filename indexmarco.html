@@ -1130,6 +1130,18 @@ table tr:hover td { background: #f5f7fb; }
   </div><!-- /main -->
 </div><!-- /app-screen -->
 
+<!-- MODAL EXCLUIR CADASTRO -->
+<div class="modal-backdrop" id="modal-excluir">
+  <div class="modal">
+    <h3>Confirmar Exclusão</h3>
+    <p id="modal-excluir-text"></p>
+    <div class="modal-actions">
+      <button class="btn btn-outline" onclick="fecharModalExcluir()">Cancelar</button>
+      <button class="btn btn-danger" id="btn-confirmar-exclusao">Excluir</button>
+    </div>
+  </div>
+</div>
+
 <!-- MODAL CONFIRMAÇÃO -->
 <div class="modal-backdrop" id="modal-confirm">
   <div class="modal">
@@ -2246,9 +2258,12 @@ function carregarTabelaCadastro(tipo) {
         : () => '';
       const body = rows.map(row => {
         const cells = cfg.cols.map(c => `<td>${escHTML(String(row[c]||''))}</td>`).join('');
+        const cod  = escHTML(String(row.COD));
+        const nome = escHTML(String(row.DESCRICAO||row.NOME||''));
         return `<tr>${cells}<td style="white-space:nowrap">
-          <button class="btn btn-outline btn-sm" onclick="editarCadastro('${tipo}','${escHTML(String(row.COD))}')">Editar</button>
+          <button class="btn btn-outline btn-sm" onclick="editarCadastro('${tipo}','${cod}')">Editar</button>
           ${extraBtn(String(row.COD), String(row.DESCRICAO||row.NOME||''))}
+          <button class="btn btn-danger btn-sm" style="margin-left:4px" onclick="confirmarExcluir('${tipo}','${cod}','${nome}')">Excluir</button>
         </td></tr>`;
       }).join('');
       container.innerHTML = `<table><thead><tr>${headers}</tr></thead><tbody>${body}</tbody></table>`;
@@ -2301,6 +2316,41 @@ function editarCadastro(tipo, cod) {
     })
     .withFailureHandler(() => toast('Erro ao carregar','error'))
     .buscarCodigo(tipo, cod);
+}
+
+// ════════════════════════════════════════════════════
+// EXCLUIR CADASTRO
+// ════════════════════════════════════════════════════
+let _excluirPendente = null;
+
+function confirmarExcluir(tipo, cod, nome) {
+  _excluirPendente = { tipo, cod };
+  const nomesTipo = { fornecedor:'Fornecedor', materia:'Matéria Prima', transportadora:'Transportadora', filial:'Filial', usuario:'Usuário' };
+  document.getElementById('modal-excluir-text').innerHTML =
+    `Tem certeza que deseja excluir <strong>${nome || cod}</strong> (${nomesTipo[tipo] || tipo})?<br><span style="color:var(--error);font-size:12px;margin-top:6px;display:block;">Esta ação não pode ser desfeita.</span>`;
+  document.getElementById('btn-confirmar-exclusao').onclick = executarExclusao;
+  document.getElementById('modal-excluir').classList.add('open');
+}
+
+function fecharModalExcluir() {
+  document.getElementById('modal-excluir').classList.remove('open');
+  _excluirPendente = null;
+}
+
+function executarExclusao() {
+  if (!_excluirPendente) return;
+  fecharModalExcluir();
+  const { tipo, cod } = _excluirPendente;
+  google.script.run
+    .withSuccessHandler(res => {
+      toast(res.ok ? 'Excluído com sucesso' : 'Erro: ' + res.msg, res.ok ? 'success' : 'error');
+      if (res.ok) {
+        carregarTabelaCadastro(tipo);
+        carregarCaches();
+      }
+    })
+    .withFailureHandler(err => toast('Erro: ' + err.message, 'error'))
+    .excluirCadastro(tipo, cod);
 }
 
 // ════════════════════════════════════════════════════
