@@ -75,136 +75,73 @@ body {
   margin-bottom: 8px;
 }
 
-.login-header h1 {
-  color: white;
-  font-size: 20px;
-  font-weight: 500;
-}
+.login-header h1 { color: white; font-size: 20px; font-weight: 500; }
 
 .login-body { padding: 28px 32px; }
-
 .login-body .field { margin-bottom: 16px; }
-
 .login-body label {
-  display: block;
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 1px;
-  text-transform: uppercase;
-  color: var(--text2);
-  margin-bottom: 6px;
+  display: block; font-size: 11px; font-weight: 600;
+  letter-spacing: 1px; text-transform: uppercase;
+  color: var(--text2); margin-bottom: 6px;
 }
-
 .login-body input {
-  width: 100%;
-  padding: 10px 12px;
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  font-family: 'IBM Plex Sans', sans-serif;
-  font-size: 14px;
-  outline: none;
-  transition: border-color .2s;
+  width: 100%; padding: 10px 12px;
+  border: 1px solid var(--border); border-radius: var(--radius);
+  font-family: 'IBM Plex Sans', sans-serif; font-size: 14px;
+  outline: none; transition: border-color .2s;
 }
-
 .login-body input:focus { border-color: var(--navy); }
 
 .btn-login {
-  width: 100%;
-  padding: 11px;
-  background: var(--navy);
-  color: white;
-  border: none;
-  border-radius: var(--radius);
-  font-family: 'IBM Plex Sans', sans-serif;
-  font-size: 14px;
-  font-weight: 600;
-  cursor: pointer;
-  margin-top: 8px;
+  width: 100%; padding: 11px;
+  background: var(--navy); color: white; border: none;
+  border-radius: var(--radius); font-family: 'IBM Plex Sans', sans-serif;
+  font-size: 14px; font-weight: 600; cursor: pointer; margin-top: 8px;
   transition: background .2s;
 }
-
 .btn-login:hover { background: var(--navy-light); }
 
 .login-error {
-  background: #fdecea;
-  border: 1px solid #f5c6c2;
-  color: var(--error);
-  padding: 10px 12px;
-  border-radius: var(--radius);
-  font-size: 13px;
-  margin-top: 12px;
-  display: none;
+  background: #fdecea; border: 1px solid #f5c6c2;
+  color: var(--error); padding: 10px 12px;
+  border-radius: var(--radius); font-size: 13px; margin-top: 12px; display: none;
 }
 
 /* ── APP ── */
 #app-screen { display: none; min-height: 100vh; }
 
 .topbar {
-  background: var(--navy);
-  height: 52px;
-  display: flex;
-  align-items: center;
-  padding: 0 24px;
-  gap: 16px;
-  position: sticky;
-  top: 0;
-  z-index: 100;
+  background: var(--navy); height: 52px;
+  display: flex; align-items: center;
+  padding: 0 24px; gap: 16px;
+  position: sticky; top: 0; z-index: 100;
 }
 
 .topbar-brand {
-  font-family: 'IBM Plex Mono', monospace;
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 3px;
-  color: var(--accent);
-  text-transform: uppercase;
-  white-space: nowrap;
+  font-family: 'IBM Plex Mono', monospace; font-size: 11px;
+  font-weight: 600; letter-spacing: 3px; color: var(--accent);
+  text-transform: uppercase; white-space: nowrap;
 }
 
-.topbar-nav {
-  display: flex;
-  gap: 4px;
-  flex: 1;
-}
+.topbar-nav { display: flex; gap: 4px; flex: 1; }
 
 .nav-btn {
-  padding: 6px 14px;
-  border: none;
-  background: transparent;
-  color: rgba(255,255,255,0.65);
-  font-family: 'IBM Plex Sans', sans-serif;
-  font-size: 13px;
-  font-weight: 500;
-  cursor: pointer;
-  border-radius: 4px;
-  transition: all .15s;
+  padding: 6px 14px; border: none; background: transparent;
+  color: rgba(255,255,255,0.65); font-family: 'IBM Plex Sans', sans-serif;
+  font-size: 13px; font-weight: 500; cursor: pointer;
+  border-radius: 4px; transition: all .15s;
 }
-
 .nav-btn:hover { background: rgba(255,255,255,0.08); color: white; }
 .nav-btn.active { background: rgba(255,255,255,0.12); color: white; }
 
-.topbar-user {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  margin-left: auto;
-}
-
-.user-name {
-  font-size: 13px;
-  color: rgba(255,255,255,0.8);
-}
+.topbar-user { display: flex; align-items: center; gap: 10px; margin-left: auto; }
+.user-name { font-size: 13px; color: rgba(255,255,255,0.8); }
 
 .btn-sair {
-  padding: 5px 12px;
-  border: 1px solid rgba(255,255,255,0.25);
-  background: transparent;
-  color: rgba(255,255,255,0.7);
-  font-family: 'IBM Plex Sans', sans-serif;
-  font-size: 12px;
-  cursor: pointer;
-  border-radius: 4px;
-  transition: all .15s;
+  padding: 5px 12px; border: 1px solid rgba(255,255,255,0.25);
+  background: transparent; color: rgba(255,255,255,0.7);
+  font-family: 'IBM Plex Sans', sans-serif; font-size: 12px;
+  cursor: pointer; border-radius: 4px; transition: all .15s;
 }
 .btn-sair:hover { border-color: rgba(255,255,255,0.6); color: white; }
 
@@ -215,74 +152,43 @@ body {
 .panel.active { display: block; }
 
 .page-title {
-  font-size: 18px;
-  font-weight: 600;
-  color: var(--navy);
-  margin-bottom: 20px;
-  padding-bottom: 12px;
-  border-bottom: 2px solid var(--accent);
-  display: inline-block;
+  font-size: 18px; font-weight: 600; color: var(--navy);
+  margin-bottom: 20px; padding-bottom: 12px;
+  border-bottom: 2px solid var(--accent); display: inline-block;
 }
 
 /* ── CARDS ── */
 .card {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  padding: 20px;
-  margin-bottom: 20px;
-  box-shadow: var(--shadow);
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 20px;
+  margin-bottom: 20px; box-shadow: var(--shadow);
 }
 
 .card-title {
-  font-size: 12px;
-  font-weight: 600;
-  letter-spacing: 1.5px;
-  text-transform: uppercase;
-  color: var(--text3);
-  margin-bottom: 16px;
-  display: flex;
-  align-items: center;
-  gap: 8px;
+  font-size: 12px; font-weight: 600; letter-spacing: 1.5px;
+  text-transform: uppercase; color: var(--text3); margin-bottom: 16px;
+  display: flex; align-items: center; gap: 8px;
 }
-
 .card-title::before {
-  content: '';
-  width: 3px;
-  height: 14px;
-  background: var(--accent);
-  border-radius: 2px;
+  content: ''; width: 3px; height: 14px;
+  background: var(--accent); border-radius: 2px;
 }
 
-/* ── TABS dentro do painel ── */
+/* ── TABS ── */
 .subtabs {
-  display: flex;
-  gap: 4px;
-  margin-bottom: 20px;
-  background: var(--surface2);
-  padding: 4px;
-  border-radius: var(--radius);
-  width: fit-content;
-  border: 1px solid var(--border);
+  display: flex; gap: 4px; margin-bottom: 20px;
+  background: var(--surface2); padding: 4px;
+  border-radius: var(--radius); width: fit-content;
+  border: 1px solid var(--border); flex-wrap: wrap;
 }
 
 .subtab {
-  padding: 7px 18px;
-  border: none;
-  background: transparent;
-  font-family: 'IBM Plex Sans', sans-serif;
-  font-size: 13px;
-  font-weight: 500;
-  color: var(--text2);
-  cursor: pointer;
-  border-radius: 4px;
-  transition: all .15s;
+  padding: 7px 18px; border: none; background: transparent;
+  font-family: 'IBM Plex Sans', sans-serif; font-size: 13px;
+  font-weight: 500; color: var(--text2); cursor: pointer;
+  border-radius: 4px; transition: all .15s;
 }
-
-.subtab.active {
-  background: var(--navy);
-  color: white;
-}
+.subtab.active { background: var(--navy); color: white; }
 
 .subpanel { display: none; }
 .subpanel.active { display: block; }
@@ -293,210 +199,190 @@ body {
   grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
   gap: 14px;
 }
-
 .form-grid.cols-2 { grid-template-columns: 1fr 1fr; }
 .form-grid.cols-3 { grid-template-columns: 1fr 1fr 1fr; }
 .form-grid.full { grid-template-columns: 1fr; }
 
 .field label {
-  display: block;
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.8px;
-  text-transform: uppercase;
-  color: var(--text2);
-  margin-bottom: 5px;
+  display: block; font-size: 11px; font-weight: 600;
+  letter-spacing: 0.8px; text-transform: uppercase;
+  color: var(--text2); margin-bottom: 5px;
 }
 
 .field input, .field select, .field textarea {
-  width: 100%;
-  padding: 9px 11px;
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  font-family: 'IBM Plex Sans', sans-serif;
-  font-size: 13px;
-  color: var(--text);
-  background: var(--surface);
-  outline: none;
+  width: 100%; padding: 9px 11px;
+  border: 1px solid var(--border); border-radius: var(--radius);
+  font-family: 'IBM Plex Sans', sans-serif; font-size: 13px;
+  color: var(--text); background: var(--surface); outline: none;
   transition: border-color .2s, box-shadow .2s;
 }
-
 .field input:focus, .field select:focus, .field textarea:focus {
-  border-color: var(--navy);
-  box-shadow: 0 0 0 3px rgba(26,60,94,0.08);
+  border-color: var(--navy); box-shadow: 0 0 0 3px rgba(26,60,94,0.08);
 }
-
-.field input[readonly] {
-  background: var(--surface2);
-  color: var(--text2);
-}
-
+.field input[readonly] { background: var(--surface2); color: var(--text2); }
 .field textarea { resize: vertical; min-height: 72px; }
 
-.input-lookup {
-  display: flex;
-  gap: 8px;
-}
-
+.input-lookup { display: flex; gap: 8px; }
 .input-lookup input { flex: 1; }
+
+/* ── AUTOCOMPLETE ── */
+.ac-wrap { position: relative; }
+
+.ac-dropdown {
+  position: absolute; top: 100%; left: 0; right: 0;
+  background: var(--surface); border: 1px solid var(--navy);
+  border-top: none; border-radius: 0 0 var(--radius) var(--radius);
+  z-index: 500; max-height: 200px; overflow-y: auto;
+  box-shadow: 0 6px 16px rgba(0,0,0,0.12);
+  display: none;
+}
+.ac-dropdown.open { display: block; }
+
+.ac-item {
+  padding: 8px 12px; cursor: pointer; font-size: 13px;
+  border-bottom: 1px solid var(--border);
+  display: flex; gap: 10px; align-items: center;
+}
+.ac-item:last-child { border-bottom: none; }
+.ac-item:hover, .ac-item.selected { background: #eef3fa; }
+.ac-item code {
+  font-family: 'IBM Plex Mono', monospace; font-size: 11px;
+  background: var(--surface2); padding: 2px 6px;
+  border-radius: 3px; color: var(--navy); white-space: nowrap;
+}
+.ac-item span { color: var(--text2); }
+
+/* ── EMAIL TAGS ── */
+.email-tags-wrap {
+  border: 1px solid var(--border); border-radius: var(--radius);
+  padding: 6px 8px; background: var(--surface);
+  display: flex; flex-wrap: wrap; gap: 6px;
+  min-height: 40px; cursor: text;
+  transition: border-color .2s, box-shadow .2s;
+}
+.email-tags-wrap:focus-within {
+  border-color: var(--navy); box-shadow: 0 0 0 3px rgba(26,60,94,0.08);
+}
+.email-tag {
+  display: inline-flex; align-items: center; gap: 5px;
+  background: #dce8f8; color: var(--navy);
+  padding: 2px 8px 2px 10px; border-radius: 12px; font-size: 12px;
+}
+.email-tag button {
+  background: none; border: none; cursor: pointer;
+  color: var(--navy); font-size: 14px; line-height: 1;
+  padding: 0; opacity: 0.6;
+}
+.email-tag button:hover { opacity: 1; }
+.email-tag-input {
+  border: none; outline: none; font-size: 13px;
+  font-family: 'IBM Plex Sans', sans-serif;
+  flex: 1; min-width: 180px; padding: 2px 4px;
+  background: transparent; color: var(--text);
+}
+.email-hint { font-size: 11px; color: var(--text3); margin-top: 4px; }
 
 /* ── BUTTONS ── */
 .btn {
-  padding: 9px 20px;
-  border: none;
-  border-radius: var(--radius);
-  font-family: 'IBM Plex Sans', sans-serif;
-  font-size: 13px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all .15s;
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
+  padding: 9px 20px; border: none; border-radius: var(--radius);
+  font-family: 'IBM Plex Sans', sans-serif; font-size: 13px;
+  font-weight: 600; cursor: pointer; transition: all .15s;
+  display: inline-flex; align-items: center; gap: 6px;
 }
-
 .btn-primary { background: var(--navy); color: white; }
 .btn-primary:hover { background: var(--navy-light); }
 .btn-accent { background: var(--accent); color: white; }
 .btn-accent:hover { background: var(--accent-light); color: var(--text); }
 .btn-success { background: var(--success); color: white; }
-.btn-outline {
-  background: transparent;
-  border: 1px solid var(--border);
-  color: var(--text2);
-}
+.btn-outline { background: transparent; border: 1px solid var(--border); color: var(--text2); }
 .btn-outline:hover { border-color: var(--navy); color: var(--navy); }
 .btn-danger { background: var(--error); color: white; }
 .btn-sm { padding: 6px 12px; font-size: 12px; }
 .btn-icon {
-  padding: 7px;
-  background: transparent;
-  border: 1px solid var(--border);
-  color: var(--text2);
-  border-radius: 4px;
-  cursor: pointer;
-  font-size: 14px;
-  line-height: 1;
-  transition: all .15s;
+  padding: 7px; background: transparent; border: 1px solid var(--border);
+  color: var(--text2); border-radius: 4px; cursor: pointer;
+  font-size: 14px; line-height: 1; transition: all .15s;
 }
 .btn-icon:hover { border-color: var(--navy); color: var(--navy); }
+.btn-icon.danger:hover { border-color: var(--error); color: var(--error); }
 
 .form-actions {
-  display: flex;
-  gap: 10px;
-  margin-top: 20px;
-  padding-top: 16px;
-  border-top: 1px solid var(--border);
+  display: flex; gap: 10px; margin-top: 20px;
+  padding-top: 16px; border-top: 1px solid var(--border);
 }
 
 /* ── TABLE ── */
 .table-wrap { overflow-x: auto; }
 
-table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 13px;
-}
+table { width: 100%; border-collapse: collapse; font-size: 13px; }
 
 table th {
-  background: var(--surface2);
-  border: 1px solid var(--border);
-  padding: 9px 12px;
-  text-align: left;
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.8px;
-  text-transform: uppercase;
-  color: var(--text2);
-  white-space: nowrap;
+  background: var(--surface2); border: 1px solid var(--border);
+  padding: 9px 12px; text-align: left; font-size: 11px;
+  font-weight: 600; letter-spacing: 0.8px; text-transform: uppercase;
+  color: var(--text2); white-space: nowrap;
 }
 
 table td {
-  border: 1px solid var(--border);
-  padding: 9px 12px;
-  color: var(--text);
-  vertical-align: middle;
+  border: 1px solid var(--border); padding: 9px 12px;
+  color: var(--text); vertical-align: middle;
 }
 
 table tr:hover td { background: #f5f7fb; }
 
 .badge {
-  display: inline-block;
-  padding: 2px 9px;
-  border-radius: 12px;
-  font-size: 11px;
-  font-weight: 600;
+  display: inline-block; padding: 2px 9px;
+  border-radius: 12px; font-size: 11px; font-weight: 600;
 }
-
-.badge-green { background: #d4f0e0; color: #1a7a42; }
-.badge-blue  { background: #d6e8f8; color: #1a4c8a; }
-.badge-orange{ background: #fdedc8; color: #8a4e10; }
+.badge-green  { background: #d4f0e0; color: #1a7a42; }
+.badge-blue   { background: #d6e8f8; color: #1a4c8a; }
+.badge-orange { background: #fdedc8; color: #8a4e10; }
 
 /* ── PEDIDO ITENS ── */
 .itens-table { margin-top: 12px; }
-
 .itens-table table th:last-child,
 .itens-table table td:last-child { text-align: center; width: 44px; }
 
 .totals-row {
-  display: flex;
-  justify-content: flex-end;
-  margin-top: 12px;
-  padding: 12px 16px;
-  background: var(--surface2);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
+  display: flex; justify-content: flex-end; margin-top: 12px;
+  padding: 12px 16px; background: var(--surface2);
+  border: 1px solid var(--border); border-radius: var(--radius);
 }
-
 .total-label {
-  font-size: 12px;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 1px;
-  color: var(--text2);
-  margin-right: 16px;
-  display: flex;
-  align-items: center;
+  font-size: 12px; font-weight: 600; text-transform: uppercase;
+  letter-spacing: 1px; color: var(--text2);
+  margin-right: 16px; display: flex; align-items: center;
+}
+.total-value {
+  font-family: 'IBM Plex Mono', monospace; font-size: 20px;
+  font-weight: 600; color: var(--navy);
 }
 
-.total-value {
-  font-family: 'IBM Plex Mono', monospace;
-  font-size: 20px;
-  font-weight: 600;
-  color: var(--navy);
+/* ── PRECO HINT ── */
+.preco-hint {
+  font-size: 11px; color: var(--success); margin-top: 3px;
+  display: none; font-weight: 500;
 }
+.preco-hint.visible { display: block; }
 
 /* ── LOOKUP DISPLAY ── */
 .lookup-result {
-  background: var(--surface2);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  padding: 10px 14px;
-  margin-top: 8px;
-  font-size: 13px;
-  display: none;
+  background: var(--surface2); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 10px 14px;
+  margin-top: 8px; font-size: 13px; display: none;
 }
-
 .lookup-result.visible { display: block; }
 .lookup-result strong { color: var(--navy); }
 
 /* ── TOAST ── */
 #toast {
-  position: fixed;
-  bottom: 24px;
-  right: 24px;
-  padding: 12px 20px;
-  border-radius: var(--radius);
-  font-size: 13px;
-  font-weight: 500;
-  z-index: 9999;
-  transform: translateY(80px);
-  opacity: 0;
-  transition: all .3s ease;
-  max-width: 360px;
+  position: fixed; bottom: 24px; right: 24px;
+  padding: 12px 20px; border-radius: var(--radius);
+  font-size: 13px; font-weight: 500; z-index: 9999;
+  transform: translateY(80px); opacity: 0;
+  transition: all .3s ease; max-width: 360px;
   box-shadow: var(--shadow-lg);
 }
-
 #toast.show { transform: translateY(0); opacity: 1; }
 #toast.success { background: var(--success); color: white; }
 #toast.error   { background: var(--error); color: white; }
@@ -504,82 +390,47 @@ table tr:hover td { background: #f5f7fb; }
 
 /* ── MODAL ── */
 .modal-backdrop {
-  position: fixed; inset: 0;
-  background: rgba(0,0,0,0.45);
-  z-index: 1000;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  display: none;
+  position: fixed; inset: 0; background: rgba(0,0,0,0.45);
+  z-index: 1000; display: none;
+  align-items: center; justify-content: center;
 }
-
 .modal-backdrop.open { display: flex; }
 
 .modal {
-  background: var(--surface);
-  border-radius: 8px;
-  padding: 28px 32px;
-  max-width: 500px;
-  width: 90%;
+  background: var(--surface); border-radius: 8px;
+  padding: 28px 32px; max-width: 500px; width: 90%;
   box-shadow: var(--shadow-lg);
 }
-
-.modal h3 {
-  font-size: 16px;
-  font-weight: 600;
-  margin-bottom: 12px;
-  color: var(--navy);
-}
-
+.modal h3 { font-size: 16px; font-weight: 600; margin-bottom: 12px; color: var(--navy); }
 .modal p { color: var(--text2); font-size: 14px; margin-bottom: 20px; line-height: 1.5; }
-
 .modal-actions { display: flex; gap: 10px; justify-content: flex-end; }
 
 /* ── LOADING ── */
 .loading {
-  display: inline-block;
-  width: 14px; height: 14px;
-  border: 2px solid rgba(255,255,255,0.4);
-  border-top-color: white;
-  border-radius: 50%;
-  animation: spin .7s linear infinite;
-  vertical-align: middle;
+  display: inline-block; width: 14px; height: 14px;
+  border: 2px solid rgba(255,255,255,0.4); border-top-color: white;
+  border-radius: 50%; animation: spin .7s linear infinite; vertical-align: middle;
 }
-
 @keyframes spin { to { transform: rotate(360deg); } }
 
 .empty-state {
-  text-align: center;
-  padding: 40px 20px;
-  color: var(--text3);
-  font-size: 14px;
+  text-align: center; padding: 40px 20px;
+  color: var(--text3); font-size: 14px;
 }
-
 .empty-state .icon { font-size: 32px; margin-bottom: 10px; }
 
 /* ── HISTORICO DETAIL ── */
-.hist-meta {
-  display: grid;
-  grid-template-columns: repeat(3,1fr);
-  gap: 12px;
-  margin-bottom: 16px;
-}
-
+.hist-meta { display: grid; grid-template-columns: repeat(3,1fr); gap: 12px; margin-bottom: 16px; }
 .hist-meta-item label {
-  font-size: 10px;
-  font-weight: 600;
-  letter-spacing: 1px;
-  text-transform: uppercase;
-  color: var(--text3);
-  display: block;
-  margin-bottom: 3px;
+  font-size: 10px; font-weight: 600; letter-spacing: 1px;
+  text-transform: uppercase; color: var(--text3); display: block; margin-bottom: 3px;
 }
+.hist-meta-item span { font-size: 13px; font-weight: 500; color: var(--text); }
 
-.hist-meta-item span {
-  font-size: 13px;
-  font-weight: 500;
-  color: var(--text);
-}
+/* ── CEP ROW ── */
+.cep-row { display: flex; gap: 8px; align-items: flex-end; }
+.cep-row input { flex: 1; }
+.cep-row button { white-space: nowrap; }
 
 @media (max-width: 700px) {
   .form-grid.cols-2,
@@ -592,9 +443,7 @@ table tr:hover td { background: #f5f7fb; }
 </head>
 <body>
 
-<!-- ════════════════════════════════════════════
-     LOGIN
-════════════════════════════════════════════ -->
+<!-- LOGIN -->
 <div id="login-screen">
   <div class="login-card">
     <div class="login-header">
@@ -616,16 +465,14 @@ table tr:hover td { background: #f5f7fb; }
   </div>
 </div>
 
-<!-- ════════════════════════════════════════════
-     APP
-════════════════════════════════════════════ -->
+<!-- APP -->
 <div id="app-screen">
   <div class="topbar">
     <div class="topbar-brand">Compras</div>
     <div class="topbar-nav">
-      <button class="nav-btn active" onclick="navegarPara('pedido')">Novo Pedido</button>
-      <button class="nav-btn" onclick="navegarPara('historico')">Histórico</button>
-      <button class="nav-btn" onclick="navegarPara('cadastros')">Cadastros</button>
+      <button class="nav-btn active" onclick="navegarPara('pedido',this)">Novo Pedido</button>
+      <button class="nav-btn" onclick="navegarPara('historico',this)">Histórico</button>
+      <button class="nav-btn" onclick="navegarPara('cadastros',this)">Cadastros</button>
     </div>
     <div class="topbar-user">
       <span class="user-name" id="user-display"></span>
@@ -642,30 +489,43 @@ table tr:hover td { background: #f5f7fb; }
       <div class="card">
         <div class="card-title">Dados do Pedido</div>
         <div class="form-grid">
+
           <div class="field">
             <label>Filial *</label>
             <div class="input-lookup">
-              <input type="text" id="ped-filial-cod" placeholder="Código" style="width:110px;flex:none"
-                onkeydown="if(event.key==='Enter')buscarLookup('filial','ped')">
+              <div class="ac-wrap" style="width:120px;flex:none">
+                <input type="text" id="ped-filial-cod" placeholder="Código ou nome"
+                  onkeydown="if(event.key==='Enter'){fecharAC('ped-filial-cod');buscarLookup('filial','ped');}">
+                <div class="ac-dropdown" id="ac-ped-filial-cod"></div>
+              </div>
               <input type="text" id="ped-filial-nome" placeholder="Nome da filial" readonly>
             </div>
           </div>
+
           <div class="field">
             <label>Fornecedor *</label>
             <div class="input-lookup">
-              <input type="text" id="ped-forn-cod" placeholder="Código" style="width:110px;flex:none"
-                onkeydown="if(event.key==='Enter')buscarLookup('fornecedor','ped')">
+              <div class="ac-wrap" style="width:120px;flex:none">
+                <input type="text" id="ped-forn-cod" placeholder="Código ou nome"
+                  onkeydown="if(event.key==='Enter'){fecharAC('ped-forn-cod');buscarLookup('fornecedor','ped');}">
+                <div class="ac-dropdown" id="ac-ped-forn-cod"></div>
+              </div>
               <input type="text" id="ped-forn-nome" placeholder="Nome do fornecedor" readonly>
             </div>
           </div>
+
           <div class="field">
             <label>Transportadora</label>
             <div class="input-lookup">
-              <input type="text" id="ped-transp-cod" placeholder="Código" style="width:110px;flex:none"
-                onkeydown="if(event.key==='Enter')buscarLookup('transportadora','ped')">
+              <div class="ac-wrap" style="width:120px;flex:none">
+                <input type="text" id="ped-transp-cod" placeholder="Código ou nome"
+                  onkeydown="if(event.key==='Enter'){fecharAC('ped-transp-cod');buscarLookup('transportadora','ped');}">
+                <div class="ac-dropdown" id="ac-ped-transp-cod"></div>
+              </div>
               <input type="text" id="ped-transp-nome" placeholder="Nome" readonly>
             </div>
           </div>
+
           <div class="field">
             <label>Prazo de Entrega</label>
             <input type="date" id="ped-prazo">
@@ -681,11 +541,14 @@ table tr:hover td { background: #f5f7fb; }
 
       <div class="card">
         <div class="card-title">Itens do Pedido</div>
-        <div class="form-grid" style="grid-template-columns:140px 1fr 100px 90px 130px auto;align-items:end;gap:10px">
+        <div class="form-grid" style="grid-template-columns:160px 1fr 100px 90px 150px auto;align-items:end;gap:10px">
           <div class="field">
             <label>Cód. Matéria-Prima</label>
-            <input type="text" id="item-cod" placeholder="Código"
-              onkeydown="if(event.key==='Enter')buscarMP()">
+            <div class="ac-wrap">
+              <input type="text" id="item-cod" placeholder="Código ou nome"
+                onkeydown="if(event.key==='Enter'){fecharAC('item-cod');buscarMP();}">
+              <div class="ac-dropdown" id="ac-item-cod"></div>
+            </div>
           </div>
           <div class="field">
             <label>Descrição</label>
@@ -697,11 +560,12 @@ table tr:hover td { background: #f5f7fb; }
           </div>
           <div class="field">
             <label>Quantidade</label>
-            <input type="number" id="item-qtd" placeholder="0" min="0.01" step="0.01" oninput="calcSubtotal()">
+            <input type="number" id="item-qtd" placeholder="0" min="0.01" step="0.01">
           </div>
           <div class="field">
-            <label>Preço Unitário (R$)</label>
-            <input type="number" id="item-preco" placeholder="0,00" min="0" step="0.01" oninput="calcSubtotal()">
+            <label>Preço Unit. (R$)</label>
+            <input type="number" id="item-preco" placeholder="0,00" min="0" step="0.01">
+            <div class="preco-hint" id="preco-hint">Preço sugerido do fornecedor</div>
           </div>
           <div>
             <button class="btn btn-accent" onclick="adicionarItem()">+ Adicionar</button>
@@ -712,22 +576,14 @@ table tr:hover td { background: #f5f7fb; }
           <table id="itens-table">
             <thead>
               <tr>
-                <th>Código</th>
-                <th>Descrição</th>
-                <th>Qtd</th>
-                <th>Unid.</th>
-                <th>Preço Unit.</th>
-                <th>Subtotal</th>
-                <th></th>
+                <th>Código</th><th>Descrição</th><th>Qtd</th>
+                <th>Unid.</th><th>Preço Unit.</th><th>Subtotal</th><th></th>
               </tr>
             </thead>
             <tbody id="itens-tbody">
               <tr id="itens-empty-row">
                 <td colspan="7">
-                  <div class="empty-state">
-                    <div class="icon">📦</div>
-                    Nenhum item adicionado
-                  </div>
+                  <div class="empty-state"><div class="icon">📦</div>Nenhum item adicionado</div>
                 </td>
               </tr>
             </tbody>
@@ -754,16 +610,24 @@ table tr:hover td { background: #f5f7fb; }
         <div class="card-title">Filtrar</div>
         <div class="form-grid">
           <div class="field">
-            <label>Por Filial (código)</label>
+            <label>Por Filial</label>
             <div class="input-lookup">
-              <input type="text" id="hist-filial-cod" placeholder="Código da filial">
+              <div class="ac-wrap" style="flex:1">
+                <input type="text" id="hist-filial-cod" placeholder="Código ou nome da filial"
+                  onkeydown="if(event.key==='Enter'){fecharAC('hist-filial-cod');buscarHistorico('filial');}">
+                <div class="ac-dropdown" id="ac-hist-filial-cod"></div>
+              </div>
               <button class="btn btn-outline btn-sm" onclick="buscarHistorico('filial')">Buscar</button>
             </div>
           </div>
           <div class="field">
-            <label>Por Fornecedor (código)</label>
+            <label>Por Fornecedor</label>
             <div class="input-lookup">
-              <input type="text" id="hist-forn-cod" placeholder="Código do fornecedor">
+              <div class="ac-wrap" style="flex:1">
+                <input type="text" id="hist-forn-cod" placeholder="Código ou nome do fornecedor"
+                  onkeydown="if(event.key==='Enter'){fecharAC('hist-forn-cod');buscarHistorico('fornecedor');}">
+                <div class="ac-dropdown" id="ac-hist-forn-cod"></div>
+              </div>
               <button class="btn btn-outline btn-sm" onclick="buscarHistorico('fornecedor')">Buscar</button>
             </div>
           </div>
@@ -779,14 +643,8 @@ table tr:hover td { background: #f5f7fb; }
           <table>
             <thead>
               <tr>
-                <th>ID</th>
-                <th>Data</th>
-                <th>Filial</th>
-                <th>Fornecedor</th>
-                <th>Transportadora</th>
-                <th>Total</th>
-                <th>Status</th>
-                <th></th>
+                <th>ID</th><th>Data</th><th>Filial</th><th>Fornecedor</th>
+                <th>Transportadora</th><th>Total</th><th>Status</th><th></th>
               </tr>
             </thead>
             <tbody id="hist-tbody">
@@ -796,7 +654,6 @@ table tr:hover td { background: #f5f7fb; }
         </div>
       </div>
 
-      <!-- Detalhe do pedido -->
       <div class="card" id="hist-detalhe" style="display:none">
         <div class="card-title">Detalhe do Pedido</div>
         <div class="hist-meta" id="hist-meta-grid"></div>
@@ -841,12 +698,35 @@ table tr:hover td { background: #f5f7fb; }
               <input type="text" id="f-forn-nome">
             </div>
             <div class="field">
-              <label>Email *</label>
-              <input type="email" id="f-forn-email">
-            </div>
-            <div class="field">
               <label>Contato</label>
               <input type="text" id="f-forn-contato" placeholder="Telefone ou pessoa">
+            </div>
+          </div>
+
+          <div class="field" style="margin-top:14px">
+            <label>Emails (pedidos e contato)</label>
+            <div class="email-tags-wrap" id="forn-email-wrap" onclick="document.getElementById('forn-email-inp').focus()">
+              <input type="text" class="email-tag-input" id="forn-email-inp"
+                placeholder="email@exemplo.com — pressione Enter ou vírgula para adicionar"
+                onkeydown="emailTagKeydown(event,'forn-email-inp','forn-email-tags')"
+                onblur="emailTagBlur('forn-email-inp','forn-email-tags')">
+            </div>
+            <div class="email-hint">Adicione quantos emails precisar. Todos receberão o pedido.</div>
+            <input type="hidden" id="forn-email-tags" value="">
+          </div>
+
+          <div class="form-grid" style="margin-top:14px">
+            <div class="field">
+              <label>CEP</label>
+              <div class="cep-row">
+                <input type="text" id="f-forn-cep" placeholder="00000-000" maxlength="9"
+                  oninput="mascaraCEP(this)" onblur="buscarCEP('forn')">
+                <button class="btn btn-outline btn-sm" type="button" onclick="buscarCEP('forn')">Buscar</button>
+              </div>
+            </div>
+            <div class="field">
+              <label>Bairro</label>
+              <input type="text" id="f-forn-bairro">
             </div>
             <div class="field">
               <label>Endereço</label>
@@ -861,6 +741,7 @@ table tr:hover td { background: #f5f7fb; }
               <input type="text" id="f-forn-estado" placeholder="UF" maxlength="2" style="text-transform:uppercase">
             </div>
           </div>
+
           <div class="form-actions">
             <button class="btn btn-primary" onclick="salvarCad('fornecedor')">Salvar</button>
             <button class="btn btn-outline" onclick="limparForm('forn')">Limpar</button>
@@ -889,6 +770,36 @@ table tr:hover td { background: #f5f7fb; }
             <button class="btn btn-outline" onclick="limparForm('mat')">Limpar</button>
           </div>
         </div>
+
+        <!-- Preços por Fornecedor -->
+        <div class="card" id="card-precos" style="display:none">
+          <div class="card-title">Preços por Fornecedor — <span id="preco-mat-label" style="font-weight:600;color:var(--navy)"></span></div>
+          <div class="form-grid" style="grid-template-columns:160px 1fr 130px auto;align-items:end;gap:10px;margin-bottom:14px">
+            <div class="field">
+              <label>Cód. Fornecedor</label>
+              <div class="ac-wrap">
+                <input type="text" id="pf-forn-cod" placeholder="Código ou nome"
+                  onkeydown="if(event.key==='Enter')fecharAC('pf-forn-cod')">
+                <div class="ac-dropdown" id="ac-pf-forn-cod"></div>
+              </div>
+            </div>
+            <div class="field">
+              <label>Nome do Fornecedor</label>
+              <input type="text" id="pf-forn-nome" readonly placeholder="—">
+            </div>
+            <div class="field">
+              <label>Preço Unitário (R$)</label>
+              <input type="number" id="pf-preco" placeholder="0,00" min="0" step="0.01">
+            </div>
+            <div>
+              <button class="btn btn-accent" onclick="adicionarPrecoFornecedor()">+ Vincular</button>
+            </div>
+          </div>
+          <div class="table-wrap" id="tbl-precos-fornecedor">
+            <div class="empty-state"><div class="icon">💰</div>Nenhum preço vinculado</div>
+          </div>
+        </div>
+
         <div class="card">
           <div class="card-title">Registros</div>
           <div class="table-wrap" id="tbl-materias">
@@ -928,11 +839,47 @@ table tr:hover td { background: #f5f7fb; }
           <div class="form-grid">
             <div class="field"><label>Código *</label><input type="text" id="f-fil-cod" placeholder="Ex: FIL001"></div>
             <div class="field"><label>Nome *</label><input type="text" id="f-fil-nome"></div>
-            <div class="field"><label>Endereço</label><input type="text" id="f-fil-end"></div>
-            <div class="field"><label>Cidade</label><input type="text" id="f-fil-cidade"></div>
-            <div class="field"><label>Estado</label><input type="text" id="f-fil-estado" maxlength="2" style="text-transform:uppercase"></div>
-            <div class="field"><label>Email Responsável</label><input type="email" id="f-fil-email"></div>
           </div>
+
+          <div class="field" style="margin-top:14px">
+            <label>Emails Responsáveis</label>
+            <div class="email-tags-wrap" id="fil-email-wrap" onclick="document.getElementById('fil-email-inp').focus()">
+              <input type="text" class="email-tag-input" id="fil-email-inp"
+                placeholder="email@exemplo.com — pressione Enter ou vírgula para adicionar"
+                onkeydown="emailTagKeydown(event,'fil-email-inp','fil-email-tags')"
+                onblur="emailTagBlur('fil-email-inp','fil-email-tags')">
+            </div>
+            <div class="email-hint">Adicione os responsáveis da filial.</div>
+            <input type="hidden" id="fil-email-tags" value="">
+          </div>
+
+          <div class="form-grid" style="margin-top:14px">
+            <div class="field">
+              <label>CEP</label>
+              <div class="cep-row">
+                <input type="text" id="f-fil-cep" placeholder="00000-000" maxlength="9"
+                  oninput="mascaraCEP(this)" onblur="buscarCEP('fil')">
+                <button class="btn btn-outline btn-sm" type="button" onclick="buscarCEP('fil')">Buscar</button>
+              </div>
+            </div>
+            <div class="field">
+              <label>Bairro</label>
+              <input type="text" id="f-fil-bairro">
+            </div>
+            <div class="field">
+              <label>Endereço</label>
+              <input type="text" id="f-fil-end">
+            </div>
+            <div class="field">
+              <label>Cidade</label>
+              <input type="text" id="f-fil-cidade">
+            </div>
+            <div class="field">
+              <label>Estado</label>
+              <input type="text" id="f-fil-estado" maxlength="2" style="text-transform:uppercase">
+            </div>
+          </div>
+
           <div class="form-actions">
             <button class="btn btn-primary" onclick="salvarCad('filial')">Salvar</button>
             <button class="btn btn-outline" onclick="limparForm('fil')">Limpar</button>
@@ -975,7 +922,7 @@ table tr:hover td { background: #f5f7fb; }
   </div><!-- /main -->
 </div><!-- /app-screen -->
 
-<!-- ── MODAL CONFIRMAÇÃO PEDIDO ── -->
+<!-- MODAL CONFIRMAÇÃO -->
 <div class="modal-backdrop" id="modal-confirm">
   <div class="modal">
     <h3>Confirmar Envio do Pedido</h3>
@@ -987,20 +934,21 @@ table tr:hover td { background: #f5f7fb; }
   </div>
 </div>
 
-<!-- ── TOAST ── -->
 <div id="toast"></div>
 
 <script>
-// ════════════════════════════════════════════════════════════
+// ════════════════════════════════════════════════════
 // STATE
-// ════════════════════════════════════════════════════════════
+// ════════════════════════════════════════════════════
 let sessao = null;
 let itensPedido = [];
 let totalPedido = 0;
+let _cache = { fornecedor: [], materia: [], filial: [], transportadora: [] };
+let _matAtiva = null; // código da matéria sendo editada na tela de preços
 
-// ════════════════════════════════════════════════════════════
+// ════════════════════════════════════════════════════
 // AUTH
-// ════════════════════════════════════════════════════════════
+// ════════════════════════════════════════════════════
 function fazerLogin() {
   const user = document.getElementById('inp-user').value.trim();
   const pass = document.getElementById('inp-pass').value.trim();
@@ -1015,17 +963,9 @@ function fazerLogin() {
       btn.innerHTML = 'Entrar'; btn.disabled = false;
       if (!res) { mostrarLoginErro('Usuário ou senha incorretos.'); return; }
       sessao = res;
-      document.getElementById('login-screen').style.display = 'none';
-      document.getElementById('app-screen').style.display = 'block';
-      document.getElementById('user-display').textContent = sessao.nome;
-      sessionStorage.setItem('sessao', JSON.stringify(sessao));
-      carregarTabelaCadastro('fornecedor');
-      carregarTabelaCadastro('materia');
-      carregarTabelaCadastro('transportadora');
-      carregarTabelaCadastro('filial');
-      carregarTabelaCadastro('usuario');
+      iniciarApp();
     })
-    .withFailureHandler(err => {
+    .withFailureHandler(() => {
       btn.innerHTML = 'Entrar'; btn.disabled = false;
       mostrarLoginErro('Erro ao conectar. Tente novamente.');
     })
@@ -1042,6 +982,19 @@ function mostrarLoginErro(msg) {
   el.style.display = 'block';
 }
 
+function iniciarApp() {
+  document.getElementById('login-screen').style.display = 'none';
+  document.getElementById('app-screen').style.display = 'block';
+  document.getElementById('user-display').textContent = sessao.nome;
+  sessionStorage.setItem('sessao', JSON.stringify(sessao));
+  carregarCaches();
+  carregarTabelaCadastro('fornecedor');
+  carregarTabelaCadastro('materia');
+  carregarTabelaCadastro('transportadora');
+  carregarTabelaCadastro('filial');
+  carregarTabelaCadastro('usuario');
+}
+
 function sair() {
   sessao = null;
   sessionStorage.removeItem('sessao');
@@ -1052,30 +1005,393 @@ function sair() {
   document.getElementById('login-error').style.display = 'none';
 }
 
-// Restaura sessão se houver
 (function() {
   const s = sessionStorage.getItem('sessao');
-  if (s) {
-    sessao = JSON.parse(s);
-    document.getElementById('login-screen').style.display = 'none';
-    document.getElementById('app-screen').style.display = 'block';
-    document.getElementById('user-display').textContent = sessao.nome;
-    carregarTabelaCadastro('fornecedor');
-    carregarTabelaCadastro('materia');
-    carregarTabelaCadastro('transportadora');
-    carregarTabelaCadastro('filial');
-    carregarTabelaCadastro('usuario');
-  }
+  if (s) { sessao = JSON.parse(s); iniciarApp(); }
 })();
 
-// ════════════════════════════════════════════════════════════
+// ════════════════════════════════════════════════════
+// CACHE — carrega listas para autocomplete
+// ════════════════════════════════════════════════════
+function carregarCaches() {
+  ['fornecedor','materia','filial','transportadora'].forEach(tipo => {
+    google.script.run
+      .withSuccessHandler(rows => {
+        _cache[tipo] = rows || [];
+        // registra autocompletes após carregar cache
+        registrarAutocompletes(tipo);
+      })
+      .listarTodos(tipo);
+  });
+}
+
+function registrarAutocompletes(tipo) {
+  const mapa = {
+    fornecedor: [
+      { inputId: 'ped-forn-cod',    labelKey: 'NOME', onSelect: r => selecionarLookup('fornecedor','ped',r) },
+      { inputId: 'hist-forn-cod',   labelKey: 'NOME', onSelect: r => { document.getElementById('hist-forn-cod').value = r.COD; } },
+      { inputId: 'pf-forn-cod',     labelKey: 'NOME', onSelect: r => { document.getElementById('pf-forn-cod').value = r.COD; document.getElementById('pf-forn-nome').value = r.NOME; } }
+    ],
+    filial: [
+      { inputId: 'ped-filial-cod',  labelKey: 'NOME', onSelect: r => selecionarLookup('filial','ped',r) },
+      { inputId: 'hist-filial-cod', labelKey: 'NOME', onSelect: r => { document.getElementById('hist-filial-cod').value = r.COD; } }
+    ],
+    transportadora: [
+      { inputId: 'ped-transp-cod',  labelKey: 'NOME', onSelect: r => selecionarLookup('transportadora','ped',r) }
+    ],
+    materia: [
+      { inputId: 'item-cod', labelKey: 'DESCRICAO', onSelect: r => {
+          document.getElementById('item-cod').value = r.COD;
+          document.getElementById('item-desc').value = r.DESCRICAO || '';
+          document.getElementById('item-unidade').value = r.UNIDADE || '';
+          tentarPreencherPreco();
+        }
+      }
+    ]
+  };
+  (mapa[tipo] || []).forEach(cfg => {
+    setupAutocomplete(cfg.inputId, tipo, 'COD', cfg.labelKey, cfg.onSelect);
+  });
+}
+
+// ════════════════════════════════════════════════════
+// AUTOCOMPLETE
+// ════════════════════════════════════════════════════
+function setupAutocomplete(inputId, tipo, codKey, labelKey, onSelect) {
+  const input = document.getElementById(inputId);
+  if (!input) return;
+  const ddId = 'ac-' + inputId;
+  const dd = document.getElementById(ddId);
+  if (!dd) return;
+
+  let acIdx = -1;
+
+  function renderDD(term) {
+    const items = _cache[tipo] || [];
+    const t = term.toLowerCase();
+    const filtered = !t ? [] : items.filter(r => {
+      const cod = String(r[codKey] || '').toLowerCase();
+      const lbl = String(r[labelKey] || '').toLowerCase();
+      return cod.startsWith(t) || lbl.startsWith(t);
+    }).slice(0, 10);
+
+    if (filtered.length === 0) { dd.classList.remove('open'); return; }
+
+    dd.innerHTML = filtered.map((r, i) =>
+      `<div class="ac-item" data-idx="${i}">
+        <code>${escHTML(String(r[codKey]))}</code>
+        <span>${escHTML(String(r[labelKey] || ''))}</span>
+      </div>`
+    ).join('');
+
+    dd.querySelectorAll('.ac-item').forEach((el, i) => {
+      el.addEventListener('mousedown', e => {
+        e.preventDefault();
+        onSelect(filtered[i]);
+        dd.classList.remove('open');
+        acIdx = -1;
+      });
+    });
+    dd.classList.add('open');
+    acIdx = -1;
+  }
+
+  input.addEventListener('input', () => renderDD(input.value.trim()));
+  input.addEventListener('blur', () => setTimeout(() => { dd.classList.remove('open'); acIdx = -1; }, 180));
+  input.addEventListener('keydown', e => {
+    const items = dd.querySelectorAll('.ac-item');
+    if (!dd.classList.contains('open')) return;
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      acIdx = Math.min(acIdx + 1, items.length - 1);
+      items.forEach((el, i) => el.classList.toggle('selected', i === acIdx));
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      acIdx = Math.max(acIdx - 1, 0);
+      items.forEach((el, i) => el.classList.toggle('selected', i === acIdx));
+    } else if (e.key === 'Escape') {
+      dd.classList.remove('open'); acIdx = -1;
+    } else if (e.key === 'Enter' && acIdx >= 0) {
+      e.preventDefault();
+      items[acIdx].dispatchEvent(new MouseEvent('mousedown'));
+    }
+  });
+}
+
+function fecharAC(inputId) {
+  const dd = document.getElementById('ac-' + inputId);
+  if (dd) dd.classList.remove('open');
+}
+
+function escHTML(str) {
+  return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// ════════════════════════════════════════════════════
+// LOOKUP
+// ════════════════════════════════════════════════════
+function selecionarLookup(tipo, prefixo, registro) {
+  const codMap  = { filial:'filial-cod', fornecedor:'forn-cod', transportadora:'transp-cod' };
+  const nomeMap = { filial:'filial-nome', fornecedor:'forn-nome', transportadora:'transp-nome' };
+  document.getElementById(prefixo + '-' + codMap[tipo]).value  = registro.COD  || '';
+  document.getElementById(prefixo + '-' + nomeMap[tipo]).value = registro.NOME || '';
+  if (tipo === 'fornecedor' && prefixo === 'ped') {
+    tentarPreencherPreco();
+  }
+}
+
+function buscarLookup(tipo, prefixo) {
+  const codMap  = { filial:'filial-cod', fornecedor:'forn-cod', transportadora:'transp-cod' };
+  const nomeMap = { filial:'filial-nome', fornecedor:'forn-nome', transportadora:'transp-nome' };
+  const cod = document.getElementById(prefixo + '-' + codMap[tipo]).value.trim();
+  if (!cod) return;
+
+  // Tenta resolver pelo cache primeiro
+  const found = (_cache[tipo] || []).find(r => String(r.COD).trim().toLowerCase() === cod.toLowerCase());
+  if (found) {
+    selecionarLookup(tipo, prefixo, found);
+    return;
+  }
+
+  google.script.run
+    .withSuccessHandler(res => {
+      if (!res) { toast('Código não encontrado', 'error'); return; }
+      selecionarLookup(tipo, prefixo, res);
+    })
+    .withFailureHandler(() => toast('Erro ao buscar', 'error'))
+    .buscarCodigo(tipo, cod);
+}
+
+function buscarMP() {
+  const cod = document.getElementById('item-cod').value.trim();
+  if (!cod) return;
+
+  const found = (_cache.materia || []).find(r => String(r.COD).trim().toLowerCase() === cod.toLowerCase());
+  if (found) {
+    document.getElementById('item-desc').value    = found.DESCRICAO || '';
+    document.getElementById('item-unidade').value = found.UNIDADE || '';
+    tentarPreencherPreco();
+    return;
+  }
+
+  google.script.run
+    .withSuccessHandler(res => {
+      if (!res) { toast('Matéria-prima não encontrada', 'error'); return; }
+      document.getElementById('item-desc').value    = res.DESCRICAO || '';
+      document.getElementById('item-unidade').value = res.UNIDADE || '';
+      tentarPreencherPreco();
+    })
+    .withFailureHandler(() => toast('Erro ao buscar', 'error'))
+    .buscarCodigo('materia', cod);
+}
+
+function tentarPreencherPreco() {
+  const codForn = document.getElementById('ped-forn-cod').value.trim();
+  const codMP   = document.getElementById('item-cod').value.trim();
+  const hint    = document.getElementById('preco-hint');
+  if (!codForn || !codMP) { hint.classList.remove('visible'); return; }
+
+  google.script.run
+    .withSuccessHandler(preco => {
+      if (preco !== null && preco !== undefined && preco !== '') {
+        document.getElementById('item-preco').value = parseFloat(preco).toFixed(2);
+        hint.textContent = 'Preço sugerido: R$ ' + parseFloat(preco).toFixed(2);
+        hint.classList.add('visible');
+      } else {
+        hint.classList.remove('visible');
+      }
+    })
+    .withFailureHandler(() => {})
+    .buscarPrecoFornecedor(codForn, codMP);
+}
+
+// ════════════════════════════════════════════════════
+// PREÇO POR FORNECEDOR (cadastro de matéria-prima)
+// ════════════════════════════════════════════════════
+function abrirCardPrecos(codMP, descMP) {
+  _matAtiva = codMP;
+  document.getElementById('preco-mat-label').textContent = codMP + ' — ' + descMP;
+  document.getElementById('card-precos').style.display = 'block';
+  document.getElementById('pf-forn-cod').value  = '';
+  document.getElementById('pf-forn-nome').value = '';
+  document.getElementById('pf-preco').value = '';
+  carregarTabelaPrecos(codMP);
+}
+
+function carregarTabelaPrecos(codMP) {
+  const tbl = document.getElementById('tbl-precos-fornecedor');
+  tbl.innerHTML = '<div class="empty-state"><div class="icon">⏳</div>Carregando...</div>';
+  google.script.run
+    .withSuccessHandler(rows => {
+      if (!rows || rows.length === 0) {
+        tbl.innerHTML = '<div class="empty-state"><div class="icon">💰</div>Nenhum preço vinculado</div>';
+        return;
+      }
+      tbl.innerHTML = `<table>
+        <thead><tr><th>Fornecedor</th><th>Nome</th><th>Preço Unit. (R$)</th><th></th></tr></thead>
+        <tbody>${rows.map(r => `<tr>
+          <td><code>${r.COD_FORNECEDOR}</code></td>
+          <td>${r.NOME_FORNECEDOR}</td>
+          <td><strong>R$ ${parseFloat(r.PRECO||0).toFixed(2)}</strong></td>
+          <td><button class="btn-icon danger" onclick="removerPrecoFornecedor('${r.COD_FORNECEDOR}','${r.COD_MP}')" title="Remover">✕</button></td>
+        </tr>`).join('')}</tbody>
+      </table>`;
+    })
+    .withFailureHandler(() => tbl.innerHTML = '<div class="empty-state">Erro ao carregar</div>')
+    .listarPrecosPorMateria(codMP);
+}
+
+function adicionarPrecoFornecedor() {
+  if (!_matAtiva) { toast('Selecione ou salve uma matéria-prima primeiro', 'error'); return; }
+  const codForn = document.getElementById('pf-forn-cod').value.trim();
+  const preco   = parseFloat(document.getElementById('pf-preco').value);
+
+  if (!codForn) { toast('Informe o código do fornecedor', 'error'); return; }
+  if (isNaN(preco) || preco < 0) { toast('Informe um preço válido', 'error'); return; }
+
+  google.script.run
+    .withSuccessHandler(res => {
+      toast(res.ok ? res.msg : 'Erro: ' + res.msg, res.ok ? 'success' : 'error');
+      if (res.ok) {
+        document.getElementById('pf-forn-cod').value  = '';
+        document.getElementById('pf-forn-nome').value = '';
+        document.getElementById('pf-preco').value = '';
+        carregarTabelaPrecos(_matAtiva);
+      }
+    })
+    .withFailureHandler(err => toast('Erro: ' + err.message, 'error'))
+    .salvarPrecoFornecedor(codForn, _matAtiva, preco);
+}
+
+function removerPrecoFornecedor(codForn, codMP) {
+  if (!confirm('Remover preço deste fornecedor?')) return;
+  google.script.run
+    .withSuccessHandler(res => {
+      if (res.ok) carregarTabelaPrecos(_matAtiva);
+      else toast('Erro ao remover', 'error');
+    })
+    .withFailureHandler(() => toast('Erro', 'error'))
+    .excluirPrecoFornecedor(codForn, codMP);
+}
+
+// ════════════════════════════════════════════════════
+// EMAIL TAGS
+// ════════════════════════════════════════════════════
+function emailTagKeydown(event, inputId, hiddenId) {
+  const input = document.getElementById(inputId);
+  if (event.key === 'Enter' || event.key === ',' || event.key === ';') {
+    event.preventDefault();
+    const email = input.value.trim().replace(/,$/, '').replace(/;$/, '');
+    adicionarEmailTag(email, inputId, hiddenId);
+  } else if (event.key === 'Backspace' && !input.value) {
+    removerUltimaTag(inputId, hiddenId);
+  }
+}
+
+function emailTagBlur(inputId, hiddenId) {
+  const input = document.getElementById(inputId);
+  const email = input.value.trim();
+  if (email) adicionarEmailTag(email, inputId, hiddenId);
+}
+
+function adicionarEmailTag(email, inputId, hiddenId) {
+  const input = document.getElementById(inputId);
+  if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    if (email) toast('Email inválido: ' + email, 'error');
+    return;
+  }
+  const hidden = document.getElementById(hiddenId);
+  const atual = hidden.value ? hidden.value.split(';').map(e => e.trim()).filter(Boolean) : [];
+  if (atual.includes(email)) { input.value = ''; return; }
+  atual.push(email);
+  hidden.value = atual.join(';');
+  input.value = '';
+  renderEmailTags(inputId, hiddenId);
+}
+
+function removerEmailTag(email, inputId, hiddenId) {
+  const hidden = document.getElementById(hiddenId);
+  const atual = hidden.value ? hidden.value.split(';').map(e => e.trim()).filter(Boolean) : [];
+  hidden.value = atual.filter(e => e !== email).join(';');
+  renderEmailTags(inputId, hiddenId);
+}
+
+function removerUltimaTag(inputId, hiddenId) {
+  const hidden = document.getElementById(hiddenId);
+  const atual = hidden.value ? hidden.value.split(';').map(e => e.trim()).filter(Boolean) : [];
+  if (atual.length === 0) return;
+  atual.pop();
+  hidden.value = atual.join(';');
+  renderEmailTags(inputId, hiddenId);
+}
+
+function renderEmailTags(inputId, hiddenId) {
+  const hidden = document.getElementById(hiddenId);
+  const wrapId = hiddenId.replace('-tags', '-wrap');
+  const wrap = document.getElementById(wrapId);
+  const input = document.getElementById(inputId);
+  const emails = hidden.value ? hidden.value.split(';').map(e => e.trim()).filter(Boolean) : [];
+
+  // Remove tags antigas, mantém o input
+  wrap.querySelectorAll('.email-tag').forEach(el => el.remove());
+
+  emails.forEach(email => {
+    const tag = document.createElement('span');
+    tag.className = 'email-tag';
+    tag.innerHTML = `${escHTML(email)}<button type="button" onclick="removerEmailTag('${escHTML(email)}','${inputId}','${hiddenId}')" title="Remover">×</button>`;
+    wrap.insertBefore(tag, input);
+  });
+}
+
+function setEmailTags(emails, inputId, hiddenId) {
+  const hidden = document.getElementById(hiddenId);
+  hidden.value = emails.filter(e => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e.trim())).join(';');
+  renderEmailTags(inputId, hiddenId);
+}
+
+// ════════════════════════════════════════════════════
+// CEP / VIACEP
+// ════════════════════════════════════════════════════
+function mascaraCEP(input) {
+  let v = input.value.replace(/\D/g, '').slice(0, 8);
+  if (v.length > 5) v = v.slice(0,5) + '-' + v.slice(5);
+  input.value = v;
+}
+
+function buscarCEP(prefixo) {
+  const cepEl  = document.getElementById('f-' + prefixo + '-cep');
+  const cep    = cepEl.value.replace(/\D/g,'');
+  if (cep.length !== 8) return;
+
+  fetch('https://viacep.com.br/ws/' + cep + '/json/')
+    .then(r => r.json())
+    .then(data => {
+      if (data.erro) { toast('CEP não encontrado', 'error'); return; }
+      const setField = (id, val) => {
+        const el = document.getElementById(id);
+        if (el && !el.value) el.value = val || '';
+        else if (el) el.value = val || el.value;
+      };
+      // Sempre preenche cidade e estado; preenche endereço e bairro só se vazio
+      document.getElementById('f-' + prefixo + '-cidade').value = data.localidade || '';
+      document.getElementById('f-' + prefixo + '-estado').value = (data.uf || '').toUpperCase();
+      const endEl   = document.getElementById('f-' + prefixo + '-end');
+      const bairEl  = document.getElementById('f-' + prefixo + '-bairro');
+      if (endEl  && !endEl.value)  endEl.value  = data.logradouro || '';
+      if (bairEl && !bairEl.value) bairEl.value = data.bairro     || '';
+      toast('Endereço preenchido via CEP', 'success');
+    })
+    .catch(() => toast('Erro ao buscar CEP', 'error'));
+}
+
+// ════════════════════════════════════════════════════
 // NAVEGAÇÃO
-// ════════════════════════════════════════════════════════════
-function navegarPara(panel) {
+// ════════════════════════════════════════════════════
+function navegarPara(panel, btn) {
   document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
   document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
   document.getElementById('panel-' + panel).classList.add('active');
-  event.target.classList.add('active');
+  if (btn) btn.classList.add('active');
 }
 
 function trocarSubtab(nome, btn) {
@@ -1085,48 +1401,9 @@ function trocarSubtab(nome, btn) {
   btn.classList.add('active');
 }
 
-// ════════════════════════════════════════════════════════════
-// LOOKUP
-// ════════════════════════════════════════════════════════════
-function buscarLookup(tipo, prefixo) {
-  const codMap = { filial:'filial-cod', fornecedor:'forn-cod', transportadora:'transp-cod' };
-  const nomeMap = { filial:'filial-nome', fornecedor:'forn-nome', transportadora:'transp-nome' };
-  const cod = document.getElementById(prefixo + '-' + codMap[tipo]).value.trim();
-  if (!cod) return;
-
-  google.script.run
-    .withSuccessHandler(res => {
-      if (!res) { toast('Código não encontrado', 'error'); return; }
-      document.getElementById(prefixo + '-' + nomeMap[tipo]).value = res.NOME || '';
-      if (tipo === 'fornecedor') document.getElementById(prefixo + '-forn-email-hidden') && 
-        (document.getElementById(prefixo + '-forn-email-hidden').value = res.EMAIL);
-    })
-    .withFailureHandler(() => toast('Erro ao buscar', 'error'))
-    .buscarCodigo(tipo, cod);
-}
-
-function buscarMP() {
-  const cod = document.getElementById('item-cod').value.trim();
-  if (!cod) return;
-  google.script.run
-    .withSuccessHandler(res => {
-      if (!res) { toast('Matéria-prima não encontrada', 'error'); return; }
-      document.getElementById('item-desc').value = res.DESCRICAO || '';
-      document.getElementById('item-unidade').value = res.UNIDADE || '';
-    })
-    .withFailureHandler(() => toast('Erro ao buscar', 'error'))
-    .buscarCodigo('materia', cod);
-}
-
-// ════════════════════════════════════════════════════════════
+// ════════════════════════════════════════════════════
 // PEDIDO — ITENS
-// ════════════════════════════════════════════════════════════
-function calcSubtotal() {
-  const qtd = parseFloat(document.getElementById('item-qtd').value) || 0;
-  const preco = parseFloat(document.getElementById('item-preco').value) || 0;
-  // subtotal display only, calculado ao adicionar
-}
-
+// ════════════════════════════════════════════════════
 function adicionarItem() {
   const cod   = document.getElementById('item-cod').value.trim();
   const desc  = document.getElementById('item-desc').value.trim();
@@ -1152,48 +1429,48 @@ function removerItem(idx) {
 
 function renderItens() {
   const tbody = document.getElementById('itens-tbody');
-  document.getElementById('itens-empty-row') && (document.getElementById('itens-empty-row').remove());
-
   if (itensPedido.length === 0) {
     tbody.innerHTML = `<tr id="itens-empty-row"><td colspan="7"><div class="empty-state"><div class="icon">📦</div>Nenhum item adicionado</div></td></tr>`;
     totalPedido = 0;
     document.getElementById('ped-total').textContent = 'R$ 0,00';
     return;
   }
-
   totalPedido = itensPedido.reduce((s, i) => s + i.subtotal, 0);
   tbody.innerHTML = itensPedido.map((item, idx) => `
     <tr>
-      <td><code>${item.cod}</code></td>
-      <td>${item.descricao}</td>
+      <td><code>${escHTML(item.cod)}</code></td>
+      <td>${escHTML(item.descricao)}</td>
       <td>${item.quantidade.toLocaleString('pt-BR')}</td>
-      <td>${item.unidade}</td>
+      <td>${escHTML(item.unidade)}</td>
       <td>R$ ${item.preco.toFixed(2)}</td>
       <td><strong>R$ ${item.subtotal.toFixed(2)}</strong></td>
       <td><button class="btn-icon" onclick="removerItem(${idx})" title="Remover">✕</button></td>
     </tr>
   `).join('');
-  document.getElementById('ped-total').textContent = 'R$ ' + totalPedido.toLocaleString('pt-BR', {minimumFractionDigits:2, maximumFractionDigits:2});
+  document.getElementById('ped-total').textContent =
+    'R$ ' + totalPedido.toLocaleString('pt-BR', {minimumFractionDigits:2, maximumFractionDigits:2});
 }
 
 function limparCamposItem() {
   ['item-cod','item-desc','item-unidade','item-qtd','item-preco'].forEach(id => {
     document.getElementById(id).value = '';
   });
+  document.getElementById('preco-hint').classList.remove('visible');
 }
 
 function limparPedido() {
   itensPedido = [];
   totalPedido = 0;
-  ['ped-filial-cod','ped-filial-nome','ped-forn-cod','ped-forn-nome','ped-transp-cod','ped-transp-nome','ped-prazo','ped-obs'].forEach(id => {
+  ['ped-filial-cod','ped-filial-nome','ped-forn-cod','ped-forn-nome',
+   'ped-transp-cod','ped-transp-nome','ped-prazo','ped-obs'].forEach(id => {
     document.getElementById(id).value = '';
   });
   renderItens();
 }
 
-// ════════════════════════════════════════════════════════════
+// ════════════════════════════════════════════════════
 // PEDIDO — ENVIO
-// ════════════════════════════════════════════════════════════
+// ════════════════════════════════════════════════════
 function confirmarPedido() {
   const filialCod  = document.getElementById('ped-filial-cod').value.trim();
   const filialNome = document.getElementById('ped-filial-nome').value.trim();
@@ -1201,11 +1478,11 @@ function confirmarPedido() {
   const fornNome   = document.getElementById('ped-forn-nome').value.trim();
 
   if (!filialCod || !filialNome) { toast('Informe a filial de destino', 'error'); return; }
-  if (!fornCod || !fornNome) { toast('Informe o fornecedor', 'error'); return; }
-  if (itensPedido.length === 0) { toast('Adicione pelo menos um item', 'error'); return; }
+  if (!fornCod || !fornNome)     { toast('Informe o fornecedor', 'error'); return; }
+  if (itensPedido.length === 0)  { toast('Adicione pelo menos um item', 'error'); return; }
 
   document.getElementById('modal-confirm-text').innerHTML =
-    `Pedido para <strong>${fornNome}</strong>, filial <strong>${filialNome}</strong> com <strong>${itensPedido.length} item(s)</strong> totalizando <strong>R$ ${totalPedido.toFixed(2)}</strong>.<br><br>Um email será enviado ao fornecedor e uma cópia para <strong>${sessao.email}</strong>.`;
+    `Pedido para <strong>${escHTML(fornNome)}</strong>, filial <strong>${escHTML(filialNome)}</strong> com <strong>${itensPedido.length} item(s)</strong> totalizando <strong>R$ ${totalPedido.toFixed(2)}</strong>.<br><br>Um email será enviado ao fornecedor e uma cópia para <strong>${escHTML(sessao.email)}</strong>.`;
 
   document.getElementById('modal-confirm').classList.add('open');
 }
@@ -1216,7 +1493,6 @@ function fecharModal() {
 
 function enviarPedido() {
   fecharModal();
-  const btn = document.getElementById('btn-confirmar-envio');
   toast('Enviando pedido...', 'info');
 
   const dados = {
@@ -1247,12 +1523,22 @@ function enviarPedido() {
     .salvarPedido(dados);
 }
 
-// ════════════════════════════════════════════════════════════
+// ════════════════════════════════════════════════════
 // HISTÓRICO
-// ════════════════════════════════════════════════════════════
+// ════════════════════════════════════════════════════
 function buscarHistorico(tipo) {
-  const cod = document.getElementById('hist-' + (tipo==='filial'?'filial':'forn') + '-cod').value.trim();
-  if (!cod) { toast('Informe o código para filtrar', 'error'); return; }
+  const inputId = tipo === 'filial' ? 'hist-filial-cod' : 'hist-forn-cod';
+  const raw = document.getElementById(inputId).value.trim();
+  if (!raw) { toast('Informe o código ou nome para filtrar', 'error'); return; }
+
+  // Resolve nome → código se necessário
+  const cacheKey = tipo === 'filial' ? 'filial' : 'fornecedor';
+  const found = (_cache[cacheKey] || []).find(r =>
+    String(r.COD).trim().toLowerCase() === raw.toLowerCase() ||
+    String(r.NOME).trim().toLowerCase() === raw.toLowerCase()
+  );
+  const cod = found ? found.COD : raw;
+
   document.getElementById('hist-detalhe').style.display = 'none';
   const tbody = document.getElementById('hist-tbody');
   tbody.innerHTML = '<tr><td colspan="8"><div class="empty-state"><div class="icon">⏳</div>Buscando...</div></td></tr>';
@@ -1280,20 +1566,19 @@ function renderHistorico(pedidos) {
     return;
   }
   tbody.innerHTML = pedidos.map((p,i) => {
-    const data = p.DATA ? new Date(p.DATA).toLocaleDateString('pt-BR') : '—';
+    const data  = p.DATA ? new Date(p.DATA).toLocaleDateString('pt-BR') : '—';
     const total = p.VALOR_TOTAL ? 'R$ ' + parseFloat(p.VALOR_TOTAL).toFixed(2) : '—';
-    return `<tr style="cursor:pointer" onclick="verDetalhe(${i})" data-idx="${i}">
+    return `<tr style="cursor:pointer" onclick="verDetalhe(${i})">
       <td><code>${p.ID_PEDIDO||''}</code></td>
       <td>${data}</td>
-      <td>${p.NOME_FILIAL||p.COD_FILIAL||''}</td>
-      <td>${p.NOME_FORNECEDOR||p.COD_FORNECEDOR||''}</td>
-      <td>${p.NOME_TRANSPORTADORA||'—'}</td>
+      <td>${escHTML(String(p.NOME_FILIAL||p.COD_FILIAL||''))}</td>
+      <td>${escHTML(String(p.NOME_FORNECEDOR||p.COD_FORNECEDOR||''))}</td>
+      <td>${escHTML(String(p.NOME_TRANSPORTADORA||'—'))}</td>
       <td><strong>${total}</strong></td>
       <td><span class="badge badge-green">${p.STATUS||'—'}</span></td>
       <td><button class="btn btn-outline btn-sm" onclick="event.stopPropagation();verDetalhe(${i})">Ver</button></td>
     </tr>`;
   }).join('');
-  // guarda referência aos pedidos
   window._pedidosHistorico = pedidos;
 }
 
@@ -1310,12 +1595,12 @@ function verDetalhe(idx) {
     <div class="hist-meta-item"><label>ID Pedido</label><span>${p.ID_PEDIDO||'—'}</span></div>
     <div class="hist-meta-item"><label>Data</label><span>${data}</span></div>
     <div class="hist-meta-item"><label>Status</label><span><span class="badge badge-green">${p.STATUS||'—'}</span></span></div>
-    <div class="hist-meta-item"><label>Filial</label><span>${p.NOME_FILIAL||''} (${p.COD_FILIAL||''})</span></div>
-    <div class="hist-meta-item"><label>Fornecedor</label><span>${p.NOME_FORNECEDOR||''}</span></div>
-    <div class="hist-meta-item"><label>Transportadora</label><span>${p.NOME_TRANSPORTADORA||'—'}</span></div>
+    <div class="hist-meta-item"><label>Filial</label><span>${escHTML(String(p.NOME_FILIAL||''))} (${p.COD_FILIAL||''})</span></div>
+    <div class="hist-meta-item"><label>Fornecedor</label><span>${escHTML(String(p.NOME_FORNECEDOR||''))}</span></div>
+    <div class="hist-meta-item"><label>Transportadora</label><span>${escHTML(String(p.NOME_TRANSPORTADORA||'—'))}</span></div>
     <div class="hist-meta-item"><label>Prazo</label><span>${p.PRAZO_ENTREGA||'—'}</span></div>
-    <div class="hist-meta-item"><label>Solicitante</label><span>${p.USUARIO||'—'}</span></div>
-    <div class="hist-meta-item"><label>Observação</label><span>${p.OBSERVACAO||'—'}</span></div>
+    <div class="hist-meta-item"><label>Solicitante</label><span>${escHTML(String(p.USUARIO||'—'))}</span></div>
+    <div class="hist-meta-item"><label>Observação</label><span>${escHTML(String(p.OBSERVACAO||'—'))}</span></div>
   `;
 
   const itens = p.itens || [];
@@ -1323,7 +1608,7 @@ function verDetalhe(idx) {
     ? '<tr><td colspan="6"><div class="empty-state">Sem itens registrados</div></td></tr>'
     : itens.map(i => `<tr>
         <td><code>${i.COD_MP||''}</code></td>
-        <td>${i.DESCRICAO||''}</td>
+        <td>${escHTML(String(i.DESCRICAO||''))}</td>
         <td>${i.QUANTIDADE||''}</td>
         <td>${i.UNIDADE||''}</td>
         <td>R$ ${parseFloat(i.PRECO_UNIT||0).toFixed(2)}</td>
@@ -1334,16 +1619,42 @@ function verDetalhe(idx) {
     'R$ ' + parseFloat(p.VALOR_TOTAL||0).toLocaleString('pt-BR',{minimumFractionDigits:2});
 }
 
-// ════════════════════════════════════════════════════════════
+// ════════════════════════════════════════════════════
 // CADASTROS
-// ════════════════════════════════════════════════════════════
+// ════════════════════════════════════════════════════
 function salvarCad(tipo) {
   const mapas = {
-    fornecedor:     { campos: {COD:'f-forn-cod',NOME:'f-forn-nome',EMAIL:'f-forn-email',CONTATO:'f-forn-contato',ENDERECO:'f-forn-end',CIDADE:'f-forn-cidade',ESTADO:'f-forn-estado'}, prefixo:'forn', tabela:'fornecedor' },
-    materia:        { campos: {COD:'f-mat-cod',DESCRICAO:'f-mat-desc',UNIDADE:'f-mat-unidade',CATEGORIA:'f-mat-cat'}, prefixo:'mat', tabela:'materia' },
-    transportadora: { campos: {COD:'f-tra-cod',NOME:'f-tra-nome',CONTATO:'f-tra-contato',PRAZO:'f-tra-prazo',OBSERVACAO:'f-tra-obs'}, prefixo:'tra', tabela:'transportadora' },
-    filial:         { campos: {COD:'f-fil-cod',NOME:'f-fil-nome',ENDERECO:'f-fil-end',CIDADE:'f-fil-cidade',ESTADO:'f-fil-estado',EMAIL_RESPONSAVEL:'f-fil-email'}, prefixo:'fil', tabela:'filial' },
-    usuario:        { campos: {COD:'f-usr-cod',NOME:'f-usr-nome',USUARIO:'f-usr-user',SENHA:'f-usr-senha',EMAIL:'f-usr-email',PERFIL:'f-usr-perfil'}, prefixo:'usr', tabela:'usuario' }
+    fornecedor: {
+      campos: {
+        COD:'f-forn-cod', NOME:'f-forn-nome', CONTATO:'f-forn-contato',
+        CEP:'f-forn-cep', BAIRRO:'f-forn-bairro',
+        ENDERECO:'f-forn-end', CIDADE:'f-forn-cidade', ESTADO:'f-forn-estado'
+      },
+      prefixo:'forn', tabela:'fornecedor',
+      emailInputId:'forn-email-inp', emailHiddenId:'forn-email-tags'
+    },
+    materia: {
+      campos: {COD:'f-mat-cod',DESCRICAO:'f-mat-desc',UNIDADE:'f-mat-unidade',CATEGORIA:'f-mat-cat'},
+      prefixo:'mat', tabela:'materia'
+    },
+    transportadora: {
+      campos: {COD:'f-tra-cod',NOME:'f-tra-nome',CONTATO:'f-tra-contato',PRAZO:'f-tra-prazo',OBSERVACAO:'f-tra-obs'},
+      prefixo:'tra', tabela:'transportadora'
+    },
+    filial: {
+      campos: {
+        COD:'f-fil-cod', NOME:'f-fil-nome',
+        CEP:'f-fil-cep', BAIRRO:'f-fil-bairro',
+        ENDERECO:'f-fil-end', CIDADE:'f-fil-cidade', ESTADO:'f-fil-estado'
+      },
+      prefixo:'fil', tabela:'filial',
+      emailInputId:'fil-email-inp', emailHiddenId:'fil-email-tags',
+      emailField:'EMAIL_RESPONSAVEL'
+    },
+    usuario: {
+      campos: {COD:'f-usr-cod',NOME:'f-usr-nome',USUARIO:'f-usr-user',SENHA:'f-usr-senha',EMAIL:'f-usr-email',PERFIL:'f-usr-perfil'},
+      prefixo:'usr', tabela:'usuario'
+    }
   };
 
   const cfg = mapas[tipo];
@@ -1352,14 +1663,29 @@ function salvarCad(tipo) {
     dados[campo] = document.getElementById(id).value.trim();
   }
 
+  // Coleta emails dos tags
+  if (cfg.emailHiddenId) {
+    const emailVal = document.getElementById(cfg.emailHiddenId).value.trim();
+    // Também verifica se há algo no input que não virou tag
+    emailTagBlur(cfg.emailInputId, cfg.emailHiddenId);
+    const emailFinal = document.getElementById(cfg.emailHiddenId).value.trim();
+    const emailCol = cfg.emailField || 'EMAIL';
+    dados[emailCol] = emailFinal;
+  }
+
   if (!dados.COD) { toast('Código é obrigatório', 'error'); return; }
 
   google.script.run
     .withSuccessHandler(res => {
       toast(res.ok ? res.msg : 'Erro: ' + res.msg, res.ok ? 'success' : 'error');
       if (res.ok) {
+        if (tipo === 'materia') {
+          // Abre card de preços para a matéria recém-salva
+          abrirCardPrecos(dados.COD, dados.DESCRICAO);
+        }
         limparForm(cfg.prefixo);
         carregarTabelaCadastro(cfg.tabela);
+        carregarCaches();
       }
     })
     .withFailureHandler(err => toast('Erro: ' + err.message, 'error'))
@@ -1367,23 +1693,37 @@ function salvarCad(tipo) {
 }
 
 function limparForm(prefixo) {
-  const prefixoInputMap = {
-    forn: ['f-forn-cod','f-forn-nome','f-forn-email','f-forn-contato','f-forn-end','f-forn-cidade','f-forn-estado'],
+  const mapIds = {
+    forn: ['f-forn-cod','f-forn-nome','f-forn-contato','f-forn-cep','f-forn-bairro','f-forn-end','f-forn-cidade','f-forn-estado'],
     mat:  ['f-mat-cod','f-mat-desc','f-mat-unidade','f-mat-cat'],
     tra:  ['f-tra-cod','f-tra-nome','f-tra-contato','f-tra-prazo','f-tra-obs'],
-    fil:  ['f-fil-cod','f-fil-nome','f-fil-end','f-fil-cidade','f-fil-estado','f-fil-email'],
+    fil:  ['f-fil-cod','f-fil-nome','f-fil-cep','f-fil-bairro','f-fil-end','f-fil-cidade','f-fil-estado'],
     usr:  ['f-usr-cod','f-usr-nome','f-usr-user','f-usr-senha','f-usr-email','f-usr-perfil']
   };
-  (prefixoInputMap[prefixo] || []).forEach(id => { document.getElementById(id).value = ''; });
+  (mapIds[prefixo] || []).forEach(id => { document.getElementById(id).value = ''; });
+
+  // Limpa email tags
+  if (prefixo === 'forn') {
+    document.getElementById('forn-email-tags').value = '';
+    renderEmailTags('forn-email-inp','forn-email-tags');
+  }
+  if (prefixo === 'fil') {
+    document.getElementById('fil-email-tags').value = '';
+    renderEmailTags('fil-email-inp','fil-email-tags');
+  }
+  if (prefixo === 'mat') {
+    document.getElementById('card-precos').style.display = 'none';
+    _matAtiva = null;
+  }
 }
 
 function carregarTabelaCadastro(tipo) {
   const tblMap = {
-    fornecedor:     { id:'tbl-fornecedores', cols:['COD','NOME','EMAIL','CONTATO','CIDADE','ESTADO'] },
-    materia:        { id:'tbl-materias',     cols:['COD','DESCRICAO','UNIDADE','CATEGORIA'] },
-    transportadora: { id:'tbl-transportadoras', cols:['COD','NOME','CONTATO','PRAZO'] },
-    filial:         { id:'tbl-filiais',      cols:['COD','NOME','CIDADE','ESTADO','EMAIL_RESPONSAVEL'] },
-    usuario:        { id:'tbl-usuarios',     cols:['COD','NOME','USUARIO','EMAIL','PERFIL'] }
+    fornecedor:     { id:'tbl-fornecedores',    cols:['COD','NOME','EMAIL','CONTATO','CEP','CIDADE','ESTADO'] },
+    materia:        { id:'tbl-materias',         cols:['COD','DESCRICAO','UNIDADE','CATEGORIA'] },
+    transportadora: { id:'tbl-transportadoras',  cols:['COD','NOME','CONTATO','PRAZO'] },
+    filial:         { id:'tbl-filiais',          cols:['COD','NOME','CEP','CIDADE','ESTADO','EMAIL_RESPONSAVEL'] },
+    usuario:        { id:'tbl-usuarios',         cols:['COD','NOME','USUARIO','EMAIL','PERFIL'] }
   };
 
   const cfg = tblMap[tipo];
@@ -1397,10 +1737,14 @@ function carregarTabelaCadastro(tipo) {
         return;
       }
       const headers = cfg.cols.map(c => `<th>${c}</th>`).join('') + '<th></th>';
+      const extraBtn = tipo === 'materia'
+        ? (cod, desc) => `<button class="btn btn-outline btn-sm" style="margin-left:4px" onclick="abrirCardPrecos('${escHTML(cod)}','${escHTML(desc||'')}')">Preços</button>`
+        : () => '';
       const body = rows.map(row => {
-        const cells = cfg.cols.map(c => `<td>${row[c]||''}</td>`).join('');
-        return `<tr>${cells}<td>
-          <button class="btn btn-outline btn-sm" onclick="editarCadastro('${tipo}','${row.COD}')">Editar</button>
+        const cells = cfg.cols.map(c => `<td>${escHTML(String(row[c]||''))}</td>`).join('');
+        return `<tr>${cells}<td style="white-space:nowrap">
+          <button class="btn btn-outline btn-sm" onclick="editarCadastro('${tipo}','${escHTML(String(row.COD))}')">Editar</button>
+          ${extraBtn(String(row.COD), String(row.DESCRICAO||row.NOME||''))}
         </td></tr>`;
       }).join('');
       container.innerHTML = `<table><thead><tr>${headers}</tr></thead><tbody>${body}</tbody></table>`;
@@ -1410,15 +1754,16 @@ function carregarTabelaCadastro(tipo) {
 }
 
 function editarCadastro(tipo, cod) {
-  const prefixoMap = {
-    fornecedor:'forn', materia:'mat', transportadora:'tra', filial:'fil', usuario:'usr'
-  };
   const camposMap = {
-    fornecedor:     {COD:'f-forn-cod',NOME:'f-forn-nome',EMAIL:'f-forn-email',CONTATO:'f-forn-contato',ENDERECO:'f-forn-end',CIDADE:'f-forn-cidade',ESTADO:'f-forn-estado'},
+    fornecedor:     {COD:'f-forn-cod',NOME:'f-forn-nome',CONTATO:'f-forn-contato',CEP:'f-forn-cep',BAIRRO:'f-forn-bairro',ENDERECO:'f-forn-end',CIDADE:'f-forn-cidade',ESTADO:'f-forn-estado'},
     materia:        {COD:'f-mat-cod',DESCRICAO:'f-mat-desc',UNIDADE:'f-mat-unidade',CATEGORIA:'f-mat-cat'},
     transportadora: {COD:'f-tra-cod',NOME:'f-tra-nome',CONTATO:'f-tra-contato',PRAZO:'f-tra-prazo',OBSERVACAO:'f-tra-obs'},
-    filial:         {COD:'f-fil-cod',NOME:'f-fil-nome',ENDERECO:'f-fil-end',CIDADE:'f-fil-cidade',ESTADO:'f-fil-estado',EMAIL_RESPONSAVEL:'f-fil-email'},
+    filial:         {COD:'f-fil-cod',NOME:'f-fil-nome',CEP:'f-fil-cep',BAIRRO:'f-fil-bairro',ENDERECO:'f-fil-end',CIDADE:'f-fil-cidade',ESTADO:'f-fil-estado'},
     usuario:        {COD:'f-usr-cod',NOME:'f-usr-nome',USUARIO:'f-usr-user',SENHA:'f-usr-senha',EMAIL:'f-usr-email',PERFIL:'f-usr-perfil'}
+  };
+  const subMap = {
+    fornecedor:'fornecedores', materia:'materias', transportadora:'transportadoras',
+    filial:'filiais', usuario:'usuarios'
   };
 
   google.script.run
@@ -1429,16 +1774,27 @@ function editarCadastro(tipo, cod) {
         const el = document.getElementById(id);
         if (el) el.value = res[campo] || '';
       }
-      // scroll para o form
-      document.getElementById('sub-' + (tipo==='materia'?'materias':tipo==='transportadora'?'transportadoras':tipo==='filial'?'filiais':tipo==='usuario'?'usuarios':'fornecedores')).scrollIntoView({ behavior:'smooth' });
+      // Preenche email tags
+      if (tipo === 'fornecedor') {
+        const emails = (res.EMAIL || '').split(';').map(e => e.trim()).filter(Boolean);
+        setEmailTags(emails, 'forn-email-inp', 'forn-email-tags');
+      }
+      if (tipo === 'filial') {
+        const emails = (res.EMAIL_RESPONSAVEL || '').split(';').map(e => e.trim()).filter(Boolean);
+        setEmailTags(emails, 'fil-email-inp', 'fil-email-tags');
+      }
+      if (tipo === 'materia') {
+        abrirCardPrecos(res.COD, res.DESCRICAO);
+      }
+      document.getElementById('sub-' + subMap[tipo]).scrollIntoView({ behavior:'smooth' });
     })
     .withFailureHandler(() => toast('Erro ao carregar','error'))
     .buscarCodigo(tipo, cod);
 }
 
-// ════════════════════════════════════════════════════════════
+// ════════════════════════════════════════════════════
 // TOAST
-// ════════════════════════════════════════════════════════════
+// ════════════════════════════════════════════════════
 let toastTimer;
 function toast(msg, tipo = 'info') {
   const el = document.getElementById('toast');

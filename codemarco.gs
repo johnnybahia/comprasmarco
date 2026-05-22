@@ -4,14 +4,15 @@
 const SHEET_ID = '1jJkc5LWZnTK4am6oAg_gPHdDJ-NqwT4fYSbY3-r2S_E';
 
 const ABAS = {
-  USUARIOS:      'USUARIOS',
-  FORNECEDORES:  'FORNECEDORES',
-  MATERIAS:      'MATERIAS_PRIMAS',
-  TRANSPORTADORAS:'TRANSPORTADORAS',
-  FILIAIS:       'FILIAIS',
-  PEDIDOS:       'PEDIDOS',
-  ITENS_PEDIDO:  'ITENS_PEDIDO',
-  LOG:           'LOG_ERROS'
+  USUARIOS:         'USUARIOS',
+  FORNECEDORES:     'FORNECEDORES',
+  MATERIAS:         'MATERIAS_PRIMAS',
+  TRANSPORTADORAS:  'TRANSPORTADORAS',
+  FILIAIS:          'FILIAIS',
+  PEDIDOS:          'PEDIDOS',
+  ITENS_PEDIDO:     'ITENS_PEDIDO',
+  PRECO_FORNECEDOR: 'PRECO_FORNECEDOR',
+  LOG:              'LOG_ERROS'
 };
 
 // ============================================================
@@ -32,6 +33,7 @@ function getSheet(nome) {
 
 function sheetToArray(nome) {
   const sh = getSheet(nome);
+  if (!sh) return [];
   const data = sh.getDataRange().getValues();
   if (data.length <= 1) return [];
   const headers = data[0];
@@ -54,7 +56,7 @@ function logErro(msg) {
 function validarLogin(usuario, senha) {
   try {
     const rows = sheetToArray(ABAS.USUARIOS);
-    const user = rows.find(r => 
+    const user = rows.find(r =>
       String(r.USUARIO).trim().toLowerCase() === String(usuario).trim().toLowerCase() &&
       String(r.SENHA).trim() === String(senha).trim()
     );
@@ -87,7 +89,7 @@ function buscarCodigo(tipo, codigo) {
 }
 
 // ============================================================
-// LISTAR TODOS (para dropdowns)
+// LISTAR TODOS (para dropdowns e autocomplete)
 // ============================================================
 function listarTodos(tipo) {
   try {
@@ -107,43 +109,56 @@ function listarTodos(tipo) {
 }
 
 // ============================================================
-// CADASTROS
+// CADASTROS — coluna-aware (adiciona colunas faltantes automaticamente)
 // ============================================================
 function salvarCadastro(tipo, dados) {
   const lock = LockService.getScriptLock();
   try {
     lock.waitLock(10000);
     const mapa = {
-      fornecedor:     { aba: ABAS.FORNECEDORES,    cols: ['COD','NOME','EMAIL','CONTATO','ENDERECO','CIDADE','ESTADO'] },
-      materia:        { aba: ABAS.MATERIAS,         cols: ['COD','DESCRICAO','UNIDADE','CATEGORIA'] },
-      transportadora: { aba: ABAS.TRANSPORTADORAS,  cols: ['COD','NOME','CONTATO','PRAZO','OBSERVACAO'] },
-      filial:         { aba: ABAS.FILIAIS,           cols: ['COD','NOME','ENDERECO','CIDADE','ESTADO','EMAIL_RESPONSAVEL'] },
-      usuario:        { aba: ABAS.USUARIOS,          cols: ['COD','NOME','USUARIO','SENHA','EMAIL','PERFIL'] }
+      fornecedor:     { aba: ABAS.FORNECEDORES,   cols: ['COD','NOME','EMAIL','CONTATO','CEP','BAIRRO','ENDERECO','CIDADE','ESTADO'] },
+      materia:        { aba: ABAS.MATERIAS,        cols: ['COD','DESCRICAO','UNIDADE','CATEGORIA'] },
+      transportadora: { aba: ABAS.TRANSPORTADORAS, cols: ['COD','NOME','CONTATO','PRAZO','OBSERVACAO'] },
+      filial:         { aba: ABAS.FILIAIS,         cols: ['COD','NOME','CEP','BAIRRO','ENDERECO','CIDADE','ESTADO','EMAIL_RESPONSAVEL'] },
+      usuario:        { aba: ABAS.USUARIOS,        cols: ['COD','NOME','USUARIO','SENHA','EMAIL','PERFIL'] }
     };
     if (!mapa[tipo]) return { ok: false, msg: 'Tipo inválido' };
 
     const cfg = mapa[tipo];
     const sh = getSheet(cfg.aba);
+    const allData = sh.getDataRange().getValues();
+    let headers = allData[0].map(String);
 
-    // Verifica duplicidade de COD
-    const existentes = sheetToArray(cfg.aba);
-    if (existentes.find(r => String(r.COD).trim() === String(dados.COD).trim())) {
-      // Atualiza linha existente
-      const allData = sh.getDataRange().getValues();
-      const headers = allData[0];
-      const codIdx = headers.indexOf('COD');
-      for (let i = 1; i < allData.length; i++) {
-        if (String(allData[i][codIdx]).trim() === String(dados.COD).trim()) {
-          const row = cfg.cols.map(c => dados[c] !== undefined ? dados[c] : '');
-          sh.getRange(i + 1, 1, 1, row.length).setValues([row]);
-          return { ok: true, msg: 'Atualizado com sucesso' };
-        }
+    // Adiciona colunas faltantes na planilha
+    const missingCols = cfg.cols.filter(c => !headers.includes(c));
+    if (missingCols.length > 0) {
+      missingCols.forEach((col, i) => {
+        const colIdx = headers.length + i + 1;
+        const cell = sh.getRange(1, colIdx);
+        cell.setValue(col);
+        cell.setBackground('#1a3c5e').setFontColor('#ffffff').setFontWeight('bold');
+      });
+      headers = headers.concat(missingCols);
+    }
+
+    const codIdx = headers.indexOf('COD');
+
+    // Verifica se já existe
+    for (let i = 1; i < allData.length; i++) {
+      if (String(allData[i][codIdx]).trim() === String(dados.COD).trim()) {
+        // Atualiza preservando colunas não mapeadas
+        const newRow = headers.map((h, idx) => {
+          if (dados[h] !== undefined) return dados[h];
+          return allData[i][idx] !== undefined ? allData[i][idx] : '';
+        });
+        sh.getRange(i + 1, 1, 1, newRow.length).setValues([newRow]);
+        return { ok: true, msg: 'Atualizado com sucesso' };
       }
     }
 
     // Novo registro
-    const row = cfg.cols.map(c => dados[c] !== undefined ? dados[c] : '');
-    sh.appendRow(row);
+    const newRow = headers.map(h => dados[h] !== undefined ? dados[h] : '');
+    sh.appendRow(newRow);
     return { ok: true, msg: 'Cadastrado com sucesso' };
   } catch(e) {
     logErro('salvarCadastro: ' + e.message);
@@ -185,6 +200,88 @@ function excluirCadastro(tipo, cod) {
 }
 
 // ============================================================
+// PREÇOS POR FORNECEDOR
+// ============================================================
+function salvarPrecoFornecedor(codForn, codMP, preco) {
+  const lock = LockService.getScriptLock();
+  try {
+    lock.waitLock(10000);
+    const sh = getSheet(ABAS.PRECO_FORNECEDOR);
+    const allData = sh.getDataRange().getValues();
+    for (let i = 1; i < allData.length; i++) {
+      if (String(allData[i][0]).trim() === String(codForn).trim() &&
+          String(allData[i][1]).trim() === String(codMP).trim()) {
+        sh.getRange(i + 1, 3).setValue(preco);
+        return { ok: true, msg: 'Preço atualizado' };
+      }
+    }
+    sh.appendRow([codForn, codMP, preco]);
+    return { ok: true, msg: 'Preço cadastrado' };
+  } catch(e) {
+    logErro('salvarPrecoFornecedor: ' + e.message);
+    return { ok: false, msg: e.message };
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+function excluirPrecoFornecedor(codForn, codMP) {
+  const lock = LockService.getScriptLock();
+  try {
+    lock.waitLock(10000);
+    const sh = getSheet(ABAS.PRECO_FORNECEDOR);
+    const allData = sh.getDataRange().getValues();
+    for (let i = 1; i < allData.length; i++) {
+      if (String(allData[i][0]).trim() === String(codForn).trim() &&
+          String(allData[i][1]).trim() === String(codMP).trim()) {
+        sh.deleteRow(i + 1);
+        return { ok: true };
+      }
+    }
+    return { ok: false, msg: 'Não encontrado' };
+  } catch(e) {
+    logErro('excluirPrecoFornecedor: ' + e.message);
+    return { ok: false, msg: e.message };
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+function buscarPrecoFornecedor(codForn, codMP) {
+  try {
+    const rows = sheetToArray(ABAS.PRECO_FORNECEDOR);
+    const found = rows.find(r =>
+      String(r.COD_FORNECEDOR).trim() === String(codForn).trim() &&
+      String(r.COD_MP).trim() === String(codMP).trim()
+    );
+    return found ? found.PRECO : null;
+  } catch(e) {
+    logErro('buscarPrecoFornecedor: ' + e.message);
+    return null;
+  }
+}
+
+function listarPrecosPorMateria(codMP) {
+  try {
+    const precos = sheetToArray(ABAS.PRECO_FORNECEDOR)
+      .filter(r => String(r.COD_MP).trim() === String(codMP).trim());
+    const fornecedores = sheetToArray(ABAS.FORNECEDORES);
+    return precos.map(p => {
+      const forn = fornecedores.find(f => String(f.COD).trim() === String(p.COD_FORNECEDOR).trim());
+      return {
+        COD_FORNECEDOR: p.COD_FORNECEDOR,
+        COD_MP: p.COD_MP,
+        PRECO: p.PRECO,
+        NOME_FORNECEDOR: forn ? forn.NOME : p.COD_FORNECEDOR
+      };
+    });
+  } catch(e) {
+    logErro('listarPrecosPorMateria: ' + e.message);
+    return [];
+  }
+}
+
+// ============================================================
 // PEDIDOS
 // ============================================================
 function salvarPedido(dados) {
@@ -195,64 +292,51 @@ function salvarPedido(dados) {
     const shPedidos = getSheet(ABAS.PEDIDOS);
     const shItens   = getSheet(ABAS.ITENS_PEDIDO);
 
-    // Gera ID do pedido
     const totalPedidos = shPedidos.getLastRow();
     const idPedido = 'PED-' + String(totalPedidos).padStart(5, '0');
-
     const dataHoje = new Date();
 
-    // Grava cabeçalho do pedido
     shPedidos.appendRow([
-      idPedido,
-      dataHoje,
-      dados.filialCod,
-      dados.filialNome,
-      dados.fornecedorCod,
-      dados.fornecedorNome,
-      dados.transportadoraCod,
-      dados.transportadoraNome,
-      dados.prazoEntrega,
-      dados.observacao,
-      dados.usuarioLogado,
-      dados.valorTotal,
-      'ENVIADO'
+      idPedido, dataHoje,
+      dados.filialCod, dados.filialNome,
+      dados.fornecedorCod, dados.fornecedorNome,
+      dados.transportadoraCod, dados.transportadoraNome,
+      dados.prazoEntrega, dados.observacao,
+      dados.usuarioLogado, dados.valorTotal, 'ENVIADO'
     ]);
 
-    // Grava itens
     dados.itens.forEach(item => {
       shItens.appendRow([
-        idPedido,
-        item.cod,
-        item.descricao,
-        item.quantidade,
-        item.unidade,
-        item.preco,
-        item.subtotal
+        idPedido, item.cod, item.descricao,
+        item.quantidade, item.unidade, item.preco, item.subtotal
       ]);
     });
 
-    // Dispara email
+    // Dispara email para todos os endereços cadastrados
     const fornecedor = buscarCodigo('fornecedor', dados.fornecedorCod);
     if (!fornecedor || !fornecedor.EMAIL) {
       logErro('salvarPedido: email do fornecedor ausente para ' + dados.fornecedorCod);
       return { ok: true, msg: 'Pedido salvo, mas email não enviado (fornecedor sem email)', id: idPedido };
     }
 
-    const emailValido = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(fornecedor.EMAIL);
-    if (!emailValido) {
-      logErro('salvarPedido: email inválido: ' + fornecedor.EMAIL);
+    const emailsList = String(fornecedor.EMAIL)
+      .split(';')
+      .map(e => e.trim())
+      .filter(e => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e));
+
+    if (emailsList.length === 0) {
+      logErro('salvarPedido: nenhum email válido para ' + dados.fornecedorCod);
       return { ok: true, msg: 'Pedido salvo, mas email não enviado (email inválido)', id: idPedido };
     }
 
     const htmlEmail = montarEmailHTML(idPedido, dataHoje, dados);
-    
     MailApp.sendEmail({
-  to: fornecedor.EMAIL,
-  cc: dados.emailUsuario || '',
-  replyTo: 'marco@marfim.ind.br',
-  subject: `Pedido de Compra ${idPedido} — ${dados.filialNome}`,
-  htmlBody: htmlEmail
-});
+      to: emailsList.join(','),
+      cc: dados.emailUsuario || '',
+      replyTo: 'marco@marfim.ind.br',
+      subject: `Pedido de Compra ${idPedido} — ${dados.filialNome}`,
+      htmlBody: htmlEmail
+    });
 
     return { ok: true, msg: 'Pedido salvo e email enviado com sucesso', id: idPedido };
 
@@ -266,7 +350,7 @@ function salvarPedido(dados) {
 
 function montarEmailHTML(idPedido, data, dados) {
   const dataFmt = Utilities.formatDate(data, Session.getScriptTimeZone(), 'dd/MM/yyyy');
-  let linhasItens = dados.itens.map(item => `
+  const linhasItens = dados.itens.map(item => `
     <tr>
       <td style="padding:8px;border:1px solid #ddd;">${item.cod}</td>
       <td style="padding:8px;border:1px solid #ddd;">${item.descricao}</td>
@@ -357,14 +441,15 @@ function setupPlanilha() {
   const ss = SpreadsheetApp.openById(SHEET_ID);
 
   const estrutura = {
-    USUARIOS:       ['COD','NOME','USUARIO','SENHA','EMAIL','PERFIL'],
-    FORNECEDORES:   ['COD','NOME','EMAIL','CONTATO','ENDERECO','CIDADE','ESTADO'],
-    MATERIAS_PRIMAS:['COD','DESCRICAO','UNIDADE','CATEGORIA'],
-    TRANSPORTADORAS:['COD','NOME','CONTATO','PRAZO','OBSERVACAO'],
-    FILIAIS:        ['COD','NOME','ENDERECO','CIDADE','ESTADO','EMAIL_RESPONSAVEL'],
-    PEDIDOS:        ['ID_PEDIDO','DATA','COD_FILIAL','NOME_FILIAL','COD_FORNECEDOR','NOME_FORNECEDOR','COD_TRANSPORTADORA','NOME_TRANSPORTADORA','PRAZO_ENTREGA','OBSERVACAO','USUARIO','VALOR_TOTAL','STATUS'],
-    ITENS_PEDIDO:   ['ID_PEDIDO','COD_MP','DESCRICAO','QUANTIDADE','UNIDADE','PRECO_UNIT','SUBTOTAL'],
-    LOG_ERROS:      ['DATA','MENSAGEM']
+    USUARIOS:         ['COD','NOME','USUARIO','SENHA','EMAIL','PERFIL'],
+    FORNECEDORES:     ['COD','NOME','EMAIL','CONTATO','CEP','BAIRRO','ENDERECO','CIDADE','ESTADO'],
+    MATERIAS_PRIMAS:  ['COD','DESCRICAO','UNIDADE','CATEGORIA'],
+    TRANSPORTADORAS:  ['COD','NOME','CONTATO','PRAZO','OBSERVACAO'],
+    FILIAIS:          ['COD','NOME','CEP','BAIRRO','ENDERECO','CIDADE','ESTADO','EMAIL_RESPONSAVEL'],
+    PEDIDOS:          ['ID_PEDIDO','DATA','COD_FILIAL','NOME_FILIAL','COD_FORNECEDOR','NOME_FORNECEDOR','COD_TRANSPORTADORA','NOME_TRANSPORTADORA','PRAZO_ENTREGA','OBSERVACAO','USUARIO','VALOR_TOTAL','STATUS'],
+    ITENS_PEDIDO:     ['ID_PEDIDO','COD_MP','DESCRICAO','QUANTIDADE','UNIDADE','PRECO_UNIT','SUBTOTAL'],
+    PRECO_FORNECEDOR: ['COD_FORNECEDOR','COD_MP','PRECO'],
+    LOG_ERROS:        ['DATA','MENSAGEM']
   };
 
   Object.entries(estrutura).forEach(([nome, headers]) => {
@@ -376,10 +461,19 @@ function setupPlanilha() {
         .setBackground('#1a3c5e')
         .setFontColor('#ffffff')
         .setFontWeight('bold');
+    } else {
+      // Migração: adiciona colunas faltantes
+      const existingHeaders = sh.getRange(1, 1, 1, sh.getLastColumn()).getValues()[0].map(String);
+      const missing = headers.filter(h => !existingHeaders.includes(h));
+      missing.forEach((col, i) => {
+        const colIdx = existingHeaders.length + i + 1;
+        const cell = sh.getRange(1, colIdx);
+        cell.setValue(col);
+        cell.setBackground('#1a3c5e').setFontColor('#ffffff').setFontWeight('bold');
+      });
     }
   });
 
-  // Cria usuário admin padrão se USUARIOS estiver vazia
   const shUser = ss.getSheetByName('USUARIOS');
   if (shUser.getLastRow() <= 1) {
     shUser.appendRow(['USR001','Administrador','admin','admin123','admin@empresa.com','ADMIN']);
