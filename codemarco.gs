@@ -121,7 +121,7 @@ function salvarCadastro(tipo, dados) {
       fornecedor:     { aba: ABAS.FORNECEDORES,   cols: ['COD','NOME','EMAIL','CONTATO','CEP','BAIRRO','ENDERECO','CIDADE','ESTADO'] },
       materia:        { aba: ABAS.MATERIAS,        cols: ['COD','DESCRICAO','UNIDADE','CATEGORIA'] },
       transportadora: { aba: ABAS.TRANSPORTADORAS, cols: ['COD','NOME','CONTATO','PRAZO','OBSERVACAO'] },
-      filial:         { aba: ABAS.FILIAIS,         cols: ['COD','NOME','CEP','BAIRRO','ENDERECO','CIDADE','ESTADO','EMAIL_RESPONSAVEL'] },
+      filial:         { aba: ABAS.FILIAIS,         cols: ['COD','NOME','CEP','BAIRRO','ENDERECO','CIDADE','ESTADO','EMAIL_RESPONSAVEL','COD_TRANSPORTADORA'] },
       usuario:        { aba: ABAS.USUARIOS,        cols: ['COD','NOME','USUARIO','SENHA','EMAIL','PERFIL'] }
     };
     if (!mapa[tipo]) return { ok: false, msg: 'Tipo inválido' };
@@ -570,7 +570,7 @@ function setupPlanilha() {
     FORNECEDORES:     ['COD','NOME','EMAIL','CONTATO','CEP','BAIRRO','ENDERECO','CIDADE','ESTADO'],
     MATERIAS_PRIMAS:  ['COD','DESCRICAO','UNIDADE','CATEGORIA'],
     TRANSPORTADORAS:  ['COD','NOME','CONTATO','PRAZO','OBSERVACAO'],
-    FILIAIS:          ['COD','NOME','CEP','BAIRRO','ENDERECO','CIDADE','ESTADO','EMAIL_RESPONSAVEL'],
+    FILIAIS:          ['COD','NOME','CEP','BAIRRO','ENDERECO','CIDADE','ESTADO','EMAIL_RESPONSAVEL','COD_TRANSPORTADORA'],
     PEDIDOS:          ['ID_PEDIDO','DATA','COD_FILIAL','NOME_FILIAL','COD_FORNECEDOR','NOME_FORNECEDOR','COD_TRANSPORTADORA','NOME_TRANSPORTADORA','PRAZO_ENTREGA','OBSERVACAO','USUARIO','VALOR_TOTAL','STATUS'],
     ITENS_PEDIDO:     ['ID_PEDIDO','COD_MP','DESCRICAO','QUANTIDADE','UNIDADE','PRECO_UNIT','SUBTOTAL'],
     PRECO_FORNECEDOR:  ['COD_FORNECEDOR','COD_MP','PRECO'],
