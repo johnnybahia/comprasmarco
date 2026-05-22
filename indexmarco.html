@@ -1,0 +1,1452 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sistema de Compras</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --navy: #1a3c5e;
+  --navy-light: #234e7a;
+  --accent: #e8a020;
+  --accent-light: #f5c060;
+  --bg: #f0f2f5;
+  --surface: #ffffff;
+  --surface2: #f7f8fa;
+  --border: #dde1e8;
+  --text: #1e2530;
+  --text2: #5a6478;
+  --text3: #8e9aac;
+  --success: #2a9d5c;
+  --error: #d63031;
+  --warning: #e8a020;
+  --radius: 6px;
+  --shadow: 0 2px 8px rgba(0,0,0,0.08);
+  --shadow-lg: 0 8px 32px rgba(0,0,0,0.12);
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: 'IBM Plex Sans', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  font-size: 14px;
+}
+
+/* ── LOGIN ── */
+#login-screen {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--navy);
+  background-image: repeating-linear-gradient(
+    0deg, transparent, transparent 39px, rgba(255,255,255,0.03) 39px, rgba(255,255,255,0.03) 40px
+  ),
+  repeating-linear-gradient(
+    90deg, transparent, transparent 39px, rgba(255,255,255,0.03) 39px, rgba(255,255,255,0.03) 40px
+  );
+}
+
+.login-card {
+  background: var(--surface);
+  width: 360px;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: var(--shadow-lg);
+}
+
+.login-header {
+  background: var(--navy);
+  padding: 28px 32px 24px;
+  text-align: center;
+}
+
+.login-header .logo {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 4px;
+  color: var(--accent);
+  text-transform: uppercase;
+  margin-bottom: 8px;
+}
+
+.login-header h1 {
+  color: white;
+  font-size: 20px;
+  font-weight: 500;
+}
+
+.login-body { padding: 28px 32px; }
+
+.login-body .field { margin-bottom: 16px; }
+
+.login-body label {
+  display: block;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: var(--text2);
+  margin-bottom: 6px;
+}
+
+.login-body input {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  font-family: 'IBM Plex Sans', sans-serif;
+  font-size: 14px;
+  outline: none;
+  transition: border-color .2s;
+}
+
+.login-body input:focus { border-color: var(--navy); }
+
+.btn-login {
+  width: 100%;
+  padding: 11px;
+  background: var(--navy);
+  color: white;
+  border: none;
+  border-radius: var(--radius);
+  font-family: 'IBM Plex Sans', sans-serif;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  margin-top: 8px;
+  transition: background .2s;
+}
+
+.btn-login:hover { background: var(--navy-light); }
+
+.login-error {
+  background: #fdecea;
+  border: 1px solid #f5c6c2;
+  color: var(--error);
+  padding: 10px 12px;
+  border-radius: var(--radius);
+  font-size: 13px;
+  margin-top: 12px;
+  display: none;
+}
+
+/* ── APP ── */
+#app-screen { display: none; min-height: 100vh; }
+
+.topbar {
+  background: var(--navy);
+  height: 52px;
+  display: flex;
+  align-items: center;
+  padding: 0 24px;
+  gap: 16px;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+
+.topbar-brand {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 3px;
+  color: var(--accent);
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.topbar-nav {
+  display: flex;
+  gap: 4px;
+  flex: 1;
+}
+
+.nav-btn {
+  padding: 6px 14px;
+  border: none;
+  background: transparent;
+  color: rgba(255,255,255,0.65);
+  font-family: 'IBM Plex Sans', sans-serif;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  border-radius: 4px;
+  transition: all .15s;
+}
+
+.nav-btn:hover { background: rgba(255,255,255,0.08); color: white; }
+.nav-btn.active { background: rgba(255,255,255,0.12); color: white; }
+
+.topbar-user {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-left: auto;
+}
+
+.user-name {
+  font-size: 13px;
+  color: rgba(255,255,255,0.8);
+}
+
+.btn-sair {
+  padding: 5px 12px;
+  border: 1px solid rgba(255,255,255,0.25);
+  background: transparent;
+  color: rgba(255,255,255,0.7);
+  font-family: 'IBM Plex Sans', sans-serif;
+  font-size: 12px;
+  cursor: pointer;
+  border-radius: 4px;
+  transition: all .15s;
+}
+.btn-sair:hover { border-color: rgba(255,255,255,0.6); color: white; }
+
+.main { padding: 24px; max-width: 1200px; margin: 0 auto; }
+
+/* ── PANELS ── */
+.panel { display: none; }
+.panel.active { display: block; }
+
+.page-title {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--navy);
+  margin-bottom: 20px;
+  padding-bottom: 12px;
+  border-bottom: 2px solid var(--accent);
+  display: inline-block;
+}
+
+/* ── CARDS ── */
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 20px;
+  margin-bottom: 20px;
+  box-shadow: var(--shadow);
+}
+
+.card-title {
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: var(--text3);
+  margin-bottom: 16px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.card-title::before {
+  content: '';
+  width: 3px;
+  height: 14px;
+  background: var(--accent);
+  border-radius: 2px;
+}
+
+/* ── TABS dentro do painel ── */
+.subtabs {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 20px;
+  background: var(--surface2);
+  padding: 4px;
+  border-radius: var(--radius);
+  width: fit-content;
+  border: 1px solid var(--border);
+}
+
+.subtab {
+  padding: 7px 18px;
+  border: none;
+  background: transparent;
+  font-family: 'IBM Plex Sans', sans-serif;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text2);
+  cursor: pointer;
+  border-radius: 4px;
+  transition: all .15s;
+}
+
+.subtab.active {
+  background: var(--navy);
+  color: white;
+}
+
+.subpanel { display: none; }
+.subpanel.active { display: block; }
+
+/* ── FORM ELEMENTS ── */
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 14px;
+}
+
+.form-grid.cols-2 { grid-template-columns: 1fr 1fr; }
+.form-grid.cols-3 { grid-template-columns: 1fr 1fr 1fr; }
+.form-grid.full { grid-template-columns: 1fr; }
+
+.field label {
+  display: block;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+  color: var(--text2);
+  margin-bottom: 5px;
+}
+
+.field input, .field select, .field textarea {
+  width: 100%;
+  padding: 9px 11px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  font-family: 'IBM Plex Sans', sans-serif;
+  font-size: 13px;
+  color: var(--text);
+  background: var(--surface);
+  outline: none;
+  transition: border-color .2s, box-shadow .2s;
+}
+
+.field input:focus, .field select:focus, .field textarea:focus {
+  border-color: var(--navy);
+  box-shadow: 0 0 0 3px rgba(26,60,94,0.08);
+}
+
+.field input[readonly] {
+  background: var(--surface2);
+  color: var(--text2);
+}
+
+.field textarea { resize: vertical; min-height: 72px; }
+
+.input-lookup {
+  display: flex;
+  gap: 8px;
+}
+
+.input-lookup input { flex: 1; }
+
+/* ── BUTTONS ── */
+.btn {
+  padding: 9px 20px;
+  border: none;
+  border-radius: var(--radius);
+  font-family: 'IBM Plex Sans', sans-serif;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all .15s;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.btn-primary { background: var(--navy); color: white; }
+.btn-primary:hover { background: var(--navy-light); }
+.btn-accent { background: var(--accent); color: white; }
+.btn-accent:hover { background: var(--accent-light); color: var(--text); }
+.btn-success { background: var(--success); color: white; }
+.btn-outline {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--text2);
+}
+.btn-outline:hover { border-color: var(--navy); color: var(--navy); }
+.btn-danger { background: var(--error); color: white; }
+.btn-sm { padding: 6px 12px; font-size: 12px; }
+.btn-icon {
+  padding: 7px;
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--text2);
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  line-height: 1;
+  transition: all .15s;
+}
+.btn-icon:hover { border-color: var(--navy); color: var(--navy); }
+
+.form-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border);
+}
+
+/* ── TABLE ── */
+.table-wrap { overflow-x: auto; }
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+table th {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  padding: 9px 12px;
+  text-align: left;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+  color: var(--text2);
+  white-space: nowrap;
+}
+
+table td {
+  border: 1px solid var(--border);
+  padding: 9px 12px;
+  color: var(--text);
+  vertical-align: middle;
+}
+
+table tr:hover td { background: #f5f7fb; }
+
+.badge {
+  display: inline-block;
+  padding: 2px 9px;
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.badge-green { background: #d4f0e0; color: #1a7a42; }
+.badge-blue  { background: #d6e8f8; color: #1a4c8a; }
+.badge-orange{ background: #fdedc8; color: #8a4e10; }
+
+/* ── PEDIDO ITENS ── */
+.itens-table { margin-top: 12px; }
+
+.itens-table table th:last-child,
+.itens-table table td:last-child { text-align: center; width: 44px; }
+
+.totals-row {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 12px;
+  padding: 12px 16px;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+.total-label {
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: var(--text2);
+  margin-right: 16px;
+  display: flex;
+  align-items: center;
+}
+
+.total-value {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--navy);
+}
+
+/* ── LOOKUP DISPLAY ── */
+.lookup-result {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 10px 14px;
+  margin-top: 8px;
+  font-size: 13px;
+  display: none;
+}
+
+.lookup-result.visible { display: block; }
+.lookup-result strong { color: var(--navy); }
+
+/* ── TOAST ── */
+#toast {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  padding: 12px 20px;
+  border-radius: var(--radius);
+  font-size: 13px;
+  font-weight: 500;
+  z-index: 9999;
+  transform: translateY(80px);
+  opacity: 0;
+  transition: all .3s ease;
+  max-width: 360px;
+  box-shadow: var(--shadow-lg);
+}
+
+#toast.show { transform: translateY(0); opacity: 1; }
+#toast.success { background: var(--success); color: white; }
+#toast.error   { background: var(--error); color: white; }
+#toast.info    { background: var(--navy); color: white; }
+
+/* ── MODAL ── */
+.modal-backdrop {
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,0.45);
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  display: none;
+}
+
+.modal-backdrop.open { display: flex; }
+
+.modal {
+  background: var(--surface);
+  border-radius: 8px;
+  padding: 28px 32px;
+  max-width: 500px;
+  width: 90%;
+  box-shadow: var(--shadow-lg);
+}
+
+.modal h3 {
+  font-size: 16px;
+  font-weight: 600;
+  margin-bottom: 12px;
+  color: var(--navy);
+}
+
+.modal p { color: var(--text2); font-size: 14px; margin-bottom: 20px; line-height: 1.5; }
+
+.modal-actions { display: flex; gap: 10px; justify-content: flex-end; }
+
+/* ── LOADING ── */
+.loading {
+  display: inline-block;
+  width: 14px; height: 14px;
+  border: 2px solid rgba(255,255,255,0.4);
+  border-top-color: white;
+  border-radius: 50%;
+  animation: spin .7s linear infinite;
+  vertical-align: middle;
+}
+
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.empty-state {
+  text-align: center;
+  padding: 40px 20px;
+  color: var(--text3);
+  font-size: 14px;
+}
+
+.empty-state .icon { font-size: 32px; margin-bottom: 10px; }
+
+/* ── HISTORICO DETAIL ── */
+.hist-meta {
+  display: grid;
+  grid-template-columns: repeat(3,1fr);
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.hist-meta-item label {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: var(--text3);
+  display: block;
+  margin-bottom: 3px;
+}
+
+.hist-meta-item span {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text);
+}
+
+@media (max-width: 700px) {
+  .form-grid.cols-2,
+  .form-grid.cols-3 { grid-template-columns: 1fr; }
+  .hist-meta { grid-template-columns: 1fr 1fr; }
+  .topbar-brand { display: none; }
+  .nav-btn { padding: 6px 10px; font-size: 12px; }
+}
+</style>
+</head>
+<body>
+
+<!-- ════════════════════════════════════════════
+     LOGIN
+════════════════════════════════════════════ -->
+<div id="login-screen">
+  <div class="login-card">
+    <div class="login-header">
+      <div class="logo">Sistema</div>
+      <h1>Compras</h1>
+    </div>
+    <div class="login-body">
+      <div class="field">
+        <label>Usuário</label>
+        <input type="text" id="inp-user" placeholder="seu.usuario" autocomplete="username">
+      </div>
+      <div class="field">
+        <label>Senha</label>
+        <input type="password" id="inp-pass" placeholder="••••••••" autocomplete="current-password">
+      </div>
+      <button class="btn-login" id="btn-login" onclick="fazerLogin()">Entrar</button>
+      <div class="login-error" id="login-error">Usuário ou senha incorretos.</div>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════════
+     APP
+════════════════════════════════════════════ -->
+<div id="app-screen">
+  <div class="topbar">
+    <div class="topbar-brand">Compras</div>
+    <div class="topbar-nav">
+      <button class="nav-btn active" onclick="navegarPara('pedido')">Novo Pedido</button>
+      <button class="nav-btn" onclick="navegarPara('historico')">Histórico</button>
+      <button class="nav-btn" onclick="navegarPara('cadastros')">Cadastros</button>
+    </div>
+    <div class="topbar-user">
+      <span class="user-name" id="user-display"></span>
+      <button class="btn-sair" onclick="sair()">Sair</button>
+    </div>
+  </div>
+
+  <div class="main">
+
+    <!-- ── PEDIDO ── -->
+    <div class="panel active" id="panel-pedido">
+      <div class="page-title">Novo Pedido de Compra</div>
+
+      <div class="card">
+        <div class="card-title">Dados do Pedido</div>
+        <div class="form-grid">
+          <div class="field">
+            <label>Filial *</label>
+            <div class="input-lookup">
+              <input type="text" id="ped-filial-cod" placeholder="Código" style="width:110px;flex:none"
+                onkeydown="if(event.key==='Enter')buscarLookup('filial','ped')">
+              <input type="text" id="ped-filial-nome" placeholder="Nome da filial" readonly>
+            </div>
+          </div>
+          <div class="field">
+            <label>Fornecedor *</label>
+            <div class="input-lookup">
+              <input type="text" id="ped-forn-cod" placeholder="Código" style="width:110px;flex:none"
+                onkeydown="if(event.key==='Enter')buscarLookup('fornecedor','ped')">
+              <input type="text" id="ped-forn-nome" placeholder="Nome do fornecedor" readonly>
+            </div>
+          </div>
+          <div class="field">
+            <label>Transportadora</label>
+            <div class="input-lookup">
+              <input type="text" id="ped-transp-cod" placeholder="Código" style="width:110px;flex:none"
+                onkeydown="if(event.key==='Enter')buscarLookup('transportadora','ped')">
+              <input type="text" id="ped-transp-nome" placeholder="Nome" readonly>
+            </div>
+          </div>
+          <div class="field">
+            <label>Prazo de Entrega</label>
+            <input type="date" id="ped-prazo">
+          </div>
+        </div>
+        <div class="form-grid full" style="margin-top:14px">
+          <div class="field">
+            <label>Observações</label>
+            <textarea id="ped-obs" placeholder="Informações adicionais ao fornecedor..."></textarea>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Itens do Pedido</div>
+        <div class="form-grid" style="grid-template-columns:140px 1fr 100px 90px 130px auto;align-items:end;gap:10px">
+          <div class="field">
+            <label>Cód. Matéria-Prima</label>
+            <input type="text" id="item-cod" placeholder="Código"
+              onkeydown="if(event.key==='Enter')buscarMP()">
+          </div>
+          <div class="field">
+            <label>Descrição</label>
+            <input type="text" id="item-desc" readonly placeholder="—">
+          </div>
+          <div class="field">
+            <label>Unidade</label>
+            <input type="text" id="item-unidade" readonly placeholder="—">
+          </div>
+          <div class="field">
+            <label>Quantidade</label>
+            <input type="number" id="item-qtd" placeholder="0" min="0.01" step="0.01" oninput="calcSubtotal()">
+          </div>
+          <div class="field">
+            <label>Preço Unitário (R$)</label>
+            <input type="number" id="item-preco" placeholder="0,00" min="0" step="0.01" oninput="calcSubtotal()">
+          </div>
+          <div>
+            <button class="btn btn-accent" onclick="adicionarItem()">+ Adicionar</button>
+          </div>
+        </div>
+
+        <div class="itens-table">
+          <table id="itens-table">
+            <thead>
+              <tr>
+                <th>Código</th>
+                <th>Descrição</th>
+                <th>Qtd</th>
+                <th>Unid.</th>
+                <th>Preço Unit.</th>
+                <th>Subtotal</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="itens-tbody">
+              <tr id="itens-empty-row">
+                <td colspan="7">
+                  <div class="empty-state">
+                    <div class="icon">📦</div>
+                    Nenhum item adicionado
+                  </div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="totals-row">
+          <span class="total-label">Total do Pedido</span>
+          <span class="total-value" id="ped-total">R$ 0,00</span>
+        </div>
+      </div>
+
+      <div class="form-actions">
+        <button class="btn btn-primary" onclick="confirmarPedido()">📧 Enviar Pedido</button>
+        <button class="btn btn-outline" onclick="limparPedido()">Limpar</button>
+      </div>
+    </div>
+
+    <!-- ── HISTÓRICO ── -->
+    <div class="panel" id="panel-historico">
+      <div class="page-title">Histórico de Pedidos</div>
+
+      <div class="card">
+        <div class="card-title">Filtrar</div>
+        <div class="form-grid">
+          <div class="field">
+            <label>Por Filial (código)</label>
+            <div class="input-lookup">
+              <input type="text" id="hist-filial-cod" placeholder="Código da filial">
+              <button class="btn btn-outline btn-sm" onclick="buscarHistorico('filial')">Buscar</button>
+            </div>
+          </div>
+          <div class="field">
+            <label>Por Fornecedor (código)</label>
+            <div class="input-lookup">
+              <input type="text" id="hist-forn-cod" placeholder="Código do fornecedor">
+              <button class="btn btn-outline btn-sm" onclick="buscarHistorico('fornecedor')">Buscar</button>
+            </div>
+          </div>
+          <div class="field" style="display:flex;align-items:flex-end">
+            <button class="btn btn-primary btn-sm" onclick="carregarTodosPedidos()">Ver Todos</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Pedidos</div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Data</th>
+                <th>Filial</th>
+                <th>Fornecedor</th>
+                <th>Transportadora</th>
+                <th>Total</th>
+                <th>Status</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="hist-tbody">
+              <tr><td colspan="8"><div class="empty-state"><div class="icon">🔍</div>Use os filtros acima</div></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Detalhe do pedido -->
+      <div class="card" id="hist-detalhe" style="display:none">
+        <div class="card-title">Detalhe do Pedido</div>
+        <div class="hist-meta" id="hist-meta-grid"></div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr><th>Código</th><th>Descrição</th><th>Qtd</th><th>Unid.</th><th>Preço Unit.</th><th>Subtotal</th></tr>
+            </thead>
+            <tbody id="hist-itens-tbody"></tbody>
+          </table>
+        </div>
+        <div class="totals-row" style="margin-top:12px">
+          <span class="total-label">Total</span>
+          <span class="total-value" id="hist-total-val"></span>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── CADASTROS ── -->
+    <div class="panel" id="panel-cadastros">
+      <div class="page-title">Cadastros</div>
+
+      <div class="subtabs">
+        <button class="subtab active" onclick="trocarSubtab('fornecedores',this)">Fornecedores</button>
+        <button class="subtab" onclick="trocarSubtab('materias',this)">Matérias-Primas</button>
+        <button class="subtab" onclick="trocarSubtab('transportadoras',this)">Transportadoras</button>
+        <button class="subtab" onclick="trocarSubtab('filiais',this)">Filiais</button>
+        <button class="subtab" onclick="trocarSubtab('usuarios',this)">Usuários</button>
+      </div>
+
+      <!-- FORNECEDORES -->
+      <div class="subpanel active" id="sub-fornecedores">
+        <div class="card">
+          <div class="card-title">Formulário</div>
+          <div class="form-grid">
+            <div class="field">
+              <label>Código *</label>
+              <input type="text" id="f-forn-cod" placeholder="Ex: FORN001">
+            </div>
+            <div class="field">
+              <label>Nome *</label>
+              <input type="text" id="f-forn-nome">
+            </div>
+            <div class="field">
+              <label>Email *</label>
+              <input type="email" id="f-forn-email">
+            </div>
+            <div class="field">
+              <label>Contato</label>
+              <input type="text" id="f-forn-contato" placeholder="Telefone ou pessoa">
+            </div>
+            <div class="field">
+              <label>Endereço</label>
+              <input type="text" id="f-forn-end">
+            </div>
+            <div class="field">
+              <label>Cidade</label>
+              <input type="text" id="f-forn-cidade">
+            </div>
+            <div class="field">
+              <label>Estado</label>
+              <input type="text" id="f-forn-estado" placeholder="UF" maxlength="2" style="text-transform:uppercase">
+            </div>
+          </div>
+          <div class="form-actions">
+            <button class="btn btn-primary" onclick="salvarCad('fornecedor')">Salvar</button>
+            <button class="btn btn-outline" onclick="limparForm('forn')">Limpar</button>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-title">Registros</div>
+          <div class="table-wrap" id="tbl-fornecedores">
+            <div class="empty-state"><div class="icon">⏳</div>Carregando...</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- MATÉRIAS-PRIMAS -->
+      <div class="subpanel" id="sub-materias">
+        <div class="card">
+          <div class="card-title">Formulário</div>
+          <div class="form-grid">
+            <div class="field"><label>Código *</label><input type="text" id="f-mat-cod" placeholder="Ex: MP001"></div>
+            <div class="field"><label>Descrição *</label><input type="text" id="f-mat-desc"></div>
+            <div class="field"><label>Unidade *</label><input type="text" id="f-mat-unidade" placeholder="KG, M, PC..."></div>
+            <div class="field"><label>Categoria</label><input type="text" id="f-mat-cat"></div>
+          </div>
+          <div class="form-actions">
+            <button class="btn btn-primary" onclick="salvarCad('materia')">Salvar</button>
+            <button class="btn btn-outline" onclick="limparForm('mat')">Limpar</button>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-title">Registros</div>
+          <div class="table-wrap" id="tbl-materias">
+            <div class="empty-state"><div class="icon">⏳</div>Carregando...</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- TRANSPORTADORAS -->
+      <div class="subpanel" id="sub-transportadoras">
+        <div class="card">
+          <div class="card-title">Formulário</div>
+          <div class="form-grid">
+            <div class="field"><label>Código *</label><input type="text" id="f-tra-cod" placeholder="Ex: TRP001"></div>
+            <div class="field"><label>Nome *</label><input type="text" id="f-tra-nome"></div>
+            <div class="field"><label>Contato</label><input type="text" id="f-tra-contato"></div>
+            <div class="field"><label>Prazo Médio (dias)</label><input type="number" id="f-tra-prazo" min="1"></div>
+            <div class="field"><label>Observação</label><input type="text" id="f-tra-obs"></div>
+          </div>
+          <div class="form-actions">
+            <button class="btn btn-primary" onclick="salvarCad('transportadora')">Salvar</button>
+            <button class="btn btn-outline" onclick="limparForm('tra')">Limpar</button>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-title">Registros</div>
+          <div class="table-wrap" id="tbl-transportadoras">
+            <div class="empty-state"><div class="icon">⏳</div>Carregando...</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- FILIAIS -->
+      <div class="subpanel" id="sub-filiais">
+        <div class="card">
+          <div class="card-title">Formulário</div>
+          <div class="form-grid">
+            <div class="field"><label>Código *</label><input type="text" id="f-fil-cod" placeholder="Ex: FIL001"></div>
+            <div class="field"><label>Nome *</label><input type="text" id="f-fil-nome"></div>
+            <div class="field"><label>Endereço</label><input type="text" id="f-fil-end"></div>
+            <div class="field"><label>Cidade</label><input type="text" id="f-fil-cidade"></div>
+            <div class="field"><label>Estado</label><input type="text" id="f-fil-estado" maxlength="2" style="text-transform:uppercase"></div>
+            <div class="field"><label>Email Responsável</label><input type="email" id="f-fil-email"></div>
+          </div>
+          <div class="form-actions">
+            <button class="btn btn-primary" onclick="salvarCad('filial')">Salvar</button>
+            <button class="btn btn-outline" onclick="limparForm('fil')">Limpar</button>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-title">Registros</div>
+          <div class="table-wrap" id="tbl-filiais">
+            <div class="empty-state"><div class="icon">⏳</div>Carregando...</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- USUÁRIOS -->
+      <div class="subpanel" id="sub-usuarios">
+        <div class="card">
+          <div class="card-title">Formulário</div>
+          <div class="form-grid">
+            <div class="field"><label>Código *</label><input type="text" id="f-usr-cod" placeholder="Ex: USR001"></div>
+            <div class="field"><label>Nome *</label><input type="text" id="f-usr-nome"></div>
+            <div class="field"><label>Usuário *</label><input type="text" id="f-usr-user"></div>
+            <div class="field"><label>Senha *</label><input type="password" id="f-usr-senha"></div>
+            <div class="field"><label>Email</label><input type="email" id="f-usr-email"></div>
+            <div class="field"><label>Perfil</label><input type="text" id="f-usr-perfil" value="USUARIO"></div>
+          </div>
+          <div class="form-actions">
+            <button class="btn btn-primary" onclick="salvarCad('usuario')">Salvar</button>
+            <button class="btn btn-outline" onclick="limparForm('usr')">Limpar</button>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-title">Registros</div>
+          <div class="table-wrap" id="tbl-usuarios">
+            <div class="empty-state"><div class="icon">⏳</div>Carregando...</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /main -->
+</div><!-- /app-screen -->
+
+<!-- ── MODAL CONFIRMAÇÃO PEDIDO ── -->
+<div class="modal-backdrop" id="modal-confirm">
+  <div class="modal">
+    <h3>Confirmar Envio do Pedido</h3>
+    <p id="modal-confirm-text"></p>
+    <div class="modal-actions">
+      <button class="btn btn-outline" onclick="fecharModal()">Cancelar</button>
+      <button class="btn btn-success" id="btn-confirmar-envio" onclick="enviarPedido()">✔ Confirmar e Enviar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── TOAST ── -->
+<div id="toast"></div>
+
+<script>
+// ════════════════════════════════════════════════════════════
+// STATE
+// ════════════════════════════════════════════════════════════
+let sessao = null;
+let itensPedido = [];
+let totalPedido = 0;
+
+// ════════════════════════════════════════════════════════════
+// AUTH
+// ════════════════════════════════════════════════════════════
+function fazerLogin() {
+  const user = document.getElementById('inp-user').value.trim();
+  const pass = document.getElementById('inp-pass').value.trim();
+  if (!user || !pass) { mostrarLoginErro('Preencha usuário e senha.'); return; }
+
+  const btn = document.getElementById('btn-login');
+  btn.innerHTML = '<span class="loading"></span> Entrando...';
+  btn.disabled = true;
+
+  google.script.run
+    .withSuccessHandler(res => {
+      btn.innerHTML = 'Entrar'; btn.disabled = false;
+      if (!res) { mostrarLoginErro('Usuário ou senha incorretos.'); return; }
+      sessao = res;
+      document.getElementById('login-screen').style.display = 'none';
+      document.getElementById('app-screen').style.display = 'block';
+      document.getElementById('user-display').textContent = sessao.nome;
+      sessionStorage.setItem('sessao', JSON.stringify(sessao));
+      carregarTabelaCadastro('fornecedor');
+      carregarTabelaCadastro('materia');
+      carregarTabelaCadastro('transportadora');
+      carregarTabelaCadastro('filial');
+      carregarTabelaCadastro('usuario');
+    })
+    .withFailureHandler(err => {
+      btn.innerHTML = 'Entrar'; btn.disabled = false;
+      mostrarLoginErro('Erro ao conectar. Tente novamente.');
+    })
+    .validarLogin(user, pass);
+}
+
+document.getElementById('inp-pass').addEventListener('keydown', e => {
+  if (e.key === 'Enter') fazerLogin();
+});
+
+function mostrarLoginErro(msg) {
+  const el = document.getElementById('login-error');
+  el.textContent = msg;
+  el.style.display = 'block';
+}
+
+function sair() {
+  sessao = null;
+  sessionStorage.removeItem('sessao');
+  document.getElementById('app-screen').style.display = 'none';
+  document.getElementById('login-screen').style.display = 'flex';
+  document.getElementById('inp-user').value = '';
+  document.getElementById('inp-pass').value = '';
+  document.getElementById('login-error').style.display = 'none';
+}
+
+// Restaura sessão se houver
+(function() {
+  const s = sessionStorage.getItem('sessao');
+  if (s) {
+    sessao = JSON.parse(s);
+    document.getElementById('login-screen').style.display = 'none';
+    document.getElementById('app-screen').style.display = 'block';
+    document.getElementById('user-display').textContent = sessao.nome;
+    carregarTabelaCadastro('fornecedor');
+    carregarTabelaCadastro('materia');
+    carregarTabelaCadastro('transportadora');
+    carregarTabelaCadastro('filial');
+    carregarTabelaCadastro('usuario');
+  }
+})();
+
+// ════════════════════════════════════════════════════════════
+// NAVEGAÇÃO
+// ════════════════════════════════════════════════════════════
+function navegarPara(panel) {
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('panel-' + panel).classList.add('active');
+  event.target.classList.add('active');
+}
+
+function trocarSubtab(nome, btn) {
+  document.querySelectorAll('.subpanel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.subtab').forEach(b => b.classList.remove('active'));
+  document.getElementById('sub-' + nome).classList.add('active');
+  btn.classList.add('active');
+}
+
+// ════════════════════════════════════════════════════════════
+// LOOKUP
+// ════════════════════════════════════════════════════════════
+function buscarLookup(tipo, prefixo) {
+  const codMap = { filial:'filial-cod', fornecedor:'forn-cod', transportadora:'transp-cod' };
+  const nomeMap = { filial:'filial-nome', fornecedor:'forn-nome', transportadora:'transp-nome' };
+  const cod = document.getElementById(prefixo + '-' + codMap[tipo]).value.trim();
+  if (!cod) return;
+
+  google.script.run
+    .withSuccessHandler(res => {
+      if (!res) { toast('Código não encontrado', 'error'); return; }
+      document.getElementById(prefixo + '-' + nomeMap[tipo]).value = res.NOME || '';
+      if (tipo === 'fornecedor') document.getElementById(prefixo + '-forn-email-hidden') && 
+        (document.getElementById(prefixo + '-forn-email-hidden').value = res.EMAIL);
+    })
+    .withFailureHandler(() => toast('Erro ao buscar', 'error'))
+    .buscarCodigo(tipo, cod);
+}
+
+function buscarMP() {
+  const cod = document.getElementById('item-cod').value.trim();
+  if (!cod) return;
+  google.script.run
+    .withSuccessHandler(res => {
+      if (!res) { toast('Matéria-prima não encontrada', 'error'); return; }
+      document.getElementById('item-desc').value = res.DESCRICAO || '';
+      document.getElementById('item-unidade').value = res.UNIDADE || '';
+    })
+    .withFailureHandler(() => toast('Erro ao buscar', 'error'))
+    .buscarCodigo('materia', cod);
+}
+
+// ════════════════════════════════════════════════════════════
+// PEDIDO — ITENS
+// ════════════════════════════════════════════════════════════
+function calcSubtotal() {
+  const qtd = parseFloat(document.getElementById('item-qtd').value) || 0;
+  const preco = parseFloat(document.getElementById('item-preco').value) || 0;
+  // subtotal display only, calculado ao adicionar
+}
+
+function adicionarItem() {
+  const cod   = document.getElementById('item-cod').value.trim();
+  const desc  = document.getElementById('item-desc').value.trim();
+  const unid  = document.getElementById('item-unidade').value.trim();
+  const qtd   = parseFloat(document.getElementById('item-qtd').value);
+  const preco = parseFloat(document.getElementById('item-preco').value);
+
+  if (!cod || !desc) { toast('Busque uma matéria-prima antes de adicionar', 'error'); return; }
+  if (!qtd || qtd <= 0) { toast('Informe uma quantidade válida', 'error'); return; }
+  if (isNaN(preco) || preco < 0) { toast('Informe um preço válido', 'error'); return; }
+
+  const subtotal = qtd * preco;
+  itensPedido.push({ cod, descricao: desc, quantidade: qtd, unidade: unid, preco, subtotal });
+  renderItens();
+  limparCamposItem();
+  document.getElementById('item-cod').focus();
+}
+
+function removerItem(idx) {
+  itensPedido.splice(idx, 1);
+  renderItens();
+}
+
+function renderItens() {
+  const tbody = document.getElementById('itens-tbody');
+  document.getElementById('itens-empty-row') && (document.getElementById('itens-empty-row').remove());
+
+  if (itensPedido.length === 0) {
+    tbody.innerHTML = `<tr id="itens-empty-row"><td colspan="7"><div class="empty-state"><div class="icon">📦</div>Nenhum item adicionado</div></td></tr>`;
+    totalPedido = 0;
+    document.getElementById('ped-total').textContent = 'R$ 0,00';
+    return;
+  }
+
+  totalPedido = itensPedido.reduce((s, i) => s + i.subtotal, 0);
+  tbody.innerHTML = itensPedido.map((item, idx) => `
+    <tr>
+      <td><code>${item.cod}</code></td>
+      <td>${item.descricao}</td>
+      <td>${item.quantidade.toLocaleString('pt-BR')}</td>
+      <td>${item.unidade}</td>
+      <td>R$ ${item.preco.toFixed(2)}</td>
+      <td><strong>R$ ${item.subtotal.toFixed(2)}</strong></td>
+      <td><button class="btn-icon" onclick="removerItem(${idx})" title="Remover">✕</button></td>
+    </tr>
+  `).join('');
+  document.getElementById('ped-total').textContent = 'R$ ' + totalPedido.toLocaleString('pt-BR', {minimumFractionDigits:2, maximumFractionDigits:2});
+}
+
+function limparCamposItem() {
+  ['item-cod','item-desc','item-unidade','item-qtd','item-preco'].forEach(id => {
+    document.getElementById(id).value = '';
+  });
+}
+
+function limparPedido() {
+  itensPedido = [];
+  totalPedido = 0;
+  ['ped-filial-cod','ped-filial-nome','ped-forn-cod','ped-forn-nome','ped-transp-cod','ped-transp-nome','ped-prazo','ped-obs'].forEach(id => {
+    document.getElementById(id).value = '';
+  });
+  renderItens();
+}
+
+// ════════════════════════════════════════════════════════════
+// PEDIDO — ENVIO
+// ════════════════════════════════════════════════════════════
+function confirmarPedido() {
+  const filialCod  = document.getElementById('ped-filial-cod').value.trim();
+  const filialNome = document.getElementById('ped-filial-nome').value.trim();
+  const fornCod    = document.getElementById('ped-forn-cod').value.trim();
+  const fornNome   = document.getElementById('ped-forn-nome').value.trim();
+
+  if (!filialCod || !filialNome) { toast('Informe a filial de destino', 'error'); return; }
+  if (!fornCod || !fornNome) { toast('Informe o fornecedor', 'error'); return; }
+  if (itensPedido.length === 0) { toast('Adicione pelo menos um item', 'error'); return; }
+
+  document.getElementById('modal-confirm-text').innerHTML =
+    `Pedido para <strong>${fornNome}</strong>, filial <strong>${filialNome}</strong> com <strong>${itensPedido.length} item(s)</strong> totalizando <strong>R$ ${totalPedido.toFixed(2)}</strong>.<br><br>Um email será enviado ao fornecedor e uma cópia para <strong>${sessao.email}</strong>.`;
+
+  document.getElementById('modal-confirm').classList.add('open');
+}
+
+function fecharModal() {
+  document.getElementById('modal-confirm').classList.remove('open');
+}
+
+function enviarPedido() {
+  fecharModal();
+  const btn = document.getElementById('btn-confirmar-envio');
+  toast('Enviando pedido...', 'info');
+
+  const dados = {
+    filialCod:          document.getElementById('ped-filial-cod').value.trim(),
+    filialNome:         document.getElementById('ped-filial-nome').value.trim(),
+    fornecedorCod:      document.getElementById('ped-forn-cod').value.trim(),
+    fornecedorNome:     document.getElementById('ped-forn-nome').value.trim(),
+    transportadoraCod:  document.getElementById('ped-transp-cod').value.trim(),
+    transportadoraNome: document.getElementById('ped-transp-nome').value.trim(),
+    prazoEntrega:       document.getElementById('ped-prazo').value,
+    observacao:         document.getElementById('ped-obs').value.trim(),
+    usuarioLogado:      sessao.nome,
+    emailUsuario:       sessao.email,
+    valorTotal:         totalPedido,
+    itens:              itensPedido
+  };
+
+  google.script.run
+    .withSuccessHandler(res => {
+      if (res.ok) {
+        toast(`✓ ${res.msg} — ${res.id}`, 'success');
+        limparPedido();
+      } else {
+        toast('Erro: ' + res.msg, 'error');
+      }
+    })
+    .withFailureHandler(err => toast('Erro ao enviar: ' + err.message, 'error'))
+    .salvarPedido(dados);
+}
+
+// ════════════════════════════════════════════════════════════
+// HISTÓRICO
+// ════════════════════════════════════════════════════════════
+function buscarHistorico(tipo) {
+  const cod = document.getElementById('hist-' + (tipo==='filial'?'filial':'forn') + '-cod').value.trim();
+  if (!cod) { toast('Informe o código para filtrar', 'error'); return; }
+  document.getElementById('hist-detalhe').style.display = 'none';
+  const tbody = document.getElementById('hist-tbody');
+  tbody.innerHTML = '<tr><td colspan="8"><div class="empty-state"><div class="icon">⏳</div>Buscando...</div></td></tr>';
+
+  google.script.run
+    .withSuccessHandler(res => renderHistorico(res))
+    .withFailureHandler(() => toast('Erro ao buscar histórico','error'))
+    .getHistorico(tipo, cod);
+}
+
+function carregarTodosPedidos() {
+  document.getElementById('hist-detalhe').style.display = 'none';
+  const tbody = document.getElementById('hist-tbody');
+  tbody.innerHTML = '<tr><td colspan="8"><div class="empty-state"><div class="icon">⏳</div>Carregando...</div></td></tr>';
+  google.script.run
+    .withSuccessHandler(res => renderHistorico(res))
+    .withFailureHandler(() => toast('Erro','error'))
+    .getTodosPedidos();
+}
+
+function renderHistorico(pedidos) {
+  const tbody = document.getElementById('hist-tbody');
+  if (!pedidos || pedidos.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="8"><div class="empty-state"><div class="icon">🔍</div>Nenhum pedido encontrado</div></td></tr>';
+    return;
+  }
+  tbody.innerHTML = pedidos.map((p,i) => {
+    const data = p.DATA ? new Date(p.DATA).toLocaleDateString('pt-BR') : '—';
+    const total = p.VALOR_TOTAL ? 'R$ ' + parseFloat(p.VALOR_TOTAL).toFixed(2) : '—';
+    return `<tr style="cursor:pointer" onclick="verDetalhe(${i})" data-idx="${i}">
+      <td><code>${p.ID_PEDIDO||''}</code></td>
+      <td>${data}</td>
+      <td>${p.NOME_FILIAL||p.COD_FILIAL||''}</td>
+      <td>${p.NOME_FORNECEDOR||p.COD_FORNECEDOR||''}</td>
+      <td>${p.NOME_TRANSPORTADORA||'—'}</td>
+      <td><strong>${total}</strong></td>
+      <td><span class="badge badge-green">${p.STATUS||'—'}</span></td>
+      <td><button class="btn btn-outline btn-sm" onclick="event.stopPropagation();verDetalhe(${i})">Ver</button></td>
+    </tr>`;
+  }).join('');
+  // guarda referência aos pedidos
+  window._pedidosHistorico = pedidos;
+}
+
+function verDetalhe(idx) {
+  const p = window._pedidosHistorico[idx];
+  if (!p) return;
+  const card = document.getElementById('hist-detalhe');
+  card.style.display = 'block';
+  card.scrollIntoView({ behavior: 'smooth' });
+
+  const data = p.DATA ? new Date(p.DATA).toLocaleDateString('pt-BR') : '—';
+
+  document.getElementById('hist-meta-grid').innerHTML = `
+    <div class="hist-meta-item"><label>ID Pedido</label><span>${p.ID_PEDIDO||'—'}</span></div>
+    <div class="hist-meta-item"><label>Data</label><span>${data}</span></div>
+    <div class="hist-meta-item"><label>Status</label><span><span class="badge badge-green">${p.STATUS||'—'}</span></span></div>
+    <div class="hist-meta-item"><label>Filial</label><span>${p.NOME_FILIAL||''} (${p.COD_FILIAL||''})</span></div>
+    <div class="hist-meta-item"><label>Fornecedor</label><span>${p.NOME_FORNECEDOR||''}</span></div>
+    <div class="hist-meta-item"><label>Transportadora</label><span>${p.NOME_TRANSPORTADORA||'—'}</span></div>
+    <div class="hist-meta-item"><label>Prazo</label><span>${p.PRAZO_ENTREGA||'—'}</span></div>
+    <div class="hist-meta-item"><label>Solicitante</label><span>${p.USUARIO||'—'}</span></div>
+    <div class="hist-meta-item"><label>Observação</label><span>${p.OBSERVACAO||'—'}</span></div>
+  `;
+
+  const itens = p.itens || [];
+  document.getElementById('hist-itens-tbody').innerHTML = itens.length === 0
+    ? '<tr><td colspan="6"><div class="empty-state">Sem itens registrados</div></td></tr>'
+    : itens.map(i => `<tr>
+        <td><code>${i.COD_MP||''}</code></td>
+        <td>${i.DESCRICAO||''}</td>
+        <td>${i.QUANTIDADE||''}</td>
+        <td>${i.UNIDADE||''}</td>
+        <td>R$ ${parseFloat(i.PRECO_UNIT||0).toFixed(2)}</td>
+        <td><strong>R$ ${parseFloat(i.SUBTOTAL||0).toFixed(2)}</strong></td>
+      </tr>`).join('');
+
+  document.getElementById('hist-total-val').textContent =
+    'R$ ' + parseFloat(p.VALOR_TOTAL||0).toLocaleString('pt-BR',{minimumFractionDigits:2});
+}
+
+// ════════════════════════════════════════════════════════════
+// CADASTROS
+// ════════════════════════════════════════════════════════════
+function salvarCad(tipo) {
+  const mapas = {
+    fornecedor:     { campos: {COD:'f-forn-cod',NOME:'f-forn-nome',EMAIL:'f-forn-email',CONTATO:'f-forn-contato',ENDERECO:'f-forn-end',CIDADE:'f-forn-cidade',ESTADO:'f-forn-estado'}, prefixo:'forn', tabela:'fornecedor' },
+    materia:        { campos: {COD:'f-mat-cod',DESCRICAO:'f-mat-desc',UNIDADE:'f-mat-unidade',CATEGORIA:'f-mat-cat'}, prefixo:'mat', tabela:'materia' },
+    transportadora: { campos: {COD:'f-tra-cod',NOME:'f-tra-nome',CONTATO:'f-tra-contato',PRAZO:'f-tra-prazo',OBSERVACAO:'f-tra-obs'}, prefixo:'tra', tabela:'transportadora' },
+    filial:         { campos: {COD:'f-fil-cod',NOME:'f-fil-nome',ENDERECO:'f-fil-end',CIDADE:'f-fil-cidade',ESTADO:'f-fil-estado',EMAIL_RESPONSAVEL:'f-fil-email'}, prefixo:'fil', tabela:'filial' },
+    usuario:        { campos: {COD:'f-usr-cod',NOME:'f-usr-nome',USUARIO:'f-usr-user',SENHA:'f-usr-senha',EMAIL:'f-usr-email',PERFIL:'f-usr-perfil'}, prefixo:'usr', tabela:'usuario' }
+  };
+
+  const cfg = mapas[tipo];
+  const dados = {};
+  for (const [campo, id] of Object.entries(cfg.campos)) {
+    dados[campo] = document.getElementById(id).value.trim();
+  }
+
+  if (!dados.COD) { toast('Código é obrigatório', 'error'); return; }
+
+  google.script.run
+    .withSuccessHandler(res => {
+      toast(res.ok ? res.msg : 'Erro: ' + res.msg, res.ok ? 'success' : 'error');
+      if (res.ok) {
+        limparForm(cfg.prefixo);
+        carregarTabelaCadastro(cfg.tabela);
+      }
+    })
+    .withFailureHandler(err => toast('Erro: ' + err.message, 'error'))
+    .salvarCadastro(tipo, dados);
+}
+
+function limparForm(prefixo) {
+  const prefixoInputMap = {
+    forn: ['f-forn-cod','f-forn-nome','f-forn-email','f-forn-contato','f-forn-end','f-forn-cidade','f-forn-estado'],
+    mat:  ['f-mat-cod','f-mat-desc','f-mat-unidade','f-mat-cat'],
+    tra:  ['f-tra-cod','f-tra-nome','f-tra-contato','f-tra-prazo','f-tra-obs'],
+    fil:  ['f-fil-cod','f-fil-nome','f-fil-end','f-fil-cidade','f-fil-estado','f-fil-email'],
+    usr:  ['f-usr-cod','f-usr-nome','f-usr-user','f-usr-senha','f-usr-email','f-usr-perfil']
+  };
+  (prefixoInputMap[prefixo] || []).forEach(id => { document.getElementById(id).value = ''; });
+}
+
+function carregarTabelaCadastro(tipo) {
+  const tblMap = {
+    fornecedor:     { id:'tbl-fornecedores', cols:['COD','NOME','EMAIL','CONTATO','CIDADE','ESTADO'] },
+    materia:        { id:'tbl-materias',     cols:['COD','DESCRICAO','UNIDADE','CATEGORIA'] },
+    transportadora: { id:'tbl-transportadoras', cols:['COD','NOME','CONTATO','PRAZO'] },
+    filial:         { id:'tbl-filiais',      cols:['COD','NOME','CIDADE','ESTADO','EMAIL_RESPONSAVEL'] },
+    usuario:        { id:'tbl-usuarios',     cols:['COD','NOME','USUARIO','EMAIL','PERFIL'] }
+  };
+
+  const cfg = tblMap[tipo];
+  if (!cfg) return;
+
+  google.script.run
+    .withSuccessHandler(rows => {
+      const container = document.getElementById(cfg.id);
+      if (!rows || rows.length === 0) {
+        container.innerHTML = '<div class="empty-state"><div class="icon">📋</div>Nenhum registro</div>';
+        return;
+      }
+      const headers = cfg.cols.map(c => `<th>${c}</th>`).join('') + '<th></th>';
+      const body = rows.map(row => {
+        const cells = cfg.cols.map(c => `<td>${row[c]||''}</td>`).join('');
+        return `<tr>${cells}<td>
+          <button class="btn btn-outline btn-sm" onclick="editarCadastro('${tipo}','${row.COD}')">Editar</button>
+        </td></tr>`;
+      }).join('');
+      container.innerHTML = `<table><thead><tr>${headers}</tr></thead><tbody>${body}</tbody></table>`;
+    })
+    .withFailureHandler(() => {})
+    .listarTodos(tipo);
+}
+
+function editarCadastro(tipo, cod) {
+  const prefixoMap = {
+    fornecedor:'forn', materia:'mat', transportadora:'tra', filial:'fil', usuario:'usr'
+  };
+  const camposMap = {
+    fornecedor:     {COD:'f-forn-cod',NOME:'f-forn-nome',EMAIL:'f-forn-email',CONTATO:'f-forn-contato',ENDERECO:'f-forn-end',CIDADE:'f-forn-cidade',ESTADO:'f-forn-estado'},
+    materia:        {COD:'f-mat-cod',DESCRICAO:'f-mat-desc',UNIDADE:'f-mat-unidade',CATEGORIA:'f-mat-cat'},
+    transportadora: {COD:'f-tra-cod',NOME:'f-tra-nome',CONTATO:'f-tra-contato',PRAZO:'f-tra-prazo',OBSERVACAO:'f-tra-obs'},
+    filial:         {COD:'f-fil-cod',NOME:'f-fil-nome',ENDERECO:'f-fil-end',CIDADE:'f-fil-cidade',ESTADO:'f-fil-estado',EMAIL_RESPONSAVEL:'f-fil-email'},
+    usuario:        {COD:'f-usr-cod',NOME:'f-usr-nome',USUARIO:'f-usr-user',SENHA:'f-usr-senha',EMAIL:'f-usr-email',PERFIL:'f-usr-perfil'}
+  };
+
+  google.script.run
+    .withSuccessHandler(res => {
+      if (!res) { toast('Registro não encontrado', 'error'); return; }
+      const campos = camposMap[tipo];
+      for (const [campo, id] of Object.entries(campos)) {
+        const el = document.getElementById(id);
+        if (el) el.value = res[campo] || '';
+      }
+      // scroll para o form
+      document.getElementById('sub-' + (tipo==='materia'?'materias':tipo==='transportadora'?'transportadoras':tipo==='filial'?'filiais':tipo==='usuario'?'usuarios':'fornecedores')).scrollIntoView({ behavior:'smooth' });
+    })
+    .withFailureHandler(() => toast('Erro ao carregar','error'))
+    .buscarCodigo(tipo, cod);
+}
+
+// ════════════════════════════════════════════════════════════
+// TOAST
+// ════════════════════════════════════════════════════════════
+let toastTimer;
+function toast(msg, tipo = 'info') {
+  const el = document.getElementById('toast');
+  clearTimeout(toastTimer);
+  el.textContent = msg;
+  el.className = `show ${tipo}`;
+  toastTimer = setTimeout(() => { el.className = ''; }, 4000);
+}
+</script>
+</body>
+</html>
