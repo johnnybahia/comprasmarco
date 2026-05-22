@@ -4,14 +4,17 @@
 const SHEET_ID = '1jJkc5LWZnTK4am6oAg_gPHdDJ-NqwT4fYSbY3-r2S_E';
 
 const ABAS = {
-  USUARIOS:      'USUARIOS',
-  FORNECEDORES:  'FORNECEDORES',
-  MATERIAS:      'MATERIAS_PRIMAS',
-  TRANSPORTADORAS:'TRANSPORTADORAS',
-  FILIAIS:       'FILIAIS',
-  PEDIDOS:       'PEDIDOS',
-  ITENS_PEDIDO:  'ITENS_PEDIDO',
-  LOG:           'LOG_ERROS'
+  USUARIOS:         'USUARIOS',
+  FORNECEDORES:     'FORNECEDORES',
+  MATERIAS:         'MATERIAS_PRIMAS',
+  TRANSPORTADORAS:  'TRANSPORTADORAS',
+  FILIAIS:          'FILIAIS',
+  PEDIDOS:          'PEDIDOS',
+  ITENS_PEDIDO:     'ITENS_PEDIDO',
+  PRECO_FORNECEDOR: 'PRECO_FORNECEDOR',
+  RECEBIMENTOS:     'RECEBIMENTOS',
+  ITENS_RECEBIMENTO:'ITENS_RECEBIMENTO',
+  LOG:              'LOG_ERROS'
 };
 
 // ============================================================
@@ -32,6 +35,7 @@ function getSheet(nome) {
 
 function sheetToArray(nome) {
   const sh = getSheet(nome);
+  if (!sh) return [];
   const data = sh.getDataRange().getValues();
   if (data.length <= 1) return [];
   const headers = data[0];
@@ -54,7 +58,7 @@ function logErro(msg) {
 function validarLogin(usuario, senha) {
   try {
     const rows = sheetToArray(ABAS.USUARIOS);
-    const user = rows.find(r => 
+    const user = rows.find(r =>
       String(r.USUARIO).trim().toLowerCase() === String(usuario).trim().toLowerCase() &&
       String(r.SENHA).trim() === String(senha).trim()
     );
@@ -87,7 +91,7 @@ function buscarCodigo(tipo, codigo) {
 }
 
 // ============================================================
-// LISTAR TODOS (para dropdowns)
+// LISTAR TODOS (para dropdowns e autocomplete)
 // ============================================================
 function listarTodos(tipo) {
   try {
@@ -107,43 +111,56 @@ function listarTodos(tipo) {
 }
 
 // ============================================================
-// CADASTROS
+// CADASTROS — coluna-aware (adiciona colunas faltantes automaticamente)
 // ============================================================
 function salvarCadastro(tipo, dados) {
   const lock = LockService.getScriptLock();
   try {
     lock.waitLock(10000);
     const mapa = {
-      fornecedor:     { aba: ABAS.FORNECEDORES,    cols: ['COD','NOME','EMAIL','CONTATO','ENDERECO','CIDADE','ESTADO'] },
-      materia:        { aba: ABAS.MATERIAS,         cols: ['COD','DESCRICAO','UNIDADE','CATEGORIA'] },
-      transportadora: { aba: ABAS.TRANSPORTADORAS,  cols: ['COD','NOME','CONTATO','PRAZO','OBSERVACAO'] },
-      filial:         { aba: ABAS.FILIAIS,           cols: ['COD','NOME','ENDERECO','CIDADE','ESTADO','EMAIL_RESPONSAVEL'] },
-      usuario:        { aba: ABAS.USUARIOS,          cols: ['COD','NOME','USUARIO','SENHA','EMAIL','PERFIL'] }
+      fornecedor:     { aba: ABAS.FORNECEDORES,   cols: ['COD','NOME','EMAIL','CONTATO','CEP','BAIRRO','ENDERECO','CIDADE','ESTADO'] },
+      materia:        { aba: ABAS.MATERIAS,        cols: ['COD','DESCRICAO','UNIDADE','CATEGORIA'] },
+      transportadora: { aba: ABAS.TRANSPORTADORAS, cols: ['COD','NOME','CONTATO','PRAZO','OBSERVACAO'] },
+      filial:         { aba: ABAS.FILIAIS,         cols: ['COD','NOME','CEP','BAIRRO','ENDERECO','CIDADE','ESTADO','EMAIL_RESPONSAVEL'] },
+      usuario:        { aba: ABAS.USUARIOS,        cols: ['COD','NOME','USUARIO','SENHA','EMAIL','PERFIL'] }
     };
     if (!mapa[tipo]) return { ok: false, msg: 'Tipo inválido' };
 
     const cfg = mapa[tipo];
     const sh = getSheet(cfg.aba);
+    const allData = sh.getDataRange().getValues();
+    let headers = allData[0].map(String);
 
-    // Verifica duplicidade de COD
-    const existentes = sheetToArray(cfg.aba);
-    if (existentes.find(r => String(r.COD).trim() === String(dados.COD).trim())) {
-      // Atualiza linha existente
-      const allData = sh.getDataRange().getValues();
-      const headers = allData[0];
-      const codIdx = headers.indexOf('COD');
-      for (let i = 1; i < allData.length; i++) {
-        if (String(allData[i][codIdx]).trim() === String(dados.COD).trim()) {
-          const row = cfg.cols.map(c => dados[c] !== undefined ? dados[c] : '');
-          sh.getRange(i + 1, 1, 1, row.length).setValues([row]);
-          return { ok: true, msg: 'Atualizado com sucesso' };
-        }
+    // Adiciona colunas faltantes na planilha
+    const missingCols = cfg.cols.filter(c => !headers.includes(c));
+    if (missingCols.length > 0) {
+      missingCols.forEach((col, i) => {
+        const colIdx = headers.length + i + 1;
+        const cell = sh.getRange(1, colIdx);
+        cell.setValue(col);
+        cell.setBackground('#1a3c5e').setFontColor('#ffffff').setFontWeight('bold');
+      });
+      headers = headers.concat(missingCols);
+    }
+
+    const codIdx = headers.indexOf('COD');
+
+    // Verifica se já existe
+    for (let i = 1; i < allData.length; i++) {
+      if (String(allData[i][codIdx]).trim() === String(dados.COD).trim()) {
+        // Atualiza preservando colunas não mapeadas
+        const newRow = headers.map((h, idx) => {
+          if (dados[h] !== undefined) return dados[h];
+          return allData[i][idx] !== undefined ? allData[i][idx] : '';
+        });
+        sh.getRange(i + 1, 1, 1, newRow.length).setValues([newRow]);
+        return { ok: true, msg: 'Atualizado com sucesso' };
       }
     }
 
     // Novo registro
-    const row = cfg.cols.map(c => dados[c] !== undefined ? dados[c] : '');
-    sh.appendRow(row);
+    const newRow = headers.map(h => dados[h] !== undefined ? dados[h] : '');
+    sh.appendRow(newRow);
     return { ok: true, msg: 'Cadastrado com sucesso' };
   } catch(e) {
     logErro('salvarCadastro: ' + e.message);
@@ -185,6 +202,88 @@ function excluirCadastro(tipo, cod) {
 }
 
 // ============================================================
+// PREÇOS POR FORNECEDOR
+// ============================================================
+function salvarPrecoFornecedor(codForn, codMP, preco) {
+  const lock = LockService.getScriptLock();
+  try {
+    lock.waitLock(10000);
+    const sh = getSheet(ABAS.PRECO_FORNECEDOR);
+    const allData = sh.getDataRange().getValues();
+    for (let i = 1; i < allData.length; i++) {
+      if (String(allData[i][0]).trim() === String(codForn).trim() &&
+          String(allData[i][1]).trim() === String(codMP).trim()) {
+        sh.getRange(i + 1, 3).setValue(preco);
+        return { ok: true, msg: 'Preço atualizado' };
+      }
+    }
+    sh.appendRow([codForn, codMP, preco]);
+    return { ok: true, msg: 'Preço cadastrado' };
+  } catch(e) {
+    logErro('salvarPrecoFornecedor: ' + e.message);
+    return { ok: false, msg: e.message };
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+function excluirPrecoFornecedor(codForn, codMP) {
+  const lock = LockService.getScriptLock();
+  try {
+    lock.waitLock(10000);
+    const sh = getSheet(ABAS.PRECO_FORNECEDOR);
+    const allData = sh.getDataRange().getValues();
+    for (let i = 1; i < allData.length; i++) {
+      if (String(allData[i][0]).trim() === String(codForn).trim() &&
+          String(allData[i][1]).trim() === String(codMP).trim()) {
+        sh.deleteRow(i + 1);
+        return { ok: true };
+      }
+    }
+    return { ok: false, msg: 'Não encontrado' };
+  } catch(e) {
+    logErro('excluirPrecoFornecedor: ' + e.message);
+    return { ok: false, msg: e.message };
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+function buscarPrecoFornecedor(codForn, codMP) {
+  try {
+    const rows = sheetToArray(ABAS.PRECO_FORNECEDOR);
+    const found = rows.find(r =>
+      String(r.COD_FORNECEDOR).trim() === String(codForn).trim() &&
+      String(r.COD_MP).trim() === String(codMP).trim()
+    );
+    return found ? found.PRECO : null;
+  } catch(e) {
+    logErro('buscarPrecoFornecedor: ' + e.message);
+    return null;
+  }
+}
+
+function listarPrecosPorMateria(codMP) {
+  try {
+    const precos = sheetToArray(ABAS.PRECO_FORNECEDOR)
+      .filter(r => String(r.COD_MP).trim() === String(codMP).trim());
+    const fornecedores = sheetToArray(ABAS.FORNECEDORES);
+    return precos.map(p => {
+      const forn = fornecedores.find(f => String(f.COD).trim() === String(p.COD_FORNECEDOR).trim());
+      return {
+        COD_FORNECEDOR: p.COD_FORNECEDOR,
+        COD_MP: p.COD_MP,
+        PRECO: p.PRECO,
+        NOME_FORNECEDOR: forn ? forn.NOME : p.COD_FORNECEDOR
+      };
+    });
+  } catch(e) {
+    logErro('listarPrecosPorMateria: ' + e.message);
+    return [];
+  }
+}
+
+// ============================================================
 // PEDIDOS
 // ============================================================
 function salvarPedido(dados) {
@@ -195,64 +294,51 @@ function salvarPedido(dados) {
     const shPedidos = getSheet(ABAS.PEDIDOS);
     const shItens   = getSheet(ABAS.ITENS_PEDIDO);
 
-    // Gera ID do pedido
     const totalPedidos = shPedidos.getLastRow();
     const idPedido = 'PED-' + String(totalPedidos).padStart(5, '0');
-
     const dataHoje = new Date();
 
-    // Grava cabeçalho do pedido
     shPedidos.appendRow([
-      idPedido,
-      dataHoje,
-      dados.filialCod,
-      dados.filialNome,
-      dados.fornecedorCod,
-      dados.fornecedorNome,
-      dados.transportadoraCod,
-      dados.transportadoraNome,
-      dados.prazoEntrega,
-      dados.observacao,
-      dados.usuarioLogado,
-      dados.valorTotal,
-      'ENVIADO'
+      idPedido, dataHoje,
+      dados.filialCod, dados.filialNome,
+      dados.fornecedorCod, dados.fornecedorNome,
+      dados.transportadoraCod, dados.transportadoraNome,
+      dados.prazoEntrega, dados.observacao,
+      dados.usuarioLogado, dados.valorTotal, 'ENVIADO'
     ]);
 
-    // Grava itens
     dados.itens.forEach(item => {
       shItens.appendRow([
-        idPedido,
-        item.cod,
-        item.descricao,
-        item.quantidade,
-        item.unidade,
-        item.preco,
-        item.subtotal
+        idPedido, item.cod, item.descricao,
+        item.quantidade, item.unidade, item.preco, item.subtotal
       ]);
     });
 
-    // Dispara email
+    // Dispara email para todos os endereços cadastrados
     const fornecedor = buscarCodigo('fornecedor', dados.fornecedorCod);
     if (!fornecedor || !fornecedor.EMAIL) {
       logErro('salvarPedido: email do fornecedor ausente para ' + dados.fornecedorCod);
       return { ok: true, msg: 'Pedido salvo, mas email não enviado (fornecedor sem email)', id: idPedido };
     }
 
-    const emailValido = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(fornecedor.EMAIL);
-    if (!emailValido) {
-      logErro('salvarPedido: email inválido: ' + fornecedor.EMAIL);
+    const emailsList = String(fornecedor.EMAIL)
+      .split(';')
+      .map(e => e.trim())
+      .filter(e => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e));
+
+    if (emailsList.length === 0) {
+      logErro('salvarPedido: nenhum email válido para ' + dados.fornecedorCod);
       return { ok: true, msg: 'Pedido salvo, mas email não enviado (email inválido)', id: idPedido };
     }
 
     const htmlEmail = montarEmailHTML(idPedido, dataHoje, dados);
-    
     MailApp.sendEmail({
-  to: fornecedor.EMAIL,
-  cc: dados.emailUsuario || '',
-  replyTo: 'marco@marfim.ind.br',
-  subject: `Pedido de Compra ${idPedido} — ${dados.filialNome}`,
-  htmlBody: htmlEmail
-});
+      to: emailsList.join(','),
+      cc: dados.emailUsuario || '',
+      replyTo: 'marco@marfim.ind.br',
+      subject: `Pedido de Compra ${idPedido} — ${dados.filialNome}`,
+      htmlBody: htmlEmail
+    });
 
     return { ok: true, msg: 'Pedido salvo e email enviado com sucesso', id: idPedido };
 
@@ -266,7 +352,7 @@ function salvarPedido(dados) {
 
 function montarEmailHTML(idPedido, data, dados) {
   const dataFmt = Utilities.formatDate(data, Session.getScriptTimeZone(), 'dd/MM/yyyy');
-  let linhasItens = dados.itens.map(item => `
+  const linhasItens = dados.itens.map(item => `
     <tr>
       <td style="padding:8px;border:1px solid #ddd;">${item.cod}</td>
       <td style="padding:8px;border:1px solid #ddd;">${item.descricao}</td>
@@ -280,7 +366,10 @@ function montarEmailHTML(idPedido, data, dados) {
   <div style="font-family:Arial,sans-serif;max-width:700px;margin:0 auto;">
     <div style="background:#1a3c5e;color:white;padding:20px 30px;">
       <h2 style="margin:0;">Pedido de Compra</h2>
-      <p style="margin:4px 0 0;">${idPedido} — ${dataFmt}</p>
+      <p style="margin:4px 0 0;font-size:15px;">${idPedido} — ${dataFmt}</p>
+    </div>
+    <div style="background:#fff8e1;border-left:4px solid #e8a020;padding:10px 30px;font-size:13px;color:#5a4000;">
+      <strong>Para a filial:</strong> ao receber esta entrega, acesse o sistema e informe o número do pedido <strong style="font-family:monospace;font-size:14px;">${idPedido}</strong> para registrar o recebimento da NF.
     </div>
     <div style="padding:20px 30px;background:#f9f9f9;">
       <table style="width:100%;border-collapse:collapse;margin-bottom:16px;">
@@ -323,15 +412,135 @@ function montarEmailHTML(idPedido, data, dados) {
 }
 
 // ============================================================
+// RECEBIMENTO DE NF
+// ============================================================
+function buscarPedidoParaRecebimento(idPedido) {
+  try {
+    const pedidos = sheetToArray(ABAS.PEDIDOS);
+    const ped = pedidos.find(p => String(p.ID_PEDIDO).trim().toUpperCase() === String(idPedido).trim().toUpperCase());
+    if (!ped) return null;
+    const itens = sheetToArray(ABAS.ITENS_PEDIDO)
+      .filter(i => String(i.ID_PEDIDO).trim() === String(ped.ID_PEDIDO).trim());
+    const recebimentos = sheetToArray(ABAS.RECEBIMENTOS)
+      .filter(r => String(r.ID_PEDIDO).trim() === String(ped.ID_PEDIDO).trim());
+    return { pedido: ped, itens, jaRecebido: recebimentos.length > 0, recebimentos };
+  } catch(e) {
+    logErro('buscarPedidoParaRecebimento: ' + e.message);
+    return null;
+  }
+}
+
+function salvarRecebimento(dados) {
+  const lock = LockService.getScriptLock();
+  try {
+    lock.waitLock(15000);
+    const sh      = getSheet(ABAS.RECEBIMENTOS);
+    const shItens = getSheet(ABAS.ITENS_RECEBIMENTO);
+
+    const total   = sh.getLastRow();
+    const idRec   = 'REC-' + String(total).padStart(5, '0');
+    const dataHoje = new Date();
+
+    let temDivQtd   = false;
+    let temDivPreco = false;
+    let valorTotalRec = 0;
+
+    dados.itens.forEach(item => {
+      const qtdPed  = parseFloat(item.qtdPedida)    || 0;
+      const qtdRec  = parseFloat(item.qtdRecebida)  || 0;
+      const precPed = parseFloat(item.precoPedido)  || 0;
+      const precRec = parseFloat(item.precoRecebido)|| 0;
+      if (Math.abs(qtdRec  - qtdPed)  > 0.001) temDivQtd   = true;
+      if (Math.abs(precRec - precPed) > 0.001) temDivPreco = true;
+      valorTotalRec += qtdRec * precRec;
+    });
+
+    sh.appendRow([
+      idRec, dados.idPedido, dados.nfNumero, dataHoje,
+      dados.codFilial, dados.nomeFilial,
+      dados.codFornecedor, dados.nomeFornecedor,
+      dados.usuarioLogado,
+      parseFloat(dados.valorTotalPedido) || 0,
+      valorTotalRec,
+      temDivQtd   ? 'SIM' : 'NÃO',
+      temDivPreco ? 'SIM' : 'NÃO',
+      dados.observacao || ''
+    ]);
+
+    dados.itens.forEach(item => {
+      const qtdPed  = parseFloat(item.qtdPedida)    || 0;
+      const qtdRec  = parseFloat(item.qtdRecebida)  || 0;
+      const precPed = parseFloat(item.precoPedido)  || 0;
+      const precRec = parseFloat(item.precoRecebido)|| 0;
+      const divQtd   = Math.abs(qtdRec  - qtdPed)  > 0.001;
+      const divPreco = Math.abs(precRec - precPed) > 0.001;
+      shItens.appendRow([
+        idRec, dados.idPedido, item.codMP, item.descricao,
+        qtdPed, qtdRec,
+        precPed, precRec,
+        qtdPed  * precPed,
+        qtdRec  * precRec,
+        divQtd   ? 'SIM' : 'NÃO',
+        divPreco ? 'SIM' : 'NÃO'
+      ]);
+    });
+
+    return {
+      ok: true,
+      msg: 'NF lançada com sucesso',
+      id: idRec,
+      divQtd: temDivQtd,
+      divPreco: temDivPreco
+    };
+  } catch(e) {
+    logErro('salvarRecebimento: ' + e.message);
+    return { ok: false, msg: e.message };
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+function getRecebimentosDoPedido(idPedido) {
+  try {
+    const recs = sheetToArray(ABAS.RECEBIMENTOS)
+      .filter(r => String(r.ID_PEDIDO).trim() === String(idPedido).trim());
+    return recs.map(r => {
+      const itens = sheetToArray(ABAS.ITENS_RECEBIMENTO)
+        .filter(i => String(i.ID_RECEBIMENTO).trim() === String(r.ID_RECEBIMENTO).trim());
+      return { ...r, itens };
+    });
+  } catch(e) {
+    logErro('getRecebimentosDoPedido: ' + e.message);
+    return [];
+  }
+}
+
+// ============================================================
 // HISTÓRICO
 // ============================================================
+function _enriquecerPedidosComNF(pedidos) {
+  try {
+    const recs = sheetToArray(ABAS.RECEBIMENTOS);
+    return pedidos.map(p => {
+      const recPed = recs.filter(r => String(r.ID_PEDIDO).trim() === String(p.ID_PEDIDO).trim());
+      const temNF        = recPed.length > 0;
+      const temDivQtd    = recPed.some(r => String(r.DIVERGENCIA_QTD).trim()   === 'SIM');
+      const temDivPreco  = recPed.some(r => String(r.DIVERGENCIA_PRECO).trim() === 'SIM');
+      return { ...p, temNF, temDivQtd, temDivPreco };
+    });
+  } catch(e) {
+    return pedidos;
+  }
+}
+
 function getHistorico(tipo, cod) {
   try {
     const pedidos = sheetToArray(ABAS.PEDIDOS);
     const colMapa = { filial: 'COD_FILIAL', fornecedor: 'COD_FORNECEDOR' };
     if (!colMapa[tipo]) return [];
     const filtrados = pedidos.filter(p => String(p[colMapa[tipo]]).trim() === String(cod).trim());
-    return filtrados.map(p => {
+    const enriquecidos = _enriquecerPedidosComNF(filtrados);
+    return enriquecidos.map(p => {
       const itens = sheetToArray(ABAS.ITENS_PEDIDO).filter(i => i.ID_PEDIDO === p.ID_PEDIDO);
       return { ...p, itens };
     });
@@ -343,7 +552,7 @@ function getHistorico(tipo, cod) {
 
 function getTodosPedidos() {
   try {
-    return sheetToArray(ABAS.PEDIDOS);
+    return _enriquecerPedidosComNF(sheetToArray(ABAS.PEDIDOS));
   } catch(e) {
     logErro('getTodosPedidos: ' + e.message);
     return [];
@@ -357,14 +566,17 @@ function setupPlanilha() {
   const ss = SpreadsheetApp.openById(SHEET_ID);
 
   const estrutura = {
-    USUARIOS:       ['COD','NOME','USUARIO','SENHA','EMAIL','PERFIL'],
-    FORNECEDORES:   ['COD','NOME','EMAIL','CONTATO','ENDERECO','CIDADE','ESTADO'],
-    MATERIAS_PRIMAS:['COD','DESCRICAO','UNIDADE','CATEGORIA'],
-    TRANSPORTADORAS:['COD','NOME','CONTATO','PRAZO','OBSERVACAO'],
-    FILIAIS:        ['COD','NOME','ENDERECO','CIDADE','ESTADO','EMAIL_RESPONSAVEL'],
-    PEDIDOS:        ['ID_PEDIDO','DATA','COD_FILIAL','NOME_FILIAL','COD_FORNECEDOR','NOME_FORNECEDOR','COD_TRANSPORTADORA','NOME_TRANSPORTADORA','PRAZO_ENTREGA','OBSERVACAO','USUARIO','VALOR_TOTAL','STATUS'],
-    ITENS_PEDIDO:   ['ID_PEDIDO','COD_MP','DESCRICAO','QUANTIDADE','UNIDADE','PRECO_UNIT','SUBTOTAL'],
-    LOG_ERROS:      ['DATA','MENSAGEM']
+    USUARIOS:         ['COD','NOME','USUARIO','SENHA','EMAIL','PERFIL'],
+    FORNECEDORES:     ['COD','NOME','EMAIL','CONTATO','CEP','BAIRRO','ENDERECO','CIDADE','ESTADO'],
+    MATERIAS_PRIMAS:  ['COD','DESCRICAO','UNIDADE','CATEGORIA'],
+    TRANSPORTADORAS:  ['COD','NOME','CONTATO','PRAZO','OBSERVACAO'],
+    FILIAIS:          ['COD','NOME','CEP','BAIRRO','ENDERECO','CIDADE','ESTADO','EMAIL_RESPONSAVEL'],
+    PEDIDOS:          ['ID_PEDIDO','DATA','COD_FILIAL','NOME_FILIAL','COD_FORNECEDOR','NOME_FORNECEDOR','COD_TRANSPORTADORA','NOME_TRANSPORTADORA','PRAZO_ENTREGA','OBSERVACAO','USUARIO','VALOR_TOTAL','STATUS'],
+    ITENS_PEDIDO:     ['ID_PEDIDO','COD_MP','DESCRICAO','QUANTIDADE','UNIDADE','PRECO_UNIT','SUBTOTAL'],
+    PRECO_FORNECEDOR:  ['COD_FORNECEDOR','COD_MP','PRECO'],
+    RECEBIMENTOS:      ['ID_RECEBIMENTO','ID_PEDIDO','NF_NUMERO','DATA_RECEBIMENTO','COD_FILIAL','NOME_FILIAL','COD_FORNECEDOR','NOME_FORNECEDOR','USUARIO','VALOR_TOTAL_PEDIDO','VALOR_TOTAL_RECEBIDO','DIVERGENCIA_QTD','DIVERGENCIA_PRECO','OBSERVACAO'],
+    ITENS_RECEBIMENTO: ['ID_RECEBIMENTO','ID_PEDIDO','COD_MP','DESCRICAO','QTD_PEDIDA','QTD_RECEBIDA','PRECO_PEDIDO','PRECO_RECEBIDO','SUBTOTAL_PEDIDO','SUBTOTAL_RECEBIDO','DIV_QTD','DIV_PRECO'],
+    LOG_ERROS:         ['DATA','MENSAGEM']
   };
 
   Object.entries(estrutura).forEach(([nome, headers]) => {
@@ -376,10 +588,19 @@ function setupPlanilha() {
         .setBackground('#1a3c5e')
         .setFontColor('#ffffff')
         .setFontWeight('bold');
+    } else {
+      // Migração: adiciona colunas faltantes
+      const existingHeaders = sh.getRange(1, 1, 1, sh.getLastColumn()).getValues()[0].map(String);
+      const missing = headers.filter(h => !existingHeaders.includes(h));
+      missing.forEach((col, i) => {
+        const colIdx = existingHeaders.length + i + 1;
+        const cell = sh.getRange(1, colIdx);
+        cell.setValue(col);
+        cell.setBackground('#1a3c5e').setFontColor('#ffffff').setFontWeight('bold');
+      });
     }
   });
 
-  // Cria usuário admin padrão se USUARIOS estiver vazia
   const shUser = ss.getSheetByName('USUARIOS');
   if (shUser.getLastRow() <= 1) {
     shUser.appendRow(['USR001','Administrador','admin','admin123','admin@empresa.com','ADMIN']);
