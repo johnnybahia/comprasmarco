@@ -11,8 +11,9 @@ const ABAS = {
   FILIAIS:          'FILIAIS',
   PEDIDOS:          'PEDIDOS',
   ITENS_PEDIDO:     'ITENS_PEDIDO',
-  PRECO_FORNECEDOR: 'PRECO_FORNECEDOR',
-  RECEBIMENTOS:     'RECEBIMENTOS',
+  PRECO_FORNECEDOR:    'PRECO_FORNECEDOR',
+  TRANSP_FORN_FILIAL:  'TRANSP_FORN_FILIAL',
+  RECEBIMENTOS:        'RECEBIMENTOS',
   ITENS_RECEBIMENTO:'ITENS_RECEBIMENTO',
   LOG:              'LOG_ERROS'
 };
@@ -412,6 +413,91 @@ function montarEmailHTML(idPedido, data, dados) {
 }
 
 // ============================================================
+// TRANSPORTADORA POR FORNECEDOR × FILIAL
+// ============================================================
+function salvarTranspFornFilial(codForn, codFilial, codTransp) {
+  const lock = LockService.getScriptLock();
+  try {
+    lock.waitLock(10000);
+    const sh = getSheet(ABAS.TRANSP_FORN_FILIAL);
+    const allData = sh.getDataRange().getValues();
+    for (let i = 1; i < allData.length; i++) {
+      if (String(allData[i][0]).trim() === String(codForn).trim() &&
+          String(allData[i][1]).trim() === String(codFilial).trim()) {
+        sh.getRange(i + 1, 3).setValue(codTransp);
+        return { ok: true, msg: 'Transportadora atualizada' };
+      }
+    }
+    sh.appendRow([codForn, codFilial, codTransp]);
+    return { ok: true, msg: 'Transportadora vinculada' };
+  } catch(e) {
+    logErro('salvarTranspFornFilial: ' + e.message);
+    return { ok: false, msg: e.message };
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+function excluirTranspFornFilial(codForn, codFilial) {
+  const lock = LockService.getScriptLock();
+  try {
+    lock.waitLock(10000);
+    const sh = getSheet(ABAS.TRANSP_FORN_FILIAL);
+    const allData = sh.getDataRange().getValues();
+    for (let i = 1; i < allData.length; i++) {
+      if (String(allData[i][0]).trim() === String(codForn).trim() &&
+          String(allData[i][1]).trim() === String(codFilial).trim()) {
+        sh.deleteRow(i + 1);
+        return { ok: true };
+      }
+    }
+    return { ok: false, msg: 'Não encontrado' };
+  } catch(e) {
+    logErro('excluirTranspFornFilial: ' + e.message);
+    return { ok: false, msg: e.message };
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+function buscarTranspFornFilial(codForn, codFilial) {
+  try {
+    const rows = sheetToArray(ABAS.TRANSP_FORN_FILIAL);
+    const found = rows.find(r =>
+      String(r.COD_FORNECEDOR).trim() === String(codForn).trim() &&
+      String(r.COD_FILIAL).trim()     === String(codFilial).trim()
+    );
+    return found ? found.COD_TRANSPORTADORA : null;
+  } catch(e) {
+    logErro('buscarTranspFornFilial: ' + e.message);
+    return null;
+  }
+}
+
+function listarTranspPorFornecedor(codForn) {
+  try {
+    const rows = sheetToArray(ABAS.TRANSP_FORN_FILIAL)
+      .filter(r => String(r.COD_FORNECEDOR).trim() === String(codForn).trim());
+    const filiais       = sheetToArray(ABAS.FILIAIS);
+    const transportadoras = sheetToArray(ABAS.TRANSPORTADORAS);
+    return rows.map(r => {
+      const fil  = filiais.find(f => String(f.COD).trim() === String(r.COD_FILIAL).trim());
+      const trp  = transportadoras.find(t => String(t.COD).trim() === String(r.COD_TRANSPORTADORA).trim());
+      return {
+        COD_FORNECEDOR:    r.COD_FORNECEDOR,
+        COD_FILIAL:        r.COD_FILIAL,
+        NOME_FILIAL:       fil  ? fil.NOME  : r.COD_FILIAL,
+        COD_TRANSPORTADORA:r.COD_TRANSPORTADORA,
+        NOME_TRANSPORTADORA: trp ? trp.NOME : r.COD_TRANSPORTADORA
+      };
+    });
+  } catch(e) {
+    logErro('listarTranspPorFornecedor: ' + e.message);
+    return [];
+  }
+}
+
+// ============================================================
 // RECEBIMENTO DE NF
 // ============================================================
 function buscarPedidoParaRecebimento(idPedido) {
@@ -573,7 +659,8 @@ function setupPlanilha() {
     FILIAIS:          ['COD','NOME','CEP','BAIRRO','ENDERECO','CIDADE','ESTADO','EMAIL_RESPONSAVEL','COD_TRANSPORTADORA'],
     PEDIDOS:          ['ID_PEDIDO','DATA','COD_FILIAL','NOME_FILIAL','COD_FORNECEDOR','NOME_FORNECEDOR','COD_TRANSPORTADORA','NOME_TRANSPORTADORA','PRAZO_ENTREGA','OBSERVACAO','USUARIO','VALOR_TOTAL','STATUS'],
     ITENS_PEDIDO:     ['ID_PEDIDO','COD_MP','DESCRICAO','QUANTIDADE','UNIDADE','PRECO_UNIT','SUBTOTAL'],
-    PRECO_FORNECEDOR:  ['COD_FORNECEDOR','COD_MP','PRECO'],
+    PRECO_FORNECEDOR:   ['COD_FORNECEDOR','COD_MP','PRECO'],
+    TRANSP_FORN_FILIAL: ['COD_FORNECEDOR','COD_FILIAL','COD_TRANSPORTADORA'],
     RECEBIMENTOS:      ['ID_RECEBIMENTO','ID_PEDIDO','NF_NUMERO','DATA_RECEBIMENTO','COD_FILIAL','NOME_FILIAL','COD_FORNECEDOR','NOME_FORNECEDOR','USUARIO','VALOR_TOTAL_PEDIDO','VALOR_TOTAL_RECEBIDO','DIVERGENCIA_QTD','DIVERGENCIA_PRECO','OBSERVACAO'],
     ITENS_RECEBIMENTO: ['ID_RECEBIMENTO','ID_PEDIDO','COD_MP','DESCRICAO','QTD_PEDIDA','QTD_RECEBIDA','PRECO_PEDIDO','PRECO_RECEBIDO','SUBTOTAL_PEDIDO','SUBTOTAL_RECEBIDO','DIV_QTD','DIV_PRECO'],
     LOG_ERROS:         ['DATA','MENSAGEM']

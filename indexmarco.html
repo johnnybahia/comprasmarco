@@ -798,6 +798,43 @@ table tr:hover td { background: #f5f7fb; }
             <button class="btn btn-outline" onclick="limparForm('forn')">Limpar</button>
           </div>
         </div>
+        <!-- Transportadoras por Filial -->
+        <div class="card" id="card-transp-forn" style="display:none">
+          <div class="card-title">Transportadoras por Filial — <span id="transp-forn-label" style="font-weight:600;color:var(--navy)"></span></div>
+          <div class="form-grid" style="grid-template-columns:160px 1fr 160px 1fr auto;align-items:end;gap:10px;margin-bottom:14px">
+            <div class="field">
+              <label>Filial</label>
+              <div class="ac-wrap">
+                <input type="text" id="tf-filial-cod" placeholder="Código ou nome"
+                  onkeydown="if(event.key==='Enter')fecharAC('tf-filial-cod')">
+                <div class="ac-dropdown" id="ac-tf-filial-cod"></div>
+              </div>
+            </div>
+            <div class="field">
+              <label>Nome Filial</label>
+              <input type="text" id="tf-filial-nome" readonly placeholder="—">
+            </div>
+            <div class="field">
+              <label>Transportadora</label>
+              <div class="ac-wrap">
+                <input type="text" id="tf-transp-cod" placeholder="Código ou nome"
+                  onkeydown="if(event.key==='Enter')fecharAC('tf-transp-cod')">
+                <div class="ac-dropdown" id="ac-tf-transp-cod"></div>
+              </div>
+            </div>
+            <div class="field">
+              <label>Nome Transportadora</label>
+              <input type="text" id="tf-transp-nome" readonly placeholder="—">
+            </div>
+            <div>
+              <button class="btn btn-accent" onclick="adicionarTranspFornFilial()">+ Vincular</button>
+            </div>
+          </div>
+          <div class="table-wrap" id="tbl-transp-forn-filial">
+            <div class="empty-state"><div class="icon">🚚</div>Nenhuma transportadora vinculada</div>
+          </div>
+        </div>
+
         <div class="card">
           <div class="card-title">Registros</div>
           <div class="table-wrap" id="tbl-fornecedores">
@@ -1184,13 +1221,23 @@ function registrarAutocompletes(tipo) {
     ],
     filial: [
       { inputId: 'ped-filial-cod',  labelKey: 'NOME', onSelect: r => selecionarLookup('filial','ped',r) },
-      { inputId: 'hist-filial-cod', labelKey: 'NOME', onSelect: r => { document.getElementById('hist-filial-cod').value = r.COD; } }
+      { inputId: 'hist-filial-cod', labelKey: 'NOME', onSelect: r => { document.getElementById('hist-filial-cod').value = r.COD; } },
+      { inputId: 'tf-filial-cod',   labelKey: 'NOME', onSelect: r => {
+          document.getElementById('tf-filial-cod').value  = r.COD;
+          document.getElementById('tf-filial-nome').value = r.NOME;
+        }
+      }
     ],
     transportadora: [
-      { inputId: 'ped-transp-cod',  labelKey: 'NOME', onSelect: r => selecionarLookup('transportadora','ped',r) },
+      { inputId: 'ped-transp-cod',   labelKey: 'NOME', onSelect: r => selecionarLookup('transportadora','ped',r) },
       { inputId: 'f-fil-transp-cod', labelKey: 'NOME', onSelect: r => {
           document.getElementById('f-fil-transp-cod').value  = r.COD;
           document.getElementById('f-fil-transp-nome').value = r.NOME;
+        }
+      },
+      { inputId: 'tf-transp-cod',    labelKey: 'NOME', onSelect: r => {
+          document.getElementById('tf-transp-cod').value  = r.COD;
+          document.getElementById('tf-transp-nome').value = r.NOME;
         }
       }
     ],
@@ -1292,14 +1339,10 @@ function selecionarLookup(tipo, prefixo, registro) {
   document.getElementById(prefixo + '-' + nomeMap[tipo]).value = registro.NOME || '';
   if (tipo === 'fornecedor' && prefixo === 'ped') {
     tentarPreencherPreco();
+    tentarPreencherTransportadora();
   }
-  // Ao selecionar filial no pedido, preenche transportadora padrão se ainda não preenchida
   if (tipo === 'filial' && prefixo === 'ped') {
-    const codT = registro.COD_TRANSPORTADORA || '';
-    if (codT && !document.getElementById('ped-transp-cod').value.trim()) {
-      const tFound = (_cache.transportadora || []).find(t => String(t.COD).trim() === codT.trim());
-      if (tFound) selecionarLookup('transportadora', 'ped', tFound);
-    }
+    tentarPreencherTransportadora();
   }
 }
 
@@ -1366,6 +1409,100 @@ function tentarPreencherPreco() {
     })
     .withFailureHandler(() => {})
     .buscarPrecoFornecedor(codForn, codMP);
+}
+
+// ════════════════════════════════════════════════════
+// TRANSPORTADORA POR FORNECEDOR × FILIAL
+// ════════════════════════════════════════════════════
+let _fornAtivo = null;
+
+function abrirCardTranspForn(codForn, nomeForn) {
+  _fornAtivo = codForn;
+  document.getElementById('transp-forn-label').textContent = codForn + ' — ' + nomeForn;
+  document.getElementById('card-transp-forn').style.display = 'block';
+  document.getElementById('tf-filial-cod').value  = '';
+  document.getElementById('tf-filial-nome').value = '';
+  document.getElementById('tf-transp-cod').value  = '';
+  document.getElementById('tf-transp-nome').value = '';
+  carregarTabelaTranspForn(codForn);
+}
+
+function carregarTabelaTranspForn(codForn) {
+  const tbl = document.getElementById('tbl-transp-forn-filial');
+  tbl.innerHTML = '<div class="empty-state"><div class="icon">⏳</div>Carregando...</div>';
+  google.script.run
+    .withSuccessHandler(rows => {
+      if (!rows || rows.length === 0) {
+        tbl.innerHTML = '<div class="empty-state"><div class="icon">🚚</div>Nenhuma transportadora vinculada</div>';
+        return;
+      }
+      tbl.innerHTML = `<table>
+        <thead><tr><th>Filial</th><th>Nome Filial</th><th>Transportadora</th><th>Nome Transportadora</th><th></th></tr></thead>
+        <tbody>${rows.map(r => `<tr>
+          <td><code>${escHTML(r.COD_FILIAL)}</code></td>
+          <td>${escHTML(r.NOME_FILIAL)}</td>
+          <td><code>${escHTML(r.COD_TRANSPORTADORA)}</code></td>
+          <td>${escHTML(r.NOME_TRANSPORTADORA)}</td>
+          <td><button class="btn-icon danger" onclick="removerTranspFornFilial('${escHTML(r.COD_FILIAL)}')" title="Remover">✕</button></td>
+        </tr>`).join('')}</tbody>
+      </table>`;
+    })
+    .withFailureHandler(() => tbl.innerHTML = '<div class="empty-state">Erro ao carregar</div>')
+    .listarTranspPorFornecedor(codForn);
+}
+
+function adicionarTranspFornFilial() {
+  if (!_fornAtivo) { toast('Selecione ou salve um fornecedor primeiro', 'error'); return; }
+  const codFilial = document.getElementById('tf-filial-cod').value.trim();
+  const codTransp = document.getElementById('tf-transp-cod').value.trim();
+  if (!codFilial) { toast('Informe a filial', 'error'); return; }
+  if (!codTransp) { toast('Informe a transportadora', 'error'); return; }
+  google.script.run
+    .withSuccessHandler(res => {
+      toast(res.ok ? res.msg : 'Erro: ' + res.msg, res.ok ? 'success' : 'error');
+      if (res.ok) {
+        document.getElementById('tf-filial-cod').value  = '';
+        document.getElementById('tf-filial-nome').value = '';
+        document.getElementById('tf-transp-cod').value  = '';
+        document.getElementById('tf-transp-nome').value = '';
+        carregarTabelaTranspForn(_fornAtivo);
+      }
+    })
+    .withFailureHandler(err => toast('Erro: ' + err.message, 'error'))
+    .salvarTranspFornFilial(_fornAtivo, codFilial, codTransp);
+}
+
+function removerTranspFornFilial(codFilial) {
+  if (!confirm('Remover vínculo desta filial?')) return;
+  google.script.run
+    .withSuccessHandler(res => {
+      if (res.ok) carregarTabelaTranspForn(_fornAtivo);
+      else toast('Erro ao remover', 'error');
+    })
+    .withFailureHandler(() => toast('Erro', 'error'))
+    .excluirTranspFornFilial(_fornAtivo, codFilial);
+}
+
+function tentarPreencherTransportadora() {
+  const codForn   = document.getElementById('ped-forn-cod').value.trim();
+  const codFilial = document.getElementById('ped-filial-cod').value.trim();
+  if (!codForn || !codFilial) return;
+  // Não sobrescreve se já preenchido manualmente
+  if (document.getElementById('ped-transp-cod').value.trim()) return;
+  google.script.run
+    .withSuccessHandler(codT => {
+      if (!codT) {
+        // Fallback: transportadora padrão da filial
+        const fil = (_cache.filial || []).find(f => String(f.COD).trim() === codFilial);
+        codT = fil ? (fil.COD_TRANSPORTADORA || '') : '';
+      }
+      if (codT) {
+        const tFound = (_cache.transportadora || []).find(t => String(t.COD).trim() === codT.trim());
+        if (tFound) selecionarLookup('transportadora', 'ped', tFound);
+      }
+    })
+    .withFailureHandler(() => {})
+    .buscarTranspFornFilial(codForn, codFilial);
 }
 
 // ════════════════════════════════════════════════════
@@ -1931,8 +2068,10 @@ function salvarCad(tipo) {
       toast(res.ok ? res.msg : 'Erro: ' + res.msg, res.ok ? 'success' : 'error');
       if (res.ok) {
         if (tipo === 'materia') {
-          // Abre card de preços para a matéria recém-salva
           abrirCardPrecos(dados.COD, dados.DESCRICAO);
+        }
+        if (tipo === 'fornecedor') {
+          abrirCardTranspForn(dados.COD, dados.NOME);
         }
         limparForm(cfg.prefixo);
         carregarTabelaCadastro(cfg.tabela);
@@ -1957,6 +2096,8 @@ function limparForm(prefixo) {
   if (prefixo === 'forn') {
     document.getElementById('forn-email-tags').value = '';
     renderEmailTags('forn-email-inp','forn-email-tags');
+    document.getElementById('card-transp-forn').style.display = 'none';
+    _fornAtivo = null;
   }
   if (prefixo === 'fil') {
     document.getElementById('fil-email-tags').value = '';
@@ -1990,6 +2131,8 @@ function carregarTabelaCadastro(tipo) {
       const headers = cfg.cols.map(c => `<th>${c}</th>`).join('') + '<th></th>';
       const extraBtn = tipo === 'materia'
         ? (cod, desc) => `<button class="btn btn-outline btn-sm" style="margin-left:4px" onclick="abrirCardPrecos('${escHTML(cod)}','${escHTML(desc||'')}')">Preços</button>`
+        : tipo === 'fornecedor'
+        ? (cod, nome) => `<button class="btn btn-outline btn-sm" style="margin-left:4px" onclick="abrirCardTranspForn('${escHTML(cod)}','${escHTML(nome||'')}')">Transp.</button>`
         : () => '';
       const body = rows.map(row => {
         const cells = cfg.cols.map(c => `<td>${escHTML(String(row[c]||''))}</td>`).join('');
@@ -2040,6 +2183,9 @@ function editarCadastro(tipo, cod) {
       }
       if (tipo === 'materia') {
         abrirCardPrecos(res.COD, res.DESCRICAO);
+      }
+      if (tipo === 'fornecedor') {
+        abrirCardTranspForn(res.COD, res.NOME);
       }
       document.getElementById('sub-' + subMap[tipo]).scrollIntoView({ behavior:'smooth' });
     })
