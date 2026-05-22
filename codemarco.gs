@@ -119,10 +119,10 @@ function salvarCadastro(tipo, dados) {
   try {
     lock.waitLock(10000);
     const mapa = {
-      fornecedor:     { aba: ABAS.FORNECEDORES,   cols: ['COD','NOME','EMAIL','CONTATO','CEP','BAIRRO','ENDERECO','CIDADE','ESTADO'] },
+      fornecedor:     { aba: ABAS.FORNECEDORES,   cols: ['COD','NOME','CNPJ','EMAIL','CONTATO','CEP','BAIRRO','ENDERECO','CIDADE','ESTADO'] },
       materia:        { aba: ABAS.MATERIAS,        cols: ['COD','DESCRICAO','UNIDADE','CATEGORIA'] },
       transportadora: { aba: ABAS.TRANSPORTADORAS, cols: ['COD','NOME','CONTATO','PRAZO','OBSERVACAO'] },
-      filial:         { aba: ABAS.FILIAIS,         cols: ['COD','NOME','CEP','BAIRRO','ENDERECO','CIDADE','ESTADO','EMAIL_RESPONSAVEL','COD_TRANSPORTADORA'] },
+      filial:         { aba: ABAS.FILIAIS,         cols: ['COD','NOME','CNPJ','CEP','BAIRRO','ENDERECO','CIDADE','ESTADO','EMAIL_RESPONSAVEL','COD_TRANSPORTADORA'] },
       usuario:        { aba: ABAS.USUARIOS,        cols: ['COD','NOME','USUARIO','SENHA','EMAIL','PERFIL'] }
     };
     if (!mapa[tipo]) return { ok: false, msg: 'Tipo inválido' };
@@ -332,10 +332,25 @@ function salvarPedido(dados) {
       return { ok: true, msg: 'Pedido salvo, mas email não enviado (email inválido)', id: idPedido };
     }
 
-    const htmlEmail = montarEmailHTML(idPedido, dataHoje, dados);
+    const filial = buscarCodigo('filial', dados.filialCod) || {};
+    const emailsFilial = String(filial.EMAIL_RESPONSAVEL || '')
+      .split(';').map(e => e.trim()).filter(e => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e));
+    const ccList = [...new Set([
+      ...emailsFilial,
+      'marco@marfim.ind.br',
+      ...(dados.emailUsuario ? [dados.emailUsuario] : [])
+    ])].join(',');
+
+    const dadosEmail = Object.assign({}, dados, {
+      filialCNPJ:      filial.CNPJ      || '',
+      filialEndereco:  [filial.ENDERECO, filial.BAIRRO, filial.CIDADE, filial.ESTADO].filter(Boolean).join(', '),
+      fornecedorCNPJ:  fornecedor.CNPJ  || '',
+      fornecedorEndereco: [fornecedor.ENDERECO, fornecedor.BAIRRO, fornecedor.CIDADE, fornecedor.ESTADO].filter(Boolean).join(', ')
+    });
+    const htmlEmail = montarEmailHTML(idPedido, dataHoje, dadosEmail);
     MailApp.sendEmail({
       to: emailsList.join(','),
-      cc: dados.emailUsuario || '',
+      cc: ccList,
       replyTo: 'marco@marfim.ind.br',
       subject: `Pedido de Compra ${idPedido} — ${dados.filialNome}`,
       htmlBody: htmlEmail
@@ -364,65 +379,86 @@ function montarEmailHTML(idPedido, data, dados) {
   `).join('');
 
   return `
-  <div style="font-family:Arial,sans-serif;max-width:700px;margin:0 auto;">
-    <div style="background:#1a3c5e;color:white;padding:20px 30px;display:flex;align-items:center;gap:20px;">
+  <div style="font-family:Arial,sans-serif;max-width:700px;margin:0 auto;border:1px solid #dde3ea;border-radius:6px;overflow:hidden;">
+
+    <!-- Cabeçalho -->
+    <div style="background:#1a3c5e;padding:20px 28px;display:flex;align-items:center;gap:18px;">
       <img src="https://i.ibb.co/FGGjdsM/LOGO-MARFIM.jpg" alt="Marfim" style="height:52px;width:auto;border-radius:4px;flex-shrink:0;">
       <div>
-        <h2 style="margin:0;font-size:20px;letter-spacing:0.5px;">Pedido de Compra</h2>
-        <p style="margin:4px 0 0;font-size:14px;color:rgba(255,255,255,0.75);">${idPedido} — ${dataFmt}</p>
+        <div style="font-size:11px;font-weight:600;letter-spacing:3px;color:#e8a020;text-transform:uppercase;margin-bottom:4px;">Pedido de Compra</div>
+        <div style="font-size:20px;font-weight:700;color:white;">${idPedido}</div>
+        <div style="font-size:12px;color:rgba(255,255,255,0.6);margin-top:2px;">Emitido em ${dataFmt} · Solicitante: ${dados.usuarioLogado}</div>
       </div>
     </div>
-    <div style="background:#fff8e1;border-left:4px solid #e8a020;padding:10px 30px;font-size:13px;color:#5a4000;">
-      <strong>Para a filial:</strong> ao receber esta entrega, acesse o sistema e informe o número do pedido <strong style="font-family:monospace;font-size:14px;">${idPedido}</strong> para registrar o recebimento da NF.
+
+    <!-- Aviso NF -->
+    <div style="background:#fff8e1;border-left:4px solid #e8a020;padding:10px 28px;font-size:13px;color:#5a4000;">
+      <strong>Para a filial:</strong> ao receber esta entrega, informe o número <strong style="font-family:monospace;">${idPedido}</strong> no sistema para registrar o recebimento da NF.
     </div>
-    <div style="padding:20px 30px;background:#f9f9f9;">
-      <table style="width:100%;border-collapse:collapse;margin-bottom:16px;">
-        <tr>
-          <td style="padding:6px 0;"><strong>Filial:</strong> ${dados.filialNome} (${dados.filialCod})</td>
-          <td style="padding:6px 0;"><strong>Fornecedor:</strong> ${dados.fornecedorNome}</td>
-        </tr>
-        <tr>
-          <td style="padding:6px 0;"><strong>Transportadora:</strong> ${dados.transportadoraNome || '—'}</td>
-          <td style="padding:6px 0;"><strong>Prazo de Entrega:</strong> ${dados.prazoEntrega || '—'}</td>
-        </tr>
-        <tr>
-          <td colspan="2" style="padding:6px 0;"><strong>Solicitante:</strong> ${dados.usuarioLogado}</td>
-        </tr>
-      </table>
+
+    <!-- Partes: Comprador × Fornecedor -->
+    <table style="width:100%;border-collapse:collapse;background:#f4f7fb;">
+      <tr>
+        <td style="width:50%;padding:16px 28px;vertical-align:top;border-right:1px solid #dde3ea;">
+          <div style="font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#1a3c5e;margin-bottom:8px;">Comprador</div>
+          <div style="font-size:14px;font-weight:700;color:#1a1a1a;">${dados.filialNome}</div>
+          ${dados.filialCNPJ ? `<div style="font-size:12px;color:#555;margin-top:3px;">CNPJ: ${dados.filialCNPJ}</div>` : ''}
+          ${dados.filialEndereco ? `<div style="font-size:12px;color:#777;margin-top:3px;">${dados.filialEndereco}</div>` : ''}
+        </td>
+        <td style="width:50%;padding:16px 28px;vertical-align:top;">
+          <div style="font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#1a3c5e;margin-bottom:8px;">Fornecedor</div>
+          <div style="font-size:14px;font-weight:700;color:#1a1a1a;">${dados.fornecedorNome}</div>
+          ${dados.fornecedorCNPJ ? `<div style="font-size:12px;color:#555;margin-top:3px;">CNPJ: ${dados.fornecedorCNPJ}</div>` : ''}
+          ${dados.fornecedorEndereco ? `<div style="font-size:12px;color:#777;margin-top:3px;">${dados.fornecedorEndereco}</div>` : ''}
+        </td>
+      </tr>
+    </table>
+
+    <!-- Entrega -->
+    <div style="background:#fff;padding:12px 28px;border-top:1px solid #dde3ea;border-bottom:1px solid #dde3ea;display:flex;gap:32px;flex-wrap:wrap;">
+      <div><span style="font-size:11px;font-weight:600;color:#888;text-transform:uppercase;letter-spacing:1px;">Transportadora</span><br><span style="font-size:13px;color:#1a1a1a;">${dados.transportadoraNome || '—'}</span></div>
+      <div><span style="font-size:11px;font-weight:600;color:#888;text-transform:uppercase;letter-spacing:1px;">Prazo de Entrega</span><br><span style="font-size:13px;color:#1a1a1a;">${dados.prazoEntrega || '—'}</span></div>
+    </div>
+
+    <!-- Itens -->
+    <div style="padding:20px 28px;background:#fff;">
       <table style="width:100%;border-collapse:collapse;">
         <thead>
           <tr style="background:#1a3c5e;color:white;">
-            <th style="padding:10px;text-align:left;">Código</th>
-            <th style="padding:10px;text-align:left;">Descrição</th>
-            <th style="padding:10px;text-align:center;">Qtd/Un</th>
-            <th style="padding:10px;text-align:right;">Preço Unit.</th>
-            <th style="padding:10px;text-align:right;">Subtotal</th>
+            <th style="padding:10px 12px;text-align:left;font-size:12px;font-weight:600;">Código</th>
+            <th style="padding:10px 12px;text-align:left;font-size:12px;font-weight:600;">Descrição</th>
+            <th style="padding:10px 12px;text-align:center;font-size:12px;font-weight:600;">Qtd / Un</th>
+            <th style="padding:10px 12px;text-align:right;font-size:12px;font-weight:600;">Preço Unit.</th>
+            <th style="padding:10px 12px;text-align:right;font-size:12px;font-weight:600;">Subtotal</th>
           </tr>
         </thead>
         <tbody>${linhasItens}</tbody>
         <tfoot>
           <tr style="background:#eef2f7;">
-            <td colspan="4" style="padding:10px;text-align:right;font-weight:bold;">TOTAL</td>
-            <td style="padding:10px;text-align:right;font-weight:bold;">R$ ${parseFloat(dados.valorTotal).toFixed(2)}</td>
+            <td colspan="4" style="padding:12px;text-align:right;font-weight:700;font-size:13px;color:#1a3c5e;">TOTAL DO PEDIDO</td>
+            <td style="padding:12px;text-align:right;font-weight:700;font-size:15px;color:#1a3c5e;">R$ ${parseFloat(dados.valorTotal).toFixed(2)}</td>
           </tr>
         </tfoot>
       </table>
-      ${dados.observacao ? `<p style="margin-top:16px;"><strong>Observações:</strong> ${dados.observacao}</p>` : ''}
+      ${dados.observacao ? `<div style="margin-top:16px;padding:12px 14px;background:#f9f9f9;border-left:3px solid #1a3c5e;border-radius:3px;font-size:13px;color:#333;"><strong>Observações:</strong> ${dados.observacao}</div>` : ''}
     </div>
-    <div style="background:#1a3c5e;padding:20px 30px;">
+
+    <!-- Assinatura -->
+    <div style="background:#1a3c5e;padding:18px 28px;">
       <table style="width:100%;border-collapse:collapse;">
         <tr>
-          <td style="vertical-align:middle;width:110px;">
-            <img src="https://i.ibb.co/FGGjdsM/LOGO-MARFIM.jpg" alt="Marfim" style="height:60px;width:auto;display:block;border-radius:4px;">
+          <td style="vertical-align:middle;width:90px;">
+            <img src="https://i.ibb.co/FGGjdsM/LOGO-MARFIM.jpg" alt="Marfim" style="height:52px;width:auto;display:block;border-radius:4px;">
           </td>
-          <td style="vertical-align:middle;padding-left:18px;border-left:1px solid rgba(255,255,255,0.2);">
-            <p style="margin:0;font-size:14px;font-weight:700;color:white;letter-spacing:0.5px;">Marco Aurélio Bonalume</p>
-            <p style="margin:4px 0 0;font-size:12px;color:rgba(255,255,255,0.65);">Departamento de Compras — Marfim</p>
-            <p style="margin:6px 0 0;font-size:11px;color:rgba(255,255,255,0.4);">Este email foi gerado automaticamente pelo Sistema de Compras.</p>
+          <td style="vertical-align:middle;padding-left:16px;border-left:1px solid rgba(255,255,255,0.2);">
+            <div style="font-size:14px;font-weight:700;color:white;">Marco Aurélio Bonalume</div>
+            <div style="font-size:12px;color:rgba(255,255,255,0.65);margin-top:3px;">Departamento de Compras — Marfim</div>
+            <div style="font-size:11px;color:rgba(255,255,255,0.35);margin-top:6px;">Email gerado automaticamente pelo Sistema de Compras.</div>
           </td>
         </tr>
       </table>
     </div>
+
   </div>`;
 }
 
@@ -667,10 +703,10 @@ function setupPlanilha() {
 
   const estrutura = {
     USUARIOS:         ['COD','NOME','USUARIO','SENHA','EMAIL','PERFIL'],
-    FORNECEDORES:     ['COD','NOME','EMAIL','CONTATO','CEP','BAIRRO','ENDERECO','CIDADE','ESTADO'],
+    FORNECEDORES:     ['COD','NOME','CNPJ','EMAIL','CONTATO','CEP','BAIRRO','ENDERECO','CIDADE','ESTADO'],
     MATERIAS_PRIMAS:  ['COD','DESCRICAO','UNIDADE','CATEGORIA'],
     TRANSPORTADORAS:  ['COD','NOME','CONTATO','PRAZO','OBSERVACAO'],
-    FILIAIS:          ['COD','NOME','CEP','BAIRRO','ENDERECO','CIDADE','ESTADO','EMAIL_RESPONSAVEL','COD_TRANSPORTADORA'],
+    FILIAIS:          ['COD','NOME','CNPJ','CEP','BAIRRO','ENDERECO','CIDADE','ESTADO','EMAIL_RESPONSAVEL','COD_TRANSPORTADORA'],
     PEDIDOS:          ['ID_PEDIDO','DATA','COD_FILIAL','NOME_FILIAL','COD_FORNECEDOR','NOME_FORNECEDOR','COD_TRANSPORTADORA','NOME_TRANSPORTADORA','PRAZO_ENTREGA','OBSERVACAO','USUARIO','VALOR_TOTAL','STATUS'],
     ITENS_PEDIDO:     ['ID_PEDIDO','COD_MP','DESCRICAO','QUANTIDADE','UNIDADE','PRECO_UNIT','SUBTOTAL'],
     PRECO_FORNECEDOR:   ['COD_FORNECEDOR','COD_MP','PRECO'],

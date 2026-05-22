@@ -396,7 +396,7 @@ table tr:hover td { background: #f5f7fb; }
 
 .modal {
   background: var(--surface); border-radius: 8px;
-  padding: 28px 32px; max-width: 500px; width: 90%;
+  padding: 28px 32px; max-width: 560px; width: 90%;
   box-shadow: var(--shadow-lg);
 }
 .modal h3 { font-size: 16px; font-weight: 600; margin-bottom: 12px; color: var(--navy); }
@@ -747,6 +747,11 @@ table tr:hover td { background: #f5f7fb; }
               <input type="text" id="f-forn-nome">
             </div>
             <div class="field">
+              <label>CNPJ</label>
+              <input type="text" id="f-forn-cnpj" placeholder="00.000.000/0000-00" maxlength="18"
+                oninput="mascaraCNPJ(this)" onblur="buscarCNPJ('forn')">
+            </div>
+            <div class="field">
               <label>Contato</label>
               <input type="text" id="f-forn-contato" placeholder="Telefone ou pessoa">
             </div>
@@ -926,6 +931,10 @@ table tr:hover td { background: #f5f7fb; }
             <div class="field"><label>Código *</label><input type="text" id="f-fil-cod" placeholder="Ex: FIL001"></div>
             <div class="field"><label>Nome *</label><input type="text" id="f-fil-nome"></div>
             <div class="field">
+              <label>CNPJ</label>
+              <input type="text" id="f-fil-cnpj" placeholder="00.000.000/0000-00" maxlength="18" oninput="mascaraCNPJ(this)">
+            </div>
+            <div class="field">
               <label>Transportadora Padrão</label>
               <div class="input-lookup">
                 <div class="ac-wrap" style="width:130px;flex:none">
@@ -1097,7 +1106,7 @@ table tr:hover td { background: #f5f7fb; }
 <div class="modal-backdrop" id="modal-confirm">
   <div class="modal">
     <h3>Confirmar Envio do Pedido</h3>
-    <p id="modal-confirm-text"></p>
+    <div id="modal-confirm-text"></div>
     <div class="modal-actions">
       <button class="btn btn-outline" onclick="fecharModal()">Cancelar</button>
       <button class="btn btn-success" id="btn-confirmar-envio" onclick="enviarPedido()">✔ Confirmar e Enviar</button>
@@ -1682,6 +1691,37 @@ function buscarCEP(prefixo) {
     .catch(() => toast('Erro ao buscar CEP', 'error'));
 }
 
+function mascaraCNPJ(input) {
+  let v = input.value.replace(/\D/g,'').slice(0,14);
+  if (v.length > 12) v = v.slice(0,2)+'.'+v.slice(2,5)+'.'+v.slice(5,8)+'/'+v.slice(8,12)+'-'+v.slice(12);
+  else if (v.length > 8) v = v.slice(0,2)+'.'+v.slice(2,5)+'.'+v.slice(5,8)+'/'+v.slice(8);
+  else if (v.length > 5) v = v.slice(0,2)+'.'+v.slice(2,5)+'.'+v.slice(5);
+  else if (v.length > 2) v = v.slice(0,2)+'.'+v.slice(2);
+  input.value = v;
+}
+
+function buscarCNPJ(prefixo) {
+  const cnpjEl = document.getElementById('f-' + prefixo + '-cnpj');
+  const cnpj   = cnpjEl.value.replace(/\D/g,'');
+  if (cnpj.length !== 14) return;
+
+  toast('Buscando CNPJ...', 'info');
+  fetch('https://brasilapi.com.br/api/cnpj/v1/' + cnpj)
+    .then(r => { if (!r.ok) throw new Error(); return r.json(); })
+    .then(d => {
+      const set = (id, val) => { const el = document.getElementById(id); if (el && val) el.value = val; };
+      const nome = d.nome_fantasia || d.razao_social || '';
+      set('f-' + prefixo + '-nome',   nome);
+      set('f-' + prefixo + '-cep',    (d.cep || '').replace(/\D/g,'').replace(/^(\d{5})(\d{3})$/,'$1-$2'));
+      set('f-' + prefixo + '-end',    [d.logradouro, d.numero].filter(Boolean).join(', '));
+      set('f-' + prefixo + '-bairro', d.bairro   || '');
+      set('f-' + prefixo + '-cidade', d.municipio || '');
+      set('f-' + prefixo + '-estado', d.uf        || '');
+      toast('Dados preenchidos via CNPJ', 'success');
+    })
+    .catch(() => toast('CNPJ não encontrado na base pública', 'error'));
+}
+
 // ════════════════════════════════════════════════════
 // NAVEGAÇÃO
 // ════════════════════════════════════════════════════
@@ -1774,13 +1814,57 @@ function confirmarPedido() {
   const filialNome = document.getElementById('ped-filial-nome').value.trim();
   const fornCod    = document.getElementById('ped-forn-cod').value.trim();
   const fornNome   = document.getElementById('ped-forn-nome').value.trim();
+  const transpNome = document.getElementById('ped-transp-nome').value.trim();
+  const prazo      = document.getElementById('ped-prazo').value.trim();
 
   if (!filialCod || !filialNome) { toast('Informe a filial de destino', 'error'); return; }
   if (!fornCod || !fornNome)     { toast('Informe o fornecedor', 'error'); return; }
   if (itensPedido.length === 0)  { toast('Adicione pelo menos um item', 'error'); return; }
 
-  document.getElementById('modal-confirm-text').innerHTML =
-    `Pedido para <strong>${escHTML(fornNome)}</strong>, filial <strong>${escHTML(filialNome)}</strong> com <strong>${itensPedido.length} item(s)</strong> totalizando <strong>R$ ${totalPedido.toFixed(2)}</strong>.<br><br>Um email será enviado ao fornecedor e uma cópia para <strong>${escHTML(sessao.email)}</strong>.`;
+  // Monta lista de destinatários
+  const forn    = (_cache.fornecedor || []).find(f => String(f.COD).trim() === fornCod);
+  const fil     = (_cache.filial     || []).find(f => String(f.COD).trim() === filialCod);
+  const emailsTo  = forn ? String(forn.EMAIL || '').split(';').map(e=>e.trim()).filter(Boolean) : [];
+  const emailsCC  = [];
+  if (fil) String(fil.EMAIL_RESPONSAVEL || '').split(';').map(e=>e.trim()).filter(Boolean).forEach(e => emailsCC.push(e));
+  emailsCC.push('marco@marfim.ind.br');
+  if (sessao.email && sessao.email !== 'marco@marfim.ind.br') emailsCC.push(sessao.email);
+
+  const tagEmail = e => `<span style="display:inline-block;background:#eef2f7;border:1px solid #c8d8ec;border-radius:12px;padding:2px 10px;font-size:12px;color:#1a3c5e;margin:2px 2px;">${escHTML(e)}</span>`;
+
+  const itensList = itensPedido.map(it =>
+    `<tr><td style="padding:4px 8px;font-size:13px;">${escHTML(it.descricao)}</td>
+     <td style="padding:4px 8px;font-size:13px;text-align:center;">${it.quantidade} ${it.unidade}</td>
+     <td style="padding:4px 8px;font-size:13px;text-align:right;">R$ ${parseFloat(it.subtotal).toFixed(2)}</td></tr>`
+  ).join('');
+
+  document.getElementById('modal-confirm-text').innerHTML = `
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px 20px;margin-bottom:14px;font-size:13px;">
+      <div><span style="font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:#888;">Filial</span><br><strong>${escHTML(filialNome)}</strong></div>
+      <div><span style="font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:#888;">Fornecedor</span><br><strong>${escHTML(fornNome)}</strong></div>
+      ${transpNome ? `<div><span style="font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:#888;">Transportadora</span><br>${escHTML(transpNome)}</div>` : ''}
+      ${prazo ? `<div><span style="font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:#888;">Prazo</span><br>${escHTML(prazo)}</div>` : ''}
+    </div>
+    <table style="width:100%;border-collapse:collapse;margin-bottom:14px;border-top:1px solid #eee;">
+      <thead><tr style="background:#f4f7fb;">
+        <th style="padding:6px 8px;font-size:11px;font-weight:600;text-align:left;color:#555;">Item</th>
+        <th style="padding:6px 8px;font-size:11px;font-weight:600;text-align:center;color:#555;">Qtd</th>
+        <th style="padding:6px 8px;font-size:11px;font-weight:600;text-align:right;color:#555;">Subtotal</th>
+      </tr></thead>
+      <tbody>${itensList}</tbody>
+      <tfoot><tr style="border-top:1px solid #dde3ea;">
+        <td colspan="2" style="padding:6px 8px;font-size:13px;font-weight:700;text-align:right;">Total</td>
+        <td style="padding:6px 8px;font-size:14px;font-weight:700;text-align:right;color:#1a3c5e;">R$ ${totalPedido.toFixed(2)}</td>
+      </tr></tfoot>
+    </table>
+    <div style="margin-bottom:8px;">
+      <div style="font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:#888;margin-bottom:5px;">Destinatários (Para)</div>
+      <div>${emailsTo.length ? emailsTo.map(tagEmail).join('') : '<span style="font-size:12px;color:#c00;">⚠ Fornecedor sem email cadastrado</span>'}</div>
+    </div>
+    <div>
+      <div style="font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:#888;margin-bottom:5px;">Cópia (CC)</div>
+      <div>${emailsCC.map(tagEmail).join('')}</div>
+    </div>`;
 
   document.getElementById('modal-confirm').classList.add('open');
 }
@@ -2011,7 +2095,7 @@ function salvarCad(tipo) {
   const mapas = {
     fornecedor: {
       campos: {
-        COD:'f-forn-cod', NOME:'f-forn-nome', CONTATO:'f-forn-contato',
+        COD:'f-forn-cod', NOME:'f-forn-nome', CNPJ:'f-forn-cnpj', CONTATO:'f-forn-contato',
         CEP:'f-forn-cep', BAIRRO:'f-forn-bairro',
         ENDERECO:'f-forn-end', CIDADE:'f-forn-cidade', ESTADO:'f-forn-estado'
       },
@@ -2028,7 +2112,7 @@ function salvarCad(tipo) {
     },
     filial: {
       campos: {
-        COD:'f-fil-cod', NOME:'f-fil-nome',
+        COD:'f-fil-cod', NOME:'f-fil-nome', CNPJ:'f-fil-cnpj',
         CEP:'f-fil-cep', BAIRRO:'f-fil-bairro',
         ENDERECO:'f-fil-end', CIDADE:'f-fil-cidade', ESTADO:'f-fil-estado',
         COD_TRANSPORTADORA:'f-fil-transp-cod'
@@ -2082,10 +2166,10 @@ function salvarCad(tipo) {
 
 function limparForm(prefixo) {
   const mapIds = {
-    forn: ['f-forn-cod','f-forn-nome','f-forn-contato','f-forn-cep','f-forn-bairro','f-forn-end','f-forn-cidade','f-forn-estado'],
+    forn: ['f-forn-cod','f-forn-nome','f-forn-cnpj','f-forn-contato','f-forn-cep','f-forn-bairro','f-forn-end','f-forn-cidade','f-forn-estado'],
     mat:  ['f-mat-cod','f-mat-desc','f-mat-unidade','f-mat-cat'],
     tra:  ['f-tra-cod','f-tra-nome','f-tra-contato','f-tra-prazo','f-tra-obs'],
-    fil:  ['f-fil-cod','f-fil-nome','f-fil-transp-cod','f-fil-transp-nome','f-fil-cep','f-fil-bairro','f-fil-end','f-fil-cidade','f-fil-estado'],
+    fil:  ['f-fil-cod','f-fil-nome','f-fil-cnpj','f-fil-transp-cod','f-fil-transp-nome','f-fil-cep','f-fil-bairro','f-fil-end','f-fil-cidade','f-fil-estado'],
     usr:  ['f-usr-cod','f-usr-nome','f-usr-user','f-usr-senha','f-usr-email','f-usr-perfil']
   };
   (mapIds[prefixo] || []).forEach(id => { document.getElementById(id).value = ''; });
@@ -2147,10 +2231,10 @@ function carregarTabelaCadastro(tipo) {
 
 function editarCadastro(tipo, cod) {
   const camposMap = {
-    fornecedor:     {COD:'f-forn-cod',NOME:'f-forn-nome',CONTATO:'f-forn-contato',CEP:'f-forn-cep',BAIRRO:'f-forn-bairro',ENDERECO:'f-forn-end',CIDADE:'f-forn-cidade',ESTADO:'f-forn-estado'},
+    fornecedor:     {COD:'f-forn-cod',NOME:'f-forn-nome',CNPJ:'f-forn-cnpj',CONTATO:'f-forn-contato',CEP:'f-forn-cep',BAIRRO:'f-forn-bairro',ENDERECO:'f-forn-end',CIDADE:'f-forn-cidade',ESTADO:'f-forn-estado'},
     materia:        {COD:'f-mat-cod',DESCRICAO:'f-mat-desc',UNIDADE:'f-mat-unidade',CATEGORIA:'f-mat-cat'},
     transportadora: {COD:'f-tra-cod',NOME:'f-tra-nome',CONTATO:'f-tra-contato',PRAZO:'f-tra-prazo',OBSERVACAO:'f-tra-obs'},
-    filial:         {COD:'f-fil-cod',NOME:'f-fil-nome',COD_TRANSPORTADORA:'f-fil-transp-cod',CEP:'f-fil-cep',BAIRRO:'f-fil-bairro',ENDERECO:'f-fil-end',CIDADE:'f-fil-cidade',ESTADO:'f-fil-estado'},
+    filial:         {COD:'f-fil-cod',NOME:'f-fil-nome',CNPJ:'f-fil-cnpj',COD_TRANSPORTADORA:'f-fil-transp-cod',CEP:'f-fil-cep',BAIRRO:'f-fil-bairro',ENDERECO:'f-fil-end',CIDADE:'f-fil-cidade',ESTADO:'f-fil-estado'},
     usuario:        {COD:'f-usr-cod',NOME:'f-usr-nome',USUARIO:'f-usr-user',SENHA:'f-usr-senha',EMAIL:'f-usr-email',PERFIL:'f-usr-perfil'}
   };
   const subMap = {
