@@ -1,7 +1,7 @@
 // ============================================================
 // CONFIGURAÇÃO — altere apenas esta seção
 // ============================================================
-const SHEET_ID = 'SEU_ID_DA_PLANILHA_AQUI';
+const SHEET_ID = '1jJkc5LWZnTK4am6oAg_gPHdDJ-NqwT4fYSbY3-r2S_E';
 
 const ABAS = {
   USUARIOS:      'USUARIOS',
@@ -247,11 +247,12 @@ function salvarPedido(dados) {
     const htmlEmail = montarEmailHTML(idPedido, dataHoje, dados);
     
     MailApp.sendEmail({
-      to: fornecedor.EMAIL,
-      cc: dados.emailUsuario || '',
-      subject: `Pedido de Compra ${idPedido} — ${dados.filialNome}`,
-      htmlBody: htmlEmail
-    });
+  to: fornecedor.EMAIL,
+  cc: dados.emailUsuario || '',
+  replyTo: 'marco@marfim.ind.br',
+  subject: `Pedido de Compra ${idPedido} — ${dados.filialNome}`,
+  htmlBody: htmlEmail
+});
 
     return { ok: true, msg: 'Pedido salvo e email enviado com sucesso', id: idPedido };
 
