@@ -2266,6 +2266,8 @@ function limparForm(prefixo) {
   }
 }
 
+let _tblData = {};
+
 function carregarTabelaCadastro(tipo) {
   const tblMap = {
     fornecedor:     { id:'tbl-fornecedores',    cols:['COD','NOME','EMAIL','CONTATO','CEP','CIDADE','ESTADO'] },
@@ -2285,26 +2287,34 @@ function carregarTabelaCadastro(tipo) {
         container.innerHTML = '<div class="empty-state"><div class="icon">📋</div>Nenhum registro</div>';
         return;
       }
+      _tblData[tipo] = rows;
       const headers = cfg.cols.map(c => `<th>${c}</th>`).join('') + '<th></th>';
-      const extraBtn = tipo === 'materia'
-        ? (cod, desc) => `<button class="btn btn-outline btn-sm" style="margin-left:4px" onclick="abrirCardPrecos('${escHTML(cod)}','${escHTML(desc||'')}')">Preços</button>`
-        : tipo === 'fornecedor'
-        ? (cod, nome) => `<button class="btn btn-outline btn-sm" style="margin-left:4px" onclick="abrirCardTranspForn('${escHTML(cod)}','${escHTML(nome||'')}')">Transp.</button>`
-        : () => '';
-      const body = rows.map(row => {
+      const body = rows.map((row, idx) => {
         const cells = cfg.cols.map(c => `<td>${escHTML(String(row[c]||''))}</td>`).join('');
-        const cod  = escHTML(String(row.COD));
-        const nome = escHTML(String(row.DESCRICAO||row.NOME||''));
+        let extra = '';
+        if (tipo === 'materia')    extra = `<button class="btn btn-outline btn-sm" style="margin-left:4px" onclick="_tblAcao('precos',${idx})">Preços</button>`;
+        if (tipo === 'fornecedor') extra = `<button class="btn btn-outline btn-sm" style="margin-left:4px" onclick="_tblAcao('transp',${idx})">Transp.</button>`;
         return `<tr>${cells}<td style="white-space:nowrap">
-          <button class="btn btn-outline btn-sm" onclick="editarCadastro('${tipo}','${cod}')">Editar</button>
-          ${extraBtn(String(row.COD), String(row.DESCRICAO||row.NOME||''))}
-          <button class="btn btn-danger btn-sm" style="margin-left:4px" onclick="confirmarExcluir('${tipo}','${cod}','${nome}')">Excluir</button>
+          <button class="btn btn-outline btn-sm" onclick="_tblAcao('editar','${tipo}',${idx})">Editar</button>
+          ${extra}
+          <button class="btn btn-danger btn-sm" style="margin-left:4px" onclick="_tblAcao('excluir','${tipo}',${idx})">Excluir</button>
         </td></tr>`;
       }).join('');
       container.innerHTML = `<table><thead><tr>${headers}</tr></thead><tbody>${body}</tbody></table>`;
     })
     .withFailureHandler(() => {})
     .listarTodos(tipo);
+}
+
+function _tblAcao(acao, tipo, idx) {
+  const row = _tblData[tipo] && _tblData[tipo][idx];
+  if (!row) return;
+  const cod  = String(row.COD  || '');
+  const nome = String(row.DESCRICAO || row.NOME || '');
+  if (acao === 'editar')  editarCadastro(tipo, cod);
+  if (acao === 'excluir') confirmarExcluir(tipo, cod, nome);
+  if (acao === 'precos')  abrirCardPrecos(cod, nome);
+  if (acao === 'transp')  abrirCardTranspForn(cod, nome);
 }
 
 function editarCadastro(tipo, cod) {
