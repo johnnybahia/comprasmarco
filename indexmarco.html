@@ -2062,35 +2062,40 @@ function carregarTodosPedidos() {
 
 function renderHistorico(pedidos) {
   const tbody = document.getElementById('hist-tbody');
-  if (!pedidos || pedidos.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="9"><div class="empty-state"><div class="icon">🔍</div>Nenhum pedido encontrado</div></td></tr>';
-    return;
-  }
-  tbody.innerHTML = pedidos.map((p,i) => {
-    const data  = p.DATA ? new Date(p.DATA).toLocaleDateString('pt-BR') : '—';
-    const total = p.VALOR_TOTAL ? 'R$ ' + parseFloat(p.VALOR_TOTAL).toFixed(2) : '—';
-    let nfBadge = '<span class="badge badge-gray">Aguardando</span>';
-    if (p.temNF) {
-      if (p.temDivQtd || p.temDivPreco) {
-        const divTxt = [p.temDivQtd && 'Qtd', p.temDivPreco && 'Preço'].filter(Boolean).join('+');
-        nfBadge = `<span class="badge badge-red" title="Divergência em ${divTxt}">⚠ Div. ${divTxt}</span>`;
-      } else {
-        nfBadge = '<span class="badge badge-green">✓ Recebido</span>';
-      }
+  try {
+    if (!pedidos || pedidos.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="9"><div class="empty-state"><div class="icon">🔍</div>Nenhum pedido encontrado</div></td></tr>';
+      return;
     }
-    return `<tr style="cursor:pointer" onclick="verDetalhe(${i})">
-      <td><code>${p.ID_PEDIDO||''}</code></td>
-      <td>${data}</td>
-      <td>${escHTML(String(p.NOME_FILIAL||p.COD_FILIAL||''))}</td>
-      <td>${escHTML(String(p.NOME_FORNECEDOR||p.COD_FORNECEDOR||''))}</td>
-      <td>${escHTML(String(p.NOME_TRANSPORTADORA||'—'))}</td>
-      <td><strong>${total}</strong></td>
-      <td><span class="badge badge-blue">${p.STATUS||'—'}</span></td>
-      <td>${nfBadge}</td>
-      <td><button class="btn btn-outline btn-sm" onclick="event.stopPropagation();verDetalhe(${i})">Ver</button></td>
-    </tr>`;
-  }).join('');
-  window._pedidosHistorico = pedidos;
+    tbody.innerHTML = pedidos.map((p, i) => {
+      let dataStr = '—';
+      try { if (p.DATA) dataStr = new Date(p.DATA).toLocaleDateString('pt-BR'); } catch(e) {}
+      const total = p.VALOR_TOTAL != null && p.VALOR_TOTAL !== '' ? 'R$ ' + parseFloat(p.VALOR_TOTAL).toFixed(2) : '—';
+      let nfBadge = '<span class="badge badge-gray">Aguardando</span>';
+      if (p.temNF) {
+        if (p.temDivQtd || p.temDivPreco) {
+          const divTxt = [p.temDivQtd && 'Qtd', p.temDivPreco && 'Preço'].filter(Boolean).join('+');
+          nfBadge = `<span class="badge badge-red" title="Divergência em ${divTxt}">⚠ Div. ${divTxt}</span>`;
+        } else {
+          nfBadge = '<span class="badge badge-green">✓ Recebido</span>';
+        }
+      }
+      return `<tr style="cursor:pointer" onclick="verDetalhe(${i})">
+        <td><code>${escHTML(String(p.ID_PEDIDO||''))}</code></td>
+        <td>${dataStr}</td>
+        <td>${escHTML(String(p.NOME_FILIAL||p.COD_FILIAL||''))}</td>
+        <td>${escHTML(String(p.NOME_FORNECEDOR||p.COD_FORNECEDOR||''))}</td>
+        <td>${escHTML(String(p.NOME_TRANSPORTADORA||'—'))}</td>
+        <td><strong>${total}</strong></td>
+        <td><span class="badge badge-blue">${escHTML(String(p.STATUS||'—'))}</span></td>
+        <td>${nfBadge}</td>
+        <td><button class="btn btn-outline btn-sm" onclick="event.stopPropagation();verDetalhe(${i})">Ver</button></td>
+      </tr>`;
+    }).join('');
+    window._pedidosHistorico = pedidos;
+  } catch(e) {
+    tbody.innerHTML = '<tr><td colspan="9"><div class="empty-state"><div class="icon">⚠</div>Erro ao exibir histórico: ' + escHTML(e.message) + '</div></td></tr>';
+  }
 }
 
 function verDetalhe(idx) {
@@ -2459,21 +2464,19 @@ function executarExclusao() {
 let _nfPedidoAtual = null;
 let _nfIdsList = [];
 
+let _nfBlurInited = false;
 function _nfCarregarIds() {
-  google.script.run
-    .withSuccessHandler(ids => { _nfIdsList = ids || []; })
-    .listarIdsPedidos();
-}
-
-// Configura blur do campo NF uma única vez
-(function() {
-  document.addEventListener('DOMContentLoaded', function() {
+  if (!_nfBlurInited) {
+    _nfBlurInited = true;
     const inp = document.getElementById('nf-ped-id');
     if (inp) inp.addEventListener('blur', () => setTimeout(() => {
       document.getElementById('ac-nf-ped-id').classList.remove('open');
     }, 180));
-  });
-})();
+  }
+  google.script.run
+    .withSuccessHandler(ids => { _nfIdsList = ids || []; })
+    .listarIdsPedidos();
+}
 
 function _nfAcRender() {
   const inp = document.getElementById('nf-ped-id');
@@ -2522,8 +2525,11 @@ function buscarPedidoNF() {
 }
 
 function renderPedidoNF(res) {
+  try {
+  if (!res || !res.pedido) { toast('Dados do pedido inválidos ou não encontrados', 'error'); return; }
   const p = res.pedido;
-  const dataP = p.DATA ? new Date(p.DATA).toLocaleDateString('pt-BR') : '—';
+  let dataP = '—';
+  try { if (p.DATA) dataP = new Date(p.DATA).toLocaleDateString('pt-BR'); } catch(e) {}
 
   document.getElementById('nf-info-grid').innerHTML = `
     <div class="nf-info-item"><label>ID Pedido</label><span style="font-family:'IBM Plex Mono',monospace">${p.ID_PEDIDO||'—'}</span></div>
@@ -2565,6 +2571,9 @@ function renderPedidoNF(res) {
   calcTotalNF();
   document.getElementById('nf-pedido-card').style.display = 'block';
   document.getElementById('nf-pedido-card').scrollIntoView({ behavior: 'smooth' });
+  } catch(e) {
+    toast('Erro ao exibir pedido: ' + e.message, 'error');
+  }
 }
 
 function calcTotalNF() {

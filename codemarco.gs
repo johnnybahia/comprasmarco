@@ -39,10 +39,13 @@ function sheetToArray(nome) {
   if (!sh) return [];
   const data = sh.getDataRange().getValues();
   if (data.length <= 1) return [];
-  const headers = data[0];
+  const headers = data[0].map(h => String(h).trim());
   return data.slice(1).map(row => {
     const obj = {};
-    headers.forEach((h, i) => obj[h] = row[i]);
+    headers.forEach((h, i) => {
+      const v = row[i];
+      obj[h] = (v instanceof Date) ? Utilities.formatDate(v, Session.getScriptTimeZone(), "yyyy-MM-dd'T'HH:mm:ss'Z'") : v;
+    });
     return obj;
   });
 }
