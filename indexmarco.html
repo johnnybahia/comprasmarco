@@ -1521,14 +1521,15 @@ function carregarTabelaTranspForn(codForn) {
         tbl.innerHTML = '<div class="empty-state"><div class="icon">🚚</div>Nenhuma transportadora vinculada</div>';
         return;
       }
+      _tblTranspData = rows;
       tbl.innerHTML = `<table>
         <thead><tr><th>Filial</th><th>Nome Filial</th><th>Transportadora</th><th>Nome Transportadora</th><th></th></tr></thead>
-        <tbody>${rows.map(r => `<tr>
-          <td><code>${escHTML(r.COD_FILIAL)}</code></td>
-          <td>${escHTML(r.NOME_FILIAL)}</td>
-          <td><code>${escHTML(r.COD_TRANSPORTADORA)}</code></td>
-          <td>${escHTML(r.NOME_TRANSPORTADORA)}</td>
-          <td><button class="btn-icon danger" onclick="removerTranspFornFilial('${escHTML(r.COD_FILIAL)}')" title="Remover">✕</button></td>
+        <tbody>${rows.map((r,i) => `<tr>
+          <td><code>${escHTML(String(r.COD_FILIAL||''))}</code></td>
+          <td>${escHTML(String(r.NOME_FILIAL||''))}</td>
+          <td><code>${escHTML(String(r.COD_TRANSPORTADORA||''))}</code></td>
+          <td>${escHTML(String(r.NOME_TRANSPORTADORA||''))}</td>
+          <td><button class="btn-icon danger" onclick="_rmTransp(${i})" title="Remover">✕</button></td>
         </tr>`).join('')}</tbody>
       </table>`;
     })
@@ -1613,13 +1614,14 @@ function carregarTabelaPrecos(codMP) {
         tbl.innerHTML = '<div class="empty-state"><div class="icon">💰</div>Nenhum preço vinculado</div>';
         return;
       }
+      _tblPrecoData = rows;
       tbl.innerHTML = `<table>
         <thead><tr><th>Fornecedor</th><th>Nome</th><th>Preço Unit. (R$)</th><th></th></tr></thead>
-        <tbody>${rows.map(r => `<tr>
-          <td><code>${r.COD_FORNECEDOR}</code></td>
-          <td>${r.NOME_FORNECEDOR}</td>
+        <tbody>${rows.map((r,i) => `<tr>
+          <td><code>${escHTML(String(r.COD_FORNECEDOR||''))}</code></td>
+          <td>${escHTML(String(r.NOME_FORNECEDOR||''))}</td>
           <td><strong>R$ ${parseFloat(r.PRECO||0).toFixed(2)}</strong></td>
-          <td><button class="btn-icon danger" onclick="removerPrecoFornecedor('${r.COD_FORNECEDOR}','${r.COD_MP}')" title="Remover">✕</button></td>
+          <td><button class="btn-icon danger" onclick="_rmPreco(${i})" title="Remover">✕</button></td>
         </tr>`).join('')}</tbody>
       </table>`;
     })
@@ -2084,7 +2086,7 @@ function renderHistorico(pedidos) {
 }
 
 function verDetalhe(idx) {
-  const p = window._pedidosHistorico[idx];
+  const p = (window._pedidosHistorico || [])[idx];
   if (!p) return;
   const card = document.getElementById('hist-detalhe');
   card.style.display = 'block';
@@ -2301,6 +2303,17 @@ function limparForm(prefixo) {
 }
 
 let _tblData = {};
+let _tblTranspData = [];
+let _tblPrecoData  = [];
+
+function _rmTransp(idx) {
+  const r = _tblTranspData[idx];
+  if (r) removerTranspFornFilial(r.COD_FILIAL);
+}
+function _rmPreco(idx) {
+  const r = _tblPrecoData[idx];
+  if (r) removerPrecoFornecedor(r.COD_FORNECEDOR, r.COD_MP);
+}
 
 function carregarTabelaCadastro(tipo) {
   const tblMap = {

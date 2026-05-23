@@ -662,8 +662,11 @@ function salvarRecebimento(dados) {
       valorTotalRec += qtdRec * precRec;
     });
 
+    const nfDataObj = dados.nfData
+      ? new Date(dados.nfData.replace(/(\d{2})\/(\d{2})\/(\d{4})/, '$3-$2-$1'))
+      : '';
     sh.appendRow([
-      idRec, dados.idPedido, dados.nfNumero, dados.nfData || '', dataHoje,
+      idRec, dados.idPedido, dados.nfNumero, nfDataObj, dataHoje,
       dados.codFilial, dados.nomeFilial,
       dados.codFornecedor, dados.nomeFornecedor,
       dados.usuarioLogado,
