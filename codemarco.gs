@@ -303,6 +303,7 @@ function salvarPedido(dados) {
       idPedido, dataHoje,
       dados.filialCod, dados.filialNome,
       dados.fornecedorCod, dados.fornecedorNome,
+      dados.frete || 'CIF',
       dados.transportadoraCod, dados.transportadoraNome,
       dados.prazoEntrega, dados.observacao,
       dados.usuarioLogado, dados.valorTotal, 'ENVIADO'
@@ -416,7 +417,10 @@ function montarEmailHTML(idPedido, data, dados) {
 
     <!-- Entrega -->
     <div style="background:#fff;padding:12px 28px;border-top:1px solid #dde3ea;border-bottom:1px solid #dde3ea;display:flex;gap:32px;flex-wrap:wrap;">
-      <div><span style="font-size:11px;font-weight:600;color:#888;text-transform:uppercase;letter-spacing:1px;">Transportadora</span><br><span style="font-size:13px;color:#1a1a1a;">${dados.transportadoraNome || '—'}</span></div>
+      <div><span style="font-size:11px;font-weight:600;color:#888;text-transform:uppercase;letter-spacing:1px;">Frete</span><br>
+        <span style="display:inline-block;background:${dados.frete==='CIF'?'#e8f5e9':'#fff3e0'};border:1px solid ${dados.frete==='CIF'?'#a5d6a7':'#ffcc80'};border-radius:4px;padding:1px 10px;font-size:13px;font-weight:700;color:${dados.frete==='CIF'?'#2e7d32':'#e65100'};">${dados.frete || 'CIF'}</span>
+      </div>
+      ${dados.frete !== 'CIF' ? `<div><span style="font-size:11px;font-weight:600;color:#888;text-transform:uppercase;letter-spacing:1px;">Transportadora</span><br><span style="font-size:13px;color:#1a1a1a;">${dados.transportadoraNome || '—'}</span></div>` : ''}
       <div><span style="font-size:11px;font-weight:600;color:#888;text-transform:uppercase;letter-spacing:1px;">Prazo de Entrega</span><br><span style="font-size:13px;color:#1a1a1a;">${dados.prazoEntrega || '—'}</span></div>
     </div>
 
@@ -452,8 +456,6 @@ function montarEmailHTML(idPedido, data, dados) {
           </td>
           <td style="vertical-align:middle;padding-left:16px;border-left:1px solid rgba(255,255,255,0.2);">
             <div style="font-size:14px;font-weight:700;color:white;">Marco Aurélio Bonalume</div>
-            <div style="font-size:12px;color:rgba(255,255,255,0.65);margin-top:3px;">Departamento de Compras — Marfim</div>
-            <div style="font-size:11px;color:rgba(255,255,255,0.35);margin-top:6px;">Email gerado automaticamente pelo Sistema de Compras.</div>
           </td>
         </tr>
       </table>
@@ -707,7 +709,7 @@ function setupPlanilha() {
     MATERIAS_PRIMAS:  ['COD','DESCRICAO','UNIDADE','CATEGORIA'],
     TRANSPORTADORAS:  ['COD','NOME','CNPJ','CONTATO','PRAZO','OBSERVACAO','CEP','BAIRRO','ENDERECO','CIDADE','ESTADO'],
     FILIAIS:          ['COD','NOME','CNPJ','CEP','BAIRRO','ENDERECO','CIDADE','ESTADO','EMAIL_RESPONSAVEL','COD_TRANSPORTADORA'],
-    PEDIDOS:          ['ID_PEDIDO','DATA','COD_FILIAL','NOME_FILIAL','COD_FORNECEDOR','NOME_FORNECEDOR','COD_TRANSPORTADORA','NOME_TRANSPORTADORA','PRAZO_ENTREGA','OBSERVACAO','USUARIO','VALOR_TOTAL','STATUS'],
+    PEDIDOS:          ['ID_PEDIDO','DATA','COD_FILIAL','NOME_FILIAL','COD_FORNECEDOR','NOME_FORNECEDOR','FRETE','COD_TRANSPORTADORA','NOME_TRANSPORTADORA','PRAZO_ENTREGA','OBSERVACAO','USUARIO','VALOR_TOTAL','STATUS'],
     ITENS_PEDIDO:     ['ID_PEDIDO','COD_MP','DESCRICAO','QUANTIDADE','UNIDADE','PRECO_UNIT','SUBTOTAL'],
     PRECO_FORNECEDOR:   ['COD_FORNECEDOR','COD_MP','PRECO'],
     TRANSP_FORN_FILIAL: ['COD_FORNECEDOR','COD_FILIAL','COD_TRANSPORTADORA'],
