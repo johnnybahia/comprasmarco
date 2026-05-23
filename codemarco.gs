@@ -373,11 +373,12 @@ function montarEmailHTML(idPedido, data, dados) {
   const dataFmt = Utilities.formatDate(data, Session.getScriptTimeZone(), 'dd/MM/yyyy');
   const linhasItens = dados.itens.map(item => `
     <tr>
-      <td style="padding:8px;border:1px solid #ddd;">${item.cod}</td>
-      <td style="padding:8px;border:1px solid #ddd;">${item.descricao}</td>
-      <td style="padding:8px;border:1px solid #ddd;text-align:center;">${item.quantidade} ${item.unidade}</td>
-      <td style="padding:8px;border:1px solid #ddd;text-align:right;">R$ ${parseFloat(item.preco).toFixed(2)}</td>
-      <td style="padding:8px;border:1px solid #ddd;text-align:right;">R$ ${parseFloat(item.subtotal).toFixed(2)}</td>
+      <td style="padding:10px 12px;border-bottom:1px solid #eee;font-family:monospace;font-size:12px;white-space:nowrap;color:#1a3c5e;">${item.cod}</td>
+      <td style="padding:10px 12px;border-bottom:1px solid #eee;font-size:13px;">${item.descricao}</td>
+      <td style="padding:10px 12px;border-bottom:1px solid #eee;text-align:right;white-space:nowrap;font-size:13px;">${item.quantidade}</td>
+      <td style="padding:10px 12px;border-bottom:1px solid #eee;text-align:left;white-space:nowrap;font-size:12px;color:#666;">${item.unidade}</td>
+      <td style="padding:10px 12px;border-bottom:1px solid #eee;text-align:right;white-space:nowrap;font-size:13px;">R$&nbsp;${parseFloat(item.preco).toFixed(2)}</td>
+      <td style="padding:10px 12px;border-bottom:1px solid #eee;text-align:right;white-space:nowrap;font-size:13px;font-weight:600;">R$&nbsp;${parseFloat(item.subtotal).toFixed(2)}</td>
     </tr>
   `).join('');
 
@@ -432,18 +433,19 @@ function montarEmailHTML(idPedido, data, dados) {
       <table style="width:100%;border-collapse:collapse;">
         <thead>
           <tr style="background:#1a3c5e;color:white;">
-            <th style="padding:10px 12px;text-align:left;font-size:12px;font-weight:600;">Código</th>
-            <th style="padding:10px 12px;text-align:left;font-size:12px;font-weight:600;">Descrição</th>
-            <th style="padding:10px 12px;text-align:center;font-size:12px;font-weight:600;">Qtd / Un</th>
-            <th style="padding:10px 12px;text-align:right;font-size:12px;font-weight:600;">Preço Unit.</th>
-            <th style="padding:10px 12px;text-align:right;font-size:12px;font-weight:600;">Subtotal</th>
+            <th style="padding:11px 12px;text-align:left;font-size:12px;font-weight:600;white-space:nowrap;">Código</th>
+            <th style="padding:11px 12px;text-align:left;font-size:12px;font-weight:600;">Descrição</th>
+            <th style="padding:11px 12px;text-align:right;font-size:12px;font-weight:600;white-space:nowrap;">Qtd</th>
+            <th style="padding:11px 12px;text-align:left;font-size:12px;font-weight:600;white-space:nowrap;">Un</th>
+            <th style="padding:11px 12px;text-align:right;font-size:12px;font-weight:600;white-space:nowrap;">Preço Unit.</th>
+            <th style="padding:11px 12px;text-align:right;font-size:12px;font-weight:600;white-space:nowrap;">Subtotal</th>
           </tr>
         </thead>
         <tbody>${linhasItens}</tbody>
         <tfoot>
-          <tr style="background:#eef2f7;">
-            <td colspan="4" style="padding:12px;text-align:right;font-weight:700;font-size:13px;color:#1a3c5e;">TOTAL DO PEDIDO</td>
-            <td style="padding:12px;text-align:right;font-weight:700;font-size:15px;color:#1a3c5e;">R$ ${parseFloat(dados.valorTotal).toFixed(2)}</td>
+          <tr style="background:#1a3c5e;">
+            <td colspan="5" style="padding:14px 12px;text-align:right;font-weight:700;font-size:13px;color:rgba(255,255,255,0.85);letter-spacing:1px;text-transform:uppercase;">TOTAL DO PEDIDO</td>
+            <td style="padding:14px 12px;text-align:right;font-weight:800;font-size:18px;color:#e8a020;white-space:nowrap;">R$&nbsp;${parseFloat(dados.valorTotal).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})}</td>
           </tr>
         </tfoot>
       </table>
@@ -614,7 +616,15 @@ function listarTranspPorFornecedor(codForn) {
 function buscarPedidoParaRecebimento(idPedido) {
   try {
     const pedidos = sheetToArray(ABAS.PEDIDOS);
-    const ped = pedidos.find(p => String(p.ID_PEDIDO).trim().toUpperCase() === String(idPedido).trim().toUpperCase());
+    const query = String(idPedido).trim().toUpperCase();
+    // Normalise: strip "PED-" prefix and leading zeros, then compare numeric part
+    const numQuery = query.replace(/^PED-?/, '').replace(/^0+/, '') || '0';
+    const ped = pedidos.find(p => {
+      const id = String(p.ID_PEDIDO).trim().toUpperCase();
+      if (id === query) return true;
+      const num = id.replace(/^PED-?/, '').replace(/^0+/, '') || '0';
+      return num === numQuery;
+    });
     if (!ped) return null;
     const itens = sheetToArray(ABAS.ITENS_PEDIDO)
       .filter(i => String(i.ID_PEDIDO).trim() === String(ped.ID_PEDIDO).trim());
@@ -749,7 +759,12 @@ function getHistorico(tipo, cod) {
 
 function getTodosPedidos() {
   try {
-    return _enriquecerPedidosComNF(sheetToArray(ABAS.PEDIDOS));
+    const pedidos = _enriquecerPedidosComNF(sheetToArray(ABAS.PEDIDOS));
+    const todosItens = sheetToArray(ABAS.ITENS_PEDIDO);
+    return pedidos.map(p => {
+      const itens = todosItens.filter(i => String(i.ID_PEDIDO).trim() === String(p.ID_PEDIDO).trim());
+      return { ...p, itens };
+    });
   } catch(e) {
     logErro('getTodosPedidos: ' + e.message);
     return [];

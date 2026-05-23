@@ -1826,6 +1826,7 @@ function navegarPara(panel, btn) {
   document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
   document.getElementById('panel-' + panel).classList.add('active');
   if (btn) btn.classList.add('active');
+  if (panel === 'historico') carregarTodosPedidos();
 }
 
 function trocarSubtab(nome, btn) {
@@ -2042,7 +2043,10 @@ function carregarTodosPedidos() {
   tbody.innerHTML = '<tr><td colspan="8"><div class="empty-state"><div class="icon">⏳</div>Carregando...</div></td></tr>';
   google.script.run
     .withSuccessHandler(res => renderHistorico(res))
-    .withFailureHandler(() => toast('Erro','error'))
+    .withFailureHandler(err => {
+      const tbody = document.getElementById('hist-tbody');
+      tbody.innerHTML = '<tr><td colspan="9"><div class="empty-state"><div class="icon">⚠</div>Erro ao carregar: ' + (err && err.message ? err.message : 'verifique se setupPlanilha() foi executado') + '</div></td></tr>';
+    })
     .getTodosPedidos();
 }
 
