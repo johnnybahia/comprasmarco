@@ -119,7 +119,7 @@ function salvarCadastro(tipo, dados) {
   try {
     lock.waitLock(10000);
     const mapa = {
-      fornecedor:     { aba: ABAS.FORNECEDORES,   cols: ['COD','NOME','CNPJ','EMAIL','CONTATO','CEP','BAIRRO','ENDERECO','CIDADE','ESTADO'] },
+      fornecedor:     { aba: ABAS.FORNECEDORES,   cols: ['COD','NOME','CNPJ','EMAIL','CONTATO','COND_PAGAMENTO','CEP','BAIRRO','ENDERECO','CIDADE','ESTADO'] },
       materia:        { aba: ABAS.MATERIAS,        cols: ['COD','DESCRICAO','UNIDADE','CATEGORIA'] },
       transportadora: { aba: ABAS.TRANSPORTADORAS, cols: ['COD','NOME','CNPJ','CONTATO','PRAZO','OBSERVACAO','CEP','BAIRRO','ENDERECO','CIDADE','ESTADO'] },
       filial:         { aba: ABAS.FILIAIS,         cols: ['COD','NOME','CNPJ','CEP','BAIRRO','ENDERECO','CIDADE','ESTADO','EMAIL_RESPONSAVEL','COD_TRANSPORTADORA'] },
@@ -305,8 +305,8 @@ function salvarPedido(dados) {
       dados.fornecedorCod, dados.fornecedorNome,
       dados.frete || 'CIF',
       dados.transportadoraCod, dados.transportadoraNome,
-      dados.prazoEntrega, dados.observacao,
-      dados.usuarioLogado, dados.valorTotal, 'ENVIADO'
+      dados.prazoEntrega, dados.condPagamento || '',
+      dados.observacao, dados.usuarioLogado, dados.valorTotal, 'ENVIADO'
     ]);
 
     dados.itens.forEach(item => {
@@ -348,12 +348,14 @@ function salvarPedido(dados) {
       fornecedorCNPJ:  fornecedor.CNPJ  || '',
       fornecedorEndereco: [fornecedor.ENDERECO, fornecedor.BAIRRO, fornecedor.CIDADE, fornecedor.ESTADO].filter(Boolean).join(', ')
     });
-    const htmlEmail = montarEmailHTML(idPedido, dataHoje, dadosEmail);
+    const htmlEmail  = montarEmailHTML(idPedido, dataHoje, dadosEmail);
+    const textoEmail = montarEmailTexto(idPedido, dataHoje, dadosEmail);
     MailApp.sendEmail({
       to: emailsList.join(','),
       cc: ccList,
       replyTo: 'marco@marfim.ind.br',
       subject: `Pedido de Compra ${idPedido} — ${dados.filialNome}`,
+      body: textoEmail,
       htmlBody: htmlEmail
     });
 
@@ -422,6 +424,7 @@ function montarEmailHTML(idPedido, data, dados) {
       </div>
       ${dados.frete !== 'CIF' ? `<div><span style="font-size:11px;font-weight:600;color:#888;text-transform:uppercase;letter-spacing:1px;">Transportadora</span><br><span style="font-size:13px;color:#1a1a1a;">${dados.transportadoraNome || '—'}</span></div>` : ''}
       <div><span style="font-size:11px;font-weight:600;color:#888;text-transform:uppercase;letter-spacing:1px;">Prazo de Entrega</span><br><span style="font-size:13px;color:#1a1a1a;">${dados.prazoEntrega || '—'}</span></div>
+      ${dados.condPagamento ? `<div><span style="font-size:11px;font-weight:600;color:#888;text-transform:uppercase;letter-spacing:1px;">Condição de Pagamento</span><br><span style="font-size:13px;color:#1a1a1a;">${dados.condPagamento}</span></div>` : ''}
     </div>
 
     <!-- Itens -->
@@ -447,6 +450,12 @@ function montarEmailHTML(idPedido, data, dados) {
       ${dados.observacao ? `<div style="margin-top:16px;padding:12px 14px;background:#f9f9f9;border-left:3px solid #1a3c5e;border-radius:3px;font-size:13px;color:#333;"><strong>Observações:</strong> ${dados.observacao}</div>` : ''}
     </div>
 
+    <!-- Responder -->
+    <div style="background:#f4f7fb;padding:14px 28px;border-top:1px solid #dde3ea;text-align:center;">
+      <span style="font-size:13px;color:#555;">Dúvidas ou confirmações? Responda diretamente para </span>
+      <a href="mailto:marco@marfim.ind.br?subject=Re: Pedido ${idPedido}" style="font-size:13px;font-weight:700;color:#1a3c5e;text-decoration:none;">marco@marfim.ind.br</a>
+    </div>
+
     <!-- Assinatura -->
     <div style="background:#1a3c5e;padding:18px 28px;">
       <table style="width:100%;border-collapse:collapse;">
@@ -462,6 +471,56 @@ function montarEmailHTML(idPedido, data, dados) {
     </div>
 
   </div>`;
+}
+
+function montarEmailTexto(idPedido, data, dados) {
+  const dataFmt = Utilities.formatDate(data, Session.getScriptTimeZone(), 'dd/MM/yyyy');
+  const sep  = '─'.repeat(60);
+  const sep2 = '═'.repeat(60);
+
+  const linhasItens = dados.itens.map((item, i) =>
+    `  ${String(i+1).padStart(2,'0')}. ${item.descricao}\n` +
+    `      Qtd: ${item.quantidade} ${item.unidade}  |  Unit: R$ ${parseFloat(item.preco).toFixed(2)}  |  Subtotal: R$ ${parseFloat(item.subtotal).toFixed(2)}`
+  ).join('\n');
+
+  const frete = dados.frete || 'CIF';
+  const transpLinha = frete !== 'CIF' && dados.transportadoraNome
+    ? `Transportadora : ${dados.transportadoraNome}\n` : '';
+
+  return [
+    sep2,
+    `PEDIDO DE COMPRA  ${idPedido}`,
+    `Emitido em ${dataFmt}  |  Solicitante: ${dados.usuarioLogado}`,
+    sep2,
+    '',
+    'COMPRADOR (FILIAL)',
+    `  ${dados.filialNome}${dados.filialCNPJ ? '  |  CNPJ: ' + dados.filialCNPJ : ''}`,
+    dados.filialEndereco ? `  ${dados.filialEndereco}` : '',
+    '',
+    'FORNECEDOR',
+    `  ${dados.fornecedorNome}${dados.fornecedorCNPJ ? '  |  CNPJ: ' + dados.fornecedorCNPJ : ''}`,
+    dados.fornecedorEndereco ? `  ${dados.fornecedorEndereco}` : '',
+    '',
+    sep,
+    `Modalidade de Frete : ${frete}`,
+    transpLinha + `Prazo de Entrega    : ${dados.prazoEntrega || '—'}`,
+    dados.condPagamento ? `Condição Pagamento  : ${dados.condPagamento}` : '',
+    sep,
+    '',
+    'ITENS DO PEDIDO',
+    '',
+    linhasItens,
+    '',
+    sep,
+    `TOTAL DO PEDIDO : R$ ${parseFloat(dados.valorTotal).toFixed(2)}`,
+    sep,
+    dados.observacao ? `\nObservações: ${dados.observacao}\n` : '',
+    '',
+    'Dúvidas ou confirmações? Responda para: marco@marfim.ind.br',
+    sep2,
+    'Marco Aurélio Bonalume — Marfim',
+    sep2,
+  ].filter(l => l !== null && l !== undefined).join('\n');
 }
 
 // ============================================================
@@ -594,7 +653,7 @@ function salvarRecebimento(dados) {
     });
 
     sh.appendRow([
-      idRec, dados.idPedido, dados.nfNumero, dataHoje,
+      idRec, dados.idPedido, dados.nfNumero, dados.nfData || '', dataHoje,
       dados.codFilial, dados.nomeFilial,
       dados.codFornecedor, dados.nomeFornecedor,
       dados.usuarioLogado,
@@ -705,15 +764,15 @@ function setupPlanilha() {
 
   const estrutura = {
     USUARIOS:         ['COD','NOME','USUARIO','SENHA','EMAIL','PERFIL'],
-    FORNECEDORES:     ['COD','NOME','CNPJ','EMAIL','CONTATO','CEP','BAIRRO','ENDERECO','CIDADE','ESTADO'],
+    FORNECEDORES:     ['COD','NOME','CNPJ','EMAIL','CONTATO','COND_PAGAMENTO','CEP','BAIRRO','ENDERECO','CIDADE','ESTADO'],
     MATERIAS_PRIMAS:  ['COD','DESCRICAO','UNIDADE','CATEGORIA'],
     TRANSPORTADORAS:  ['COD','NOME','CNPJ','CONTATO','PRAZO','OBSERVACAO','CEP','BAIRRO','ENDERECO','CIDADE','ESTADO'],
     FILIAIS:          ['COD','NOME','CNPJ','CEP','BAIRRO','ENDERECO','CIDADE','ESTADO','EMAIL_RESPONSAVEL','COD_TRANSPORTADORA'],
-    PEDIDOS:          ['ID_PEDIDO','DATA','COD_FILIAL','NOME_FILIAL','COD_FORNECEDOR','NOME_FORNECEDOR','FRETE','COD_TRANSPORTADORA','NOME_TRANSPORTADORA','PRAZO_ENTREGA','OBSERVACAO','USUARIO','VALOR_TOTAL','STATUS'],
+    PEDIDOS:          ['ID_PEDIDO','DATA','COD_FILIAL','NOME_FILIAL','COD_FORNECEDOR','NOME_FORNECEDOR','FRETE','COD_TRANSPORTADORA','NOME_TRANSPORTADORA','PRAZO_ENTREGA','COND_PAGAMENTO','OBSERVACAO','USUARIO','VALOR_TOTAL','STATUS'],
     ITENS_PEDIDO:     ['ID_PEDIDO','COD_MP','DESCRICAO','QUANTIDADE','UNIDADE','PRECO_UNIT','SUBTOTAL'],
     PRECO_FORNECEDOR:   ['COD_FORNECEDOR','COD_MP','PRECO'],
     TRANSP_FORN_FILIAL: ['COD_FORNECEDOR','COD_FILIAL','COD_TRANSPORTADORA'],
-    RECEBIMENTOS:      ['ID_RECEBIMENTO','ID_PEDIDO','NF_NUMERO','DATA_RECEBIMENTO','COD_FILIAL','NOME_FILIAL','COD_FORNECEDOR','NOME_FORNECEDOR','USUARIO','VALOR_TOTAL_PEDIDO','VALOR_TOTAL_RECEBIDO','DIVERGENCIA_QTD','DIVERGENCIA_PRECO','OBSERVACAO'],
+    RECEBIMENTOS:      ['ID_RECEBIMENTO','ID_PEDIDO','NF_NUMERO','DATA_NF','DATA_RECEBIMENTO','COD_FILIAL','NOME_FILIAL','COD_FORNECEDOR','NOME_FORNECEDOR','USUARIO','VALOR_TOTAL_PEDIDO','VALOR_TOTAL_RECEBIDO','DIVERGENCIA_QTD','DIVERGENCIA_PRECO','OBSERVACAO'],
     ITENS_RECEBIMENTO: ['ID_RECEBIMENTO','ID_PEDIDO','COD_MP','DESCRICAO','QTD_PEDIDA','QTD_RECEBIDA','PRECO_PEDIDO','PRECO_RECEBIDO','SUBTOTAL_PEDIDO','SUBTOTAL_RECEBIDO','DIV_QTD','DIV_PRECO'],
     LOG_ERROS:         ['DATA','MENSAGEM']
   };
