@@ -1784,6 +1784,7 @@ function toggleTransportadora() {
   if (!isFOB) {
     document.getElementById('ped-transp-cod').value  = '';
     document.getElementById('ped-transp-nome').value = '';
+    fecharAC('ped-transp-cod');
   }
 }
 
@@ -2322,8 +2323,8 @@ function carregarTabelaCadastro(tipo) {
       const body = rows.map((row, idx) => {
         const cells = cfg.cols.map(c => `<td>${escHTML(String(row[c]||''))}</td>`).join('');
         let extra = '';
-        if (tipo === 'materia')    extra = `<button class="btn btn-outline btn-sm" style="margin-left:4px" onclick="_tblAcao('precos',${idx})">Preços</button>`;
-        if (tipo === 'fornecedor') extra = `<button class="btn btn-outline btn-sm" style="margin-left:4px" onclick="_tblAcao('transp',${idx})">Transp.</button>`;
+        if (tipo === 'materia')    extra = `<button class="btn btn-outline btn-sm" style="margin-left:4px" onclick="_tblAcao('precos','materia',${idx})">Preços</button>`;
+        if (tipo === 'fornecedor') extra = `<button class="btn btn-outline btn-sm" style="margin-left:4px" onclick="_tblAcao('transp','fornecedor',${idx})">Transp.</button>`;
         return `<tr>${cells}<td style="white-space:nowrap">
           <button class="btn btn-outline btn-sm" onclick="_tblAcao('editar','${tipo}',${idx})">Editar</button>
           ${extra}
