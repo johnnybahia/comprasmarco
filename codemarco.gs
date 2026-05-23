@@ -348,12 +348,14 @@ function salvarPedido(dados) {
       fornecedorCNPJ:  fornecedor.CNPJ  || '',
       fornecedorEndereco: [fornecedor.ENDERECO, fornecedor.BAIRRO, fornecedor.CIDADE, fornecedor.ESTADO].filter(Boolean).join(', ')
     });
-    const htmlEmail = montarEmailHTML(idPedido, dataHoje, dadosEmail);
+    const htmlEmail  = montarEmailHTML(idPedido, dataHoje, dadosEmail);
+    const textoEmail = montarEmailTexto(idPedido, dataHoje, dadosEmail);
     MailApp.sendEmail({
       to: emailsList.join(','),
       cc: ccList,
       replyTo: 'marco@marfim.ind.br',
       subject: `Pedido de Compra ${idPedido} — ${dados.filialNome}`,
+      body: textoEmail,
       htmlBody: htmlEmail
     });
 
@@ -468,6 +470,55 @@ function montarEmailHTML(idPedido, data, dados) {
     </div>
 
   </div>`;
+}
+
+function montarEmailTexto(idPedido, data, dados) {
+  const dataFmt = Utilities.formatDate(data, Session.getScriptTimeZone(), 'dd/MM/yyyy');
+  const sep  = '─'.repeat(60);
+  const sep2 = '═'.repeat(60);
+
+  const linhasItens = dados.itens.map((item, i) =>
+    `  ${String(i+1).padStart(2,'0')}. ${item.descricao}\n` +
+    `      Qtd: ${item.quantidade} ${item.unidade}  |  Unit: R$ ${parseFloat(item.preco).toFixed(2)}  |  Subtotal: R$ ${parseFloat(item.subtotal).toFixed(2)}`
+  ).join('\n');
+
+  const frete = dados.frete || 'CIF';
+  const transpLinha = frete !== 'CIF' && dados.transportadoraNome
+    ? `Transportadora : ${dados.transportadoraNome}\n` : '';
+
+  return [
+    sep2,
+    `PEDIDO DE COMPRA  ${idPedido}`,
+    `Emitido em ${dataFmt}  |  Solicitante: ${dados.usuarioLogado}`,
+    sep2,
+    '',
+    'COMPRADOR (FILIAL)',
+    `  ${dados.filialNome}${dados.filialCNPJ ? '  |  CNPJ: ' + dados.filialCNPJ : ''}`,
+    dados.filialEndereco ? `  ${dados.filialEndereco}` : '',
+    '',
+    'FORNECEDOR',
+    `  ${dados.fornecedorNome}${dados.fornecedorCNPJ ? '  |  CNPJ: ' + dados.fornecedorCNPJ : ''}`,
+    dados.fornecedorEndereco ? `  ${dados.fornecedorEndereco}` : '',
+    '',
+    sep,
+    `Modalidade de Frete : ${frete}`,
+    transpLinha + `Prazo de Entrega    : ${dados.prazoEntrega || '—'}`,
+    sep,
+    '',
+    'ITENS DO PEDIDO',
+    '',
+    linhasItens,
+    '',
+    sep,
+    `TOTAL DO PEDIDO : R$ ${parseFloat(dados.valorTotal).toFixed(2)}`,
+    sep,
+    dados.observacao ? `\nObservações: ${dados.observacao}\n` : '',
+    '',
+    'Dúvidas ou confirmações? Responda para: marco@marfim.ind.br',
+    sep2,
+    'Marco Aurélio Bonalume — Marfim',
+    sep2,
+  ].filter(l => l !== null && l !== undefined).join('\n');
 }
 
 // ============================================================
