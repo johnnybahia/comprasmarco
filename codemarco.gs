@@ -119,7 +119,7 @@ function salvarCadastro(tipo, dados) {
   try {
     lock.waitLock(10000);
     const mapa = {
-      fornecedor:     { aba: ABAS.FORNECEDORES,   cols: ['COD','NOME','CNPJ','EMAIL','CONTATO','CEP','BAIRRO','ENDERECO','CIDADE','ESTADO'] },
+      fornecedor:     { aba: ABAS.FORNECEDORES,   cols: ['COD','NOME','CNPJ','EMAIL','CONTATO','COND_PAGAMENTO','CEP','BAIRRO','ENDERECO','CIDADE','ESTADO'] },
       materia:        { aba: ABAS.MATERIAS,        cols: ['COD','DESCRICAO','UNIDADE','CATEGORIA'] },
       transportadora: { aba: ABAS.TRANSPORTADORAS, cols: ['COD','NOME','CNPJ','CONTATO','PRAZO','OBSERVACAO','CEP','BAIRRO','ENDERECO','CIDADE','ESTADO'] },
       filial:         { aba: ABAS.FILIAIS,         cols: ['COD','NOME','CNPJ','CEP','BAIRRO','ENDERECO','CIDADE','ESTADO','EMAIL_RESPONSAVEL','COD_TRANSPORTADORA'] },
@@ -305,8 +305,8 @@ function salvarPedido(dados) {
       dados.fornecedorCod, dados.fornecedorNome,
       dados.frete || 'CIF',
       dados.transportadoraCod, dados.transportadoraNome,
-      dados.prazoEntrega, dados.observacao,
-      dados.usuarioLogado, dados.valorTotal, 'ENVIADO'
+      dados.prazoEntrega, dados.condPagamento || '',
+      dados.observacao, dados.usuarioLogado, dados.valorTotal, 'ENVIADO'
     ]);
 
     dados.itens.forEach(item => {
@@ -424,6 +424,7 @@ function montarEmailHTML(idPedido, data, dados) {
       </div>
       ${dados.frete !== 'CIF' ? `<div><span style="font-size:11px;font-weight:600;color:#888;text-transform:uppercase;letter-spacing:1px;">Transportadora</span><br><span style="font-size:13px;color:#1a1a1a;">${dados.transportadoraNome || '—'}</span></div>` : ''}
       <div><span style="font-size:11px;font-weight:600;color:#888;text-transform:uppercase;letter-spacing:1px;">Prazo de Entrega</span><br><span style="font-size:13px;color:#1a1a1a;">${dados.prazoEntrega || '—'}</span></div>
+      ${dados.condPagamento ? `<div><span style="font-size:11px;font-weight:600;color:#888;text-transform:uppercase;letter-spacing:1px;">Condição de Pagamento</span><br><span style="font-size:13px;color:#1a1a1a;">${dados.condPagamento}</span></div>` : ''}
     </div>
 
     <!-- Itens -->
@@ -503,6 +504,7 @@ function montarEmailTexto(idPedido, data, dados) {
     sep,
     `Modalidade de Frete : ${frete}`,
     transpLinha + `Prazo de Entrega    : ${dados.prazoEntrega || '—'}`,
+    dados.condPagamento ? `Condição Pagamento  : ${dados.condPagamento}` : '',
     sep,
     '',
     'ITENS DO PEDIDO',
@@ -762,11 +764,11 @@ function setupPlanilha() {
 
   const estrutura = {
     USUARIOS:         ['COD','NOME','USUARIO','SENHA','EMAIL','PERFIL'],
-    FORNECEDORES:     ['COD','NOME','CNPJ','EMAIL','CONTATO','CEP','BAIRRO','ENDERECO','CIDADE','ESTADO'],
+    FORNECEDORES:     ['COD','NOME','CNPJ','EMAIL','CONTATO','COND_PAGAMENTO','CEP','BAIRRO','ENDERECO','CIDADE','ESTADO'],
     MATERIAS_PRIMAS:  ['COD','DESCRICAO','UNIDADE','CATEGORIA'],
     TRANSPORTADORAS:  ['COD','NOME','CNPJ','CONTATO','PRAZO','OBSERVACAO','CEP','BAIRRO','ENDERECO','CIDADE','ESTADO'],
     FILIAIS:          ['COD','NOME','CNPJ','CEP','BAIRRO','ENDERECO','CIDADE','ESTADO','EMAIL_RESPONSAVEL','COD_TRANSPORTADORA'],
-    PEDIDOS:          ['ID_PEDIDO','DATA','COD_FILIAL','NOME_FILIAL','COD_FORNECEDOR','NOME_FORNECEDOR','FRETE','COD_TRANSPORTADORA','NOME_TRANSPORTADORA','PRAZO_ENTREGA','OBSERVACAO','USUARIO','VALOR_TOTAL','STATUS'],
+    PEDIDOS:          ['ID_PEDIDO','DATA','COD_FILIAL','NOME_FILIAL','COD_FORNECEDOR','NOME_FORNECEDOR','FRETE','COD_TRANSPORTADORA','NOME_TRANSPORTADORA','PRAZO_ENTREGA','COND_PAGAMENTO','OBSERVACAO','USUARIO','VALOR_TOTAL','STATUS'],
     ITENS_PEDIDO:     ['ID_PEDIDO','COD_MP','DESCRICAO','QUANTIDADE','UNIDADE','PRECO_UNIT','SUBTOTAL'],
     PRECO_FORNECEDOR:   ['COD_FORNECEDOR','COD_MP','PRECO'],
     TRANSP_FORN_FILIAL: ['COD_FORNECEDOR','COD_FILIAL','COD_TRANSPORTADORA'],
