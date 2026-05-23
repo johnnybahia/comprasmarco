@@ -1079,7 +1079,7 @@ table tr:hover td { background: #f5f7fb; }
 
       <div class="card">
         <div class="card-title">Identificar Pedido</div>
-        <div class="form-grid" style="grid-template-columns:220px 1fr auto;align-items:end;gap:10px">
+        <div class="form-grid" style="grid-template-columns:200px 180px 180px auto;align-items:end;gap:10px">
           <div class="field">
             <label>Número do Pedido *</label>
             <input type="text" id="nf-ped-id" placeholder="Ex: PED-00001"
@@ -1087,8 +1087,12 @@ table tr:hover td { background: #f5f7fb; }
               onkeydown="if(event.key==='Enter')buscarPedidoNF()">
           </div>
           <div class="field">
-            <label>NF / Documento Fiscal *</label>
-            <input type="text" id="nf-numero" placeholder="Número da nota fiscal">
+            <label>Número da NF *</label>
+            <input type="text" id="nf-numero" placeholder="Ex: 000123">
+          </div>
+          <div class="field">
+            <label>Data da NF *</label>
+            <input type="text" id="nf-data" placeholder="DD/MM/AAAA" maxlength="10" oninput="mascaraData(this)">
           </div>
           <div>
             <button class="btn btn-primary" onclick="buscarPedidoNF()">🔍 Buscar Pedido</button>
@@ -1150,6 +1154,18 @@ table tr:hover td { background: #f5f7fb; }
 
   </div><!-- /main -->
 </div><!-- /app-screen -->
+
+<!-- MODAL CONFIRMAÇÃO NF SEM DIVERGÊNCIA -->
+<div class="modal-backdrop" id="modal-nf-confirm">
+  <div class="modal">
+    <h3>Confirmar Recebimento</h3>
+    <p id="modal-nf-confirm-text"></p>
+    <div class="modal-actions">
+      <button class="btn btn-outline" onclick="document.getElementById('modal-nf-confirm').classList.remove('open')">Cancelar</button>
+      <button class="btn btn-success" onclick="executarLancarNF()">✔ Confirmar Recebimento</button>
+    </div>
+  </div>
+</div>
 
 <!-- MODAL EXCLUIR CADASTRO -->
 <div class="modal-backdrop" id="modal-excluir">
@@ -2506,33 +2522,66 @@ function calcTotalNF() {
     'R$ ' + total.toLocaleString('pt-BR', {minimumFractionDigits:2, maximumFractionDigits:2});
 }
 
+let _nfDadosPendente = null;
+
 function confirmarLancarNF() {
   if (!_nfPedidoAtual) { toast('Nenhum pedido carregado', 'error'); return; }
-  const nfNum = document.getElementById('nf-numero').value.trim();
-  if (!nfNum) { toast('Informe o número da NF', 'error'); return; }
+
+  const nfNum  = document.getElementById('nf-numero').value.trim();
+  const nfData = document.getElementById('nf-data').value.trim();
+  if (!nfNum)  { toast('Informe o número da NF', 'error'); return; }
+  if (!nfData) { toast('Informe a data da NF', 'error'); return; }
+  if (!/^\d{2}\/\d{2}\/\d{4}$/.test(nfData)) { toast('Data da NF inválida (use DD/MM/AAAA)', 'error'); return; }
 
   const p = _nfPedidoAtual.pedido;
-  const itens = _nfPedidoAtual.itens.map((item, idx) => ({
-    codMP:         item.COD_MP,
-    descricao:     item.DESCRICAO,
-    qtdPedida:     parseFloat(item.QUANTIDADE || 0),
-    qtdRecebida:   parseFloat(document.getElementById('nf-qtd-' + idx)?.value || 0),
-    precoPedido:   parseFloat(item.PRECO_UNIT || 0),
-    precoRecebido: parseFloat(document.getElementById('nf-prec-' + idx)?.value || 0)
-  }));
+  let erros = [];
+  let tudoIgual = true;
 
-  const dados = {
-    idPedido:        p.ID_PEDIDO,
-    nfNumero:        nfNum,
-    codFilial:       p.COD_FILIAL,
-    nomeFilial:      p.NOME_FILIAL,
-    codFornecedor:   p.COD_FORNECEDOR,
-    nomeFornecedor:  p.NOME_FORNECEDOR,
-    usuarioLogado:   sessao.nome,
+  const itens = _nfPedidoAtual.itens.map((item, idx) => {
+    const qtdPedida     = parseFloat(item.QUANTIDADE || 0);
+    const precoPedido   = parseFloat(item.PRECO_UNIT || 0);
+    const qtdRecebida   = parseFloat(document.getElementById('nf-qtd-' + idx)?.value || 0);
+    const precoRecebido = parseFloat(document.getElementById('nf-prec-' + idx)?.value || 0);
+
+    if (qtdRecebida <= 0)   erros.push(`Item "${item.DESCRICAO}": quantidade deve ser maior que zero`);
+    if (precoRecebido <= 0) erros.push(`Item "${item.DESCRICAO}": preço deve ser maior que zero`);
+    if (Math.abs(qtdRecebida - qtdPedida) > 0.001 || Math.abs(precoRecebido - precoPedido) > 0.001) tudoIgual = false;
+
+    return { codMP: item.COD_MP, descricao: item.DESCRICAO, qtdPedida, qtdRecebida, precoPedido, precoRecebido };
+  });
+
+  if (erros.length > 0) { toast(erros[0], 'error'); return; }
+
+  _nfDadosPendente = {
+    idPedido:         p.ID_PEDIDO,
+    nfNumero:         nfNum,
+    nfData:           nfData,
+    codFilial:        p.COD_FILIAL,
+    nomeFilial:       p.NOME_FILIAL,
+    codFornecedor:    p.COD_FORNECEDOR,
+    nomeFornecedor:   p.NOME_FORNECEDOR,
+    usuarioLogado:    sessao.nome,
     valorTotalPedido: parseFloat(p.VALOR_TOTAL || 0),
-    observacao:      document.getElementById('nf-obs').value.trim(),
+    observacao:       document.getElementById('nf-obs').value.trim(),
     itens
   };
+
+  if (tudoIgual) {
+    document.getElementById('modal-nf-confirm-text').innerHTML =
+      `Todos os itens estão com <strong>quantidades e preços idênticos ao pedido original</strong>.<br><br>
+       Confirma o recebimento da NF <strong>${escHTML(nfNum)}</strong> de <strong>${escHTML(nfData)}</strong>
+       por <strong>${escHTML(sessao.nome)}</strong>?`;
+    document.getElementById('modal-nf-confirm').classList.add('open');
+  } else {
+    executarLancarNF();
+  }
+}
+
+function executarLancarNF() {
+  document.getElementById('modal-nf-confirm').classList.remove('open');
+  if (!_nfDadosPendente) return;
+  const dados = _nfDadosPendente;
+  _nfDadosPendente = null;
 
   toast('Registrando NF...', 'info');
   google.script.run
@@ -2551,10 +2600,11 @@ function confirmarLancarNF() {
 }
 
 function limparNF() {
-  _nfPedidoAtual = null;
-  document.getElementById('nf-ped-id').value  = '';
-  document.getElementById('nf-numero').value  = '';
-  document.getElementById('nf-obs').value     = '';
+  _nfPedidoAtual  = null;
+  _nfDadosPendente = null;
+  ['nf-ped-id','nf-numero','nf-data','nf-obs'].forEach(id => {
+    document.getElementById(id).value = '';
+  });
   document.getElementById('nf-pedido-card').style.display = 'none';
 }
 
