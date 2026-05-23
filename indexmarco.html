@@ -1081,9 +1081,13 @@ table tr:hover td { background: #f5f7fb; }
         <div class="form-grid" style="grid-template-columns:200px 180px 180px auto;align-items:end;gap:10px">
           <div class="field">
             <label>Número do Pedido *</label>
-            <input type="text" id="nf-ped-id" placeholder="Ex: PED-00001"
-              style="text-transform:uppercase;font-family:'IBM Plex Mono',monospace"
-              onkeydown="if(event.key==='Enter')buscarPedidoNF()">
+            <div class="ac-wrap">
+              <input type="text" id="nf-ped-id" placeholder="Ex: PED-00001"
+                style="text-transform:uppercase;font-family:'IBM Plex Mono',monospace"
+                oninput="_nfAcRender()"
+                onkeydown="if(event.key==='Enter'){fecharAC('nf-ped-id');buscarPedidoNF();}">
+              <div class="ac-dropdown" id="ac-nf-ped-id"></div>
+            </div>
           </div>
           <div class="field">
             <label>Número da NF *</label>
@@ -1829,6 +1833,7 @@ function navegarPara(panel, btn) {
   document.getElementById('panel-' + panel).classList.add('active');
   if (btn) btn.classList.add('active');
   if (panel === 'historico') carregarTodosPedidos();
+  if (panel === 'nf') _nfCarregarIds();
 }
 
 function trocarSubtab(nome, btn) {
@@ -2448,7 +2453,31 @@ function executarExclusao() {
 // ════════════════════════════════════════════════════
 // LANÇAR NF
 // ════════════════════════════════════════════════════
-let _nfPedidoAtual = null; // { pedido, itens }
+let _nfPedidoAtual = null;
+let _nfIdsList = [];
+
+function _nfCarregarIds() {
+  google.script.run
+    .withSuccessHandler(ids => { _nfIdsList = ids || []; })
+    .listarIdsPedidos();
+}
+
+function _nfAcRender() {
+  const inp = document.getElementById('nf-ped-id');
+  const dd  = document.getElementById('ac-nf-ped-id');
+  const q   = inp.value.trim().toUpperCase();
+  const matches = _nfIdsList.filter(p =>
+    p.id.includes(q) || p.fornecedor.toUpperCase().includes(q)
+  ).slice(0, 10);
+  if (!matches.length || !q) { dd.classList.remove('open'); return; }
+  dd.innerHTML = matches.map(p =>
+    `<div class="ac-item" onmousedown="document.getElementById('nf-ped-id').value='${p.id}';document.getElementById('ac-nf-ped-id').classList.remove('open');buscarPedidoNF()">
+      <strong>${p.id}</strong> <span style="color:#888;font-size:12px">${escHTML(p.fornecedor)} · ${p.status}</span>
+    </div>`
+  ).join('');
+  dd.classList.add('open');
+  inp.onblur = () => setTimeout(() => dd.classList.remove('open'), 180);
+}
 
 function buscarPedidoNF() {
   const idRaw = document.getElementById('nf-ped-id').value.trim().toUpperCase();
@@ -2457,11 +2486,11 @@ function buscarPedidoNF() {
   toast('Buscando pedido...', 'info');
   google.script.run
     .withSuccessHandler(res => {
-      if (!res) { toast('Pedido não encontrado: ' + idRaw, 'error'); return; }
+      if (!res || res.erro) { toast(res ? res.erro : 'Pedido não encontrado', 'error'); return; }
       _nfPedidoAtual = res;
       renderPedidoNF(res);
     })
-    .withFailureHandler(err => toast('Erro: ' + err.message, 'error'))
+    .withFailureHandler(err => toast('Erro: ' + (err && err.message ? err.message : err), 'error'))
     .buscarPedidoParaRecebimento(idRaw);
 }
 

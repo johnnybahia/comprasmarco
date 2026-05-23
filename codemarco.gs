@@ -613,11 +613,23 @@ function listarTranspPorFornecedor(codForn) {
 // ============================================================
 // RECEBIMENTO DE NF
 // ============================================================
+function listarIdsPedidos() {
+  try {
+    return sheetToArray(ABAS.PEDIDOS)
+      .map(p => ({ id: String(p.ID_PEDIDO||'').trim(), status: String(p.STATUS||''), fornecedor: String(p.NOME_FORNECEDOR||'') }))
+      .filter(p => p.id);
+  } catch(e) {
+    return [];
+  }
+}
+
 function buscarPedidoParaRecebimento(idPedido) {
   try {
+    const sh = getSheet(ABAS.PEDIDOS);
+    if (!sh) return { erro: 'Aba PEDIDOS não encontrada — execute setupPlanilha() no Apps Script.' };
     const pedidos = sheetToArray(ABAS.PEDIDOS);
+    if (pedidos.length === 0) return { erro: 'Nenhum pedido cadastrado ainda.' };
     const query = String(idPedido).trim().toUpperCase();
-    // Normalise: strip "PED-" prefix and leading zeros, then compare numeric part
     const numQuery = query.replace(/^PED-?/, '').replace(/^0+/, '') || '0';
     const ped = pedidos.find(p => {
       const id = String(p.ID_PEDIDO).trim().toUpperCase();
@@ -625,7 +637,7 @@ function buscarPedidoParaRecebimento(idPedido) {
       const num = id.replace(/^PED-?/, '').replace(/^0+/, '') || '0';
       return num === numQuery;
     });
-    if (!ped) return null;
+    if (!ped) return { erro: 'Pedido "' + idPedido + '" não encontrado. IDs disponíveis: ' + pedidos.slice(0,5).map(p=>p.ID_PEDIDO).join(', ') + (pedidos.length > 5 ? '...' : '') };
     const itens = sheetToArray(ABAS.ITENS_PEDIDO)
       .filter(i => String(i.ID_PEDIDO).trim() === String(ped.ID_PEDIDO).trim());
     const recebimentos = sheetToArray(ABAS.RECEBIMENTOS)
@@ -762,6 +774,8 @@ function getHistorico(tipo, cod) {
 
 function getTodosPedidos() {
   try {
+    const sh = getSheet(ABAS.PEDIDOS);
+    if (!sh) throw new Error('Aba PEDIDOS não encontrada — execute setupPlanilha() no Apps Script Editor.');
     const pedidos = _enriquecerPedidosComNF(sheetToArray(ABAS.PEDIDOS));
     const todosItens = sheetToArray(ABAS.ITENS_PEDIDO);
     return pedidos.map(p => {
@@ -770,7 +784,7 @@ function getTodosPedidos() {
     });
   } catch(e) {
     logErro('getTodosPedidos: ' + e.message);
-    return [];
+    throw e;
   }
 }
 
