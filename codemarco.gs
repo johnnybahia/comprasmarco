@@ -447,6 +447,12 @@ function montarEmailHTML(idPedido, data, dados) {
       ${dados.observacao ? `<div style="margin-top:16px;padding:12px 14px;background:#f9f9f9;border-left:3px solid #1a3c5e;border-radius:3px;font-size:13px;color:#333;"><strong>Observações:</strong> ${dados.observacao}</div>` : ''}
     </div>
 
+    <!-- Responder -->
+    <div style="background:#f4f7fb;padding:14px 28px;border-top:1px solid #dde3ea;text-align:center;">
+      <span style="font-size:13px;color:#555;">Dúvidas ou confirmações? Responda diretamente para </span>
+      <a href="mailto:marco@marfim.ind.br?subject=Re: Pedido ${idPedido}" style="font-size:13px;font-weight:700;color:#1a3c5e;text-decoration:none;">marco@marfim.ind.br</a>
+    </div>
+
     <!-- Assinatura -->
     <div style="background:#1a3c5e;padding:18px 28px;">
       <table style="width:100%;border-collapse:collapse;">
