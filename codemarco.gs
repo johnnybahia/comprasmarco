@@ -763,7 +763,7 @@ function getHistorico(tipo, cod) {
     const filtrados = pedidos.filter(p => String(p[colMapa[tipo]]).trim() === String(cod).trim());
     const enriquecidos = _enriquecerPedidosComNF(filtrados);
     return enriquecidos.map(p => {
-      const itens = sheetToArray(ABAS.ITENS_PEDIDO).filter(i => i.ID_PEDIDO === p.ID_PEDIDO);
+      const itens = sheetToArray(ABAS.ITENS_PEDIDO).filter(i => String(i.ID_PEDIDO).trim() === String(p.ID_PEDIDO).trim());
       return { ...p, itens };
     });
   } catch(e) {
