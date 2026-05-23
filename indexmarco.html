@@ -2060,6 +2060,23 @@ function carregarTodosPedidos() {
     .getTodosPedidos();
 }
 
+function _fmtValor(v) {
+  if (v == null || v === '') return '—';
+  const n = parseFloat(v);
+  if (isNaN(n)) return '—';
+  return 'R$ ' + n.toLocaleString('pt-BR', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+}
+const _STATUS_VALIDOS = ['ENVIADO','RECEBIDO','PENDENTE','CANCELADO','EM ANÁLISE'];
+function _fmtStatus(v) {
+  const s = String(v || '').trim().toUpperCase();
+  return _STATUS_VALIDOS.includes(s) ? s : (s || '—');
+}
+function _fmtObs(v) {
+  if (!v || v === '') return '—';
+  if (/^\d{4}-\d{2}-\d{2}T/.test(String(v))) return '—';
+  return String(v);
+}
+
 function renderHistorico(pedidos) {
   const tbody = document.getElementById('hist-tbody');
   try {
@@ -2070,7 +2087,7 @@ function renderHistorico(pedidos) {
     tbody.innerHTML = pedidos.map((p, i) => {
       let dataStr = '—';
       try { if (p.DATA) dataStr = new Date(p.DATA).toLocaleDateString('pt-BR'); } catch(e) {}
-      const total = p.VALOR_TOTAL != null && p.VALOR_TOTAL !== '' ? 'R$ ' + parseFloat(p.VALOR_TOTAL).toFixed(2) : '—';
+      const total = _fmtValor(p.VALOR_TOTAL);
       let nfBadge = '<span class="badge badge-gray">Aguardando</span>';
       if (p.temNF) {
         if (p.temDivQtd || p.temDivPreco) {
@@ -2087,7 +2104,7 @@ function renderHistorico(pedidos) {
         <td>${escHTML(String(p.NOME_FORNECEDOR||p.COD_FORNECEDOR||''))}</td>
         <td>${escHTML(String(p.NOME_TRANSPORTADORA||'—'))}</td>
         <td><strong>${total}</strong></td>
-        <td><span class="badge badge-blue">${escHTML(String(p.STATUS||'—'))}</span></td>
+        <td><span class="badge badge-blue">${escHTML(_fmtStatus(p.STATUS))}</span></td>
         <td>${nfBadge}</td>
         <td><button class="btn btn-outline btn-sm" onclick="event.stopPropagation();verDetalhe(${i})">Ver</button></td>
       </tr>`;
@@ -2110,13 +2127,13 @@ function verDetalhe(idx) {
   document.getElementById('hist-meta-grid').innerHTML = `
     <div class="hist-meta-item"><label>ID Pedido</label><span>${p.ID_PEDIDO||'—'}</span></div>
     <div class="hist-meta-item"><label>Data</label><span>${data}</span></div>
-    <div class="hist-meta-item"><label>Status</label><span><span class="badge badge-green">${p.STATUS||'—'}</span></span></div>
+    <div class="hist-meta-item"><label>Status</label><span><span class="badge badge-green">${escHTML(_fmtStatus(p.STATUS))}</span></span></div>
     <div class="hist-meta-item"><label>Filial</label><span>${escHTML(String(p.NOME_FILIAL||''))} (${p.COD_FILIAL||''})</span></div>
     <div class="hist-meta-item"><label>Fornecedor</label><span>${escHTML(String(p.NOME_FORNECEDOR||''))}</span></div>
     <div class="hist-meta-item"><label>Transportadora</label><span>${escHTML(String(p.NOME_TRANSPORTADORA||'—'))}</span></div>
-    <div class="hist-meta-item"><label>Prazo</label><span>${p.PRAZO_ENTREGA||'—'}</span></div>
+    <div class="hist-meta-item"><label>Prazo</label><span>${escHTML(_fmtObs(p.PRAZO_ENTREGA)||'—')}</span></div>
     <div class="hist-meta-item"><label>Solicitante</label><span>${escHTML(String(p.USUARIO||'—'))}</span></div>
-    <div class="hist-meta-item"><label>Observação</label><span>${escHTML(String(p.OBSERVACAO||'—'))}</span></div>
+    <div class="hist-meta-item"><label>Observação</label><span>${escHTML(_fmtObs(p.OBSERVACAO))}</span></div>
   `;
 
   const itens = p.itens || [];
@@ -2131,8 +2148,7 @@ function verDetalhe(idx) {
         <td><strong>R$ ${parseFloat(i.SUBTOTAL||0).toFixed(2)}</strong></td>
       </tr>`).join('');
 
-  document.getElementById('hist-total-val').textContent =
-    'R$ ' + parseFloat(p.VALOR_TOTAL||0).toLocaleString('pt-BR',{minimumFractionDigits:2});
+  document.getElementById('hist-total-val').textContent = _fmtValor(p.VALOR_TOTAL);
 
   // Carrega recebimentos NF do pedido
   const recSec = document.getElementById('hist-rec-section');
@@ -2536,8 +2552,8 @@ function renderPedidoNF(res) {
     <div class="nf-info-item"><label>Data do Pedido</label><span>${dataP}</span></div>
     <div class="nf-info-item"><label>Filial</label><span>${escHTML(String(p.NOME_FILIAL||''))} (${p.COD_FILIAL||''})</span></div>
     <div class="nf-info-item"><label>Fornecedor</label><span>${escHTML(String(p.NOME_FORNECEDOR||''))}</span></div>
-    <div class="nf-info-item"><label>Total do Pedido</label><span>R$ ${parseFloat(p.VALOR_TOTAL||0).toFixed(2)}</span></div>
-    <div class="nf-info-item"><label>Observação</label><span>${escHTML(String(p.OBSERVACAO||'—'))}</span></div>
+    <div class="nf-info-item"><label>Total do Pedido</label><span>${_fmtValor(p.VALOR_TOTAL)}</span></div>
+    <div class="nf-info-item"><label>Observação</label><span>${escHTML(_fmtObs(p.OBSERVACAO))}</span></div>
   `;
 
   // Aviso se já tem NF
@@ -2643,7 +2659,7 @@ function confirmarLancarNF() {
     codFornecedor:    p.COD_FORNECEDOR,
     nomeFornecedor:   p.NOME_FORNECEDOR,
     usuarioLogado:    sessao.nome,
-    valorTotalPedido: parseFloat(p.VALOR_TOTAL || 0),
+    valorTotalPedido: isNaN(parseFloat(p.VALOR_TOTAL)) ? 0 : parseFloat(p.VALOR_TOTAL),
     observacao:       document.getElementById('nf-obs').value.trim(),
     itens
   };

@@ -287,6 +287,13 @@ function listarPrecosPorMateria(codMP) {
   }
 }
 
+// Insere linha no sheet mapeando por nome de coluna (ignora colunas extras)
+function _appendRowMapeado(sh, dadosMap) {
+  const headers = sh.getRange(1, 1, 1, sh.getLastColumn()).getValues()[0].map(h => String(h).trim());
+  const row = headers.map(h => (dadosMap.hasOwnProperty(h) ? dadosMap[h] : ''));
+  sh.appendRow(row);
+}
+
 // ============================================================
 // PEDIDOS
 // ============================================================
@@ -302,21 +309,34 @@ function salvarPedido(dados) {
     const idPedido = 'PED-' + String(totalPedidos).padStart(5, '0');
     const dataHoje = new Date();
 
-    shPedidos.appendRow([
-      idPedido, dataHoje,
-      dados.filialCod, dados.filialNome,
-      dados.fornecedorCod, dados.fornecedorNome,
-      dados.frete || 'CIF',
-      dados.transportadoraCod, dados.transportadoraNome,
-      dados.prazoEntrega, dados.condPagamento || '',
-      dados.observacao, dados.usuarioLogado, dados.valorTotal, 'ENVIADO'
-    ]);
+    _appendRowMapeado(shPedidos, {
+      ID_PEDIDO:          idPedido,
+      DATA:               dataHoje,
+      COD_FILIAL:         dados.filialCod,
+      NOME_FILIAL:        dados.filialNome,
+      COD_FORNECEDOR:     dados.fornecedorCod,
+      NOME_FORNECEDOR:    dados.fornecedorNome,
+      FRETE:              dados.frete || 'CIF',
+      COD_TRANSPORTADORA: dados.transportadoraCod,
+      NOME_TRANSPORTADORA:dados.transportadoraNome,
+      PRAZO_ENTREGA:      dados.prazoEntrega,
+      COND_PAGAMENTO:     dados.condPagamento || '',
+      OBSERVACAO:         dados.observacao,
+      USUARIO:            dados.usuarioLogado,
+      VALOR_TOTAL:        dados.valorTotal,
+      STATUS:             'ENVIADO'
+    });
 
     dados.itens.forEach(item => {
-      shItens.appendRow([
-        idPedido, item.cod, item.descricao,
-        item.quantidade, item.unidade, item.preco, item.subtotal
-      ]);
+      _appendRowMapeado(shItens, {
+        ID_PEDIDO:   idPedido,
+        COD_MP:      item.cod,
+        DESCRICAO:   item.descricao,
+        QUANTIDADE:  item.quantidade,
+        UNIDADE:     item.unidade,
+        PRECO_UNIT:  item.preco,
+        SUBTOTAL:    item.subtotal
+      });
     });
 
     // Dispara email para todos os endereços cadastrados
@@ -680,17 +700,23 @@ function salvarRecebimento(dados) {
     const nfDataObj = dados.nfData
       ? new Date(dados.nfData.replace(/(\d{2})\/(\d{2})\/(\d{4})/, '$3-$2-$1'))
       : '';
-    sh.appendRow([
-      idRec, dados.idPedido, dados.nfNumero, nfDataObj, dataHoje,
-      dados.codFilial, dados.nomeFilial,
-      dados.codFornecedor, dados.nomeFornecedor,
-      dados.usuarioLogado,
-      parseFloat(dados.valorTotalPedido) || 0,
-      valorTotalRec,
-      temDivQtd   ? 'SIM' : 'NÃO',
-      temDivPreco ? 'SIM' : 'NÃO',
-      dados.observacao || ''
-    ]);
+    _appendRowMapeado(sh, {
+      ID_RECEBIMENTO:    idRec,
+      ID_PEDIDO:         dados.idPedido,
+      NF_NUMERO:         dados.nfNumero,
+      DATA_NF:           nfDataObj,
+      DATA_RECEBIMENTO:  dataHoje,
+      COD_FILIAL:        dados.codFilial,
+      NOME_FILIAL:       dados.nomeFilial,
+      COD_FORNECEDOR:    dados.codFornecedor,
+      NOME_FORNECEDOR:   dados.nomeFornecedor,
+      USUARIO:           dados.usuarioLogado,
+      VALOR_TOTAL_PEDIDO:  parseFloat(dados.valorTotalPedido) || 0,
+      VALOR_TOTAL_RECEBIDO: valorTotalRec,
+      DIVERGENCIA_QTD:   temDivQtd   ? 'SIM' : 'NÃO',
+      DIVERGENCIA_PRECO: temDivPreco ? 'SIM' : 'NÃO',
+      OBSERVACAO:        dados.observacao || ''
+    });
 
     dados.itens.forEach(item => {
       const qtdPed  = parseFloat(item.qtdPedida)    || 0;
@@ -699,15 +725,20 @@ function salvarRecebimento(dados) {
       const precRec = parseFloat(item.precoRecebido)|| 0;
       const divQtd   = Math.abs(qtdRec  - qtdPed)  > 0.001;
       const divPreco = Math.abs(precRec - precPed) > 0.001;
-      shItens.appendRow([
-        idRec, dados.idPedido, item.codMP, item.descricao,
-        qtdPed, qtdRec,
-        precPed, precRec,
-        qtdPed  * precPed,
-        qtdRec  * precRec,
-        divQtd   ? 'SIM' : 'NÃO',
-        divPreco ? 'SIM' : 'NÃO'
-      ]);
+      _appendRowMapeado(shItens, {
+        ID_RECEBIMENTO:   idRec,
+        ID_PEDIDO:        dados.idPedido,
+        COD_MP:           item.codMP,
+        DESCRICAO:        item.descricao,
+        QTD_PEDIDA:       qtdPed,
+        QTD_RECEBIDA:     qtdRec,
+        PRECO_PEDIDO:     precPed,
+        PRECO_RECEBIDO:   precRec,
+        SUBTOTAL_PEDIDO:  qtdPed * precPed,
+        SUBTOTAL_RECEBIDO: qtdRec * precRec,
+        DIV_QTD:          divQtd   ? 'SIM' : 'NÃO',
+        DIV_PRECO:        divPreco ? 'SIM' : 'NÃO'
+      });
     });
 
     return {
@@ -840,4 +871,46 @@ function setupPlanilha() {
   }
 
   Logger.log('Setup concluído.');
+}
+
+// ============================================================
+// MIGRAÇÃO — rode uma única vez no editor do Apps Script
+// Corrige linhas da aba PEDIDOS que foram gravadas com colunas
+// trocadas (versão anterior usava appendRow com posições fixas).
+// ============================================================
+function migrarPedidosCorretos() {
+  const sh = getSheet(ABAS.PEDIDOS);
+  if (!sh) { Logger.log('Aba PEDIDOS não encontrada.'); return; }
+  const data = sh.getDataRange().getValues();
+  const headers = data[0].map(h => String(h).trim());
+  const idxStatus = headers.indexOf('STATUS');
+  const idxValor  = headers.indexOf('VALOR_TOTAL');
+  const idxObs    = headers.indexOf('OBSERVACAO');
+  const idxPrazo  = headers.indexOf('PRAZO_ENTREGA');
+
+  if (idxStatus < 0 || idxValor < 0) {
+    Logger.log('Colunas STATUS ou VALOR_TOTAL não encontradas.');
+    return;
+  }
+
+  let corrigidas = 0;
+  for (let r = 1; r < data.length; r++) {
+    const row = data[r];
+    const status = String(row[idxStatus]).trim();
+    const valor  = String(row[idxValor]).trim();
+
+    // Se STATUS não é um dos valores válidos mas parece número,
+    // e VALOR_TOTAL não é número mas parece texto de status → troca.
+    const statusValidos = ['ENVIADO','RECEBIDO','PENDENTE','CANCELADO','EM ANÁLISE'];
+    const statusErrado  = !statusValidos.includes(status.toUpperCase()) && !isNaN(parseFloat(status));
+    const valorErrado   = isNaN(parseFloat(valor));
+
+    if (statusErrado && valorErrado) {
+      sh.getRange(r + 1, idxStatus + 1).setValue(valor);   // status ← o que estava em valor
+      sh.getRange(r + 1, idxValor  + 1).setValue(parseFloat(status)); // valor ← o que estava em status
+      Logger.log('Linha ' + (r + 1) + ' (' + row[0] + '): STATUS e VALOR_TOTAL corrigidos.');
+      corrigidas++;
+    }
+  }
+  Logger.log('Migração concluída. ' + corrigidas + ' linhas corrigidas.');
 }
