@@ -1259,6 +1259,7 @@ function iniciarApp() {
     document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
     document.getElementById('panel-nf').classList.add('active');
     document.getElementById('nav-nf').classList.add('active');
+    _nfCarregarIds();
   } else {
     carregarCaches();
     carregarTabelaCadastro('fornecedor');
@@ -2036,7 +2037,7 @@ function buscarHistorico(tipo) {
 
   document.getElementById('hist-detalhe').style.display = 'none';
   const tbody = document.getElementById('hist-tbody');
-  tbody.innerHTML = '<tr><td colspan="8"><div class="empty-state"><div class="icon">⏳</div>Buscando...</div></td></tr>';
+  tbody.innerHTML = '<tr><td colspan="9"><div class="empty-state"><div class="icon">⏳</div>Buscando...</div></td></tr>';
 
   google.script.run
     .withSuccessHandler(res => renderHistorico(res))
@@ -2047,12 +2048,14 @@ function buscarHistorico(tipo) {
 function carregarTodosPedidos() {
   document.getElementById('hist-detalhe').style.display = 'none';
   const tbody = document.getElementById('hist-tbody');
-  tbody.innerHTML = '<tr><td colspan="8"><div class="empty-state"><div class="icon">⏳</div>Carregando...</div></td></tr>';
+  tbody.innerHTML = '<tr><td colspan="9"><div class="empty-state"><div class="icon">⏳</div>Carregando...</div></td></tr>';
   google.script.run
     .withSuccessHandler(res => renderHistorico(res))
     .withFailureHandler(err => {
-      const tbody = document.getElementById('hist-tbody');
-      tbody.innerHTML = '<tr><td colspan="9"><div class="empty-state"><div class="icon">⚠</div>Erro ao carregar: ' + (err && err.message ? err.message : 'verifique se setupPlanilha() foi executado') + '</div></td></tr>';
+      document.getElementById('hist-tbody').innerHTML =
+        '<tr><td colspan="9"><div class="empty-state"><div class="icon">⚠</div>Erro ao carregar: ' +
+        escHTML(err && err.message ? err.message : 'verifique se setupPlanilha() foi executado') +
+        '</div></td></tr>';
     })
     .getTodosPedidos();
 }
@@ -2462,6 +2465,16 @@ function _nfCarregarIds() {
     .listarIdsPedidos();
 }
 
+// Configura blur do campo NF uma única vez
+(function() {
+  document.addEventListener('DOMContentLoaded', function() {
+    const inp = document.getElementById('nf-ped-id');
+    if (inp) inp.addEventListener('blur', () => setTimeout(() => {
+      document.getElementById('ac-nf-ped-id').classList.remove('open');
+    }, 180));
+  });
+})();
+
 function _nfAcRender() {
   const inp = document.getElementById('nf-ped-id');
   const dd  = document.getElementById('ac-nf-ped-id');
@@ -2470,13 +2483,21 @@ function _nfAcRender() {
     p.id.includes(q) || p.fornecedor.toUpperCase().includes(q)
   ).slice(0, 10);
   if (!matches.length || !q) { dd.classList.remove('open'); return; }
-  dd.innerHTML = matches.map(p =>
-    `<div class="ac-item" onmousedown="document.getElementById('nf-ped-id').value='${p.id}';document.getElementById('ac-nf-ped-id').classList.remove('open');buscarPedidoNF()">
-      <strong>${p.id}</strong> <span style="color:#888;font-size:12px">${escHTML(p.fornecedor)} · ${p.status}</span>
+  dd.innerHTML = matches.map((p, i) =>
+    `<div class="ac-item" data-nf-idx="${i}">
+      <code>${escHTML(p.id)}</code>
+      <span>${escHTML(p.fornecedor)} · ${escHTML(p.status)}</span>
     </div>`
   ).join('');
+  dd.querySelectorAll('.ac-item').forEach((el, i) => {
+    el.addEventListener('mousedown', e => {
+      e.preventDefault();
+      inp.value = matches[i].id;
+      dd.classList.remove('open');
+      buscarPedidoNF();
+    });
+  });
   dd.classList.add('open');
-  inp.onblur = () => setTimeout(() => dd.classList.remove('open'), 180);
 }
 
 function buscarPedidoNF() {
@@ -2486,11 +2507,17 @@ function buscarPedidoNF() {
   toast('Buscando pedido...', 'info');
   google.script.run
     .withSuccessHandler(res => {
-      if (!res || res.erro) { toast(res ? res.erro : 'Pedido não encontrado', 'error'); return; }
+      if (!res || res.erro) {
+        toast(res ? res.erro : 'Pedido não encontrado', 'error');
+        return;
+      }
       _nfPedidoAtual = res;
       renderPedidoNF(res);
     })
-    .withFailureHandler(err => toast('Erro: ' + (err && err.message ? err.message : err), 'error'))
+    .withFailureHandler(err => {
+      const msg = err && err.message ? err.message : String(err);
+      toast('Erro ao buscar pedido: ' + msg, 'error');
+    })
     .buscarPedidoParaRecebimento(idRaw);
 }
 
