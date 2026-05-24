@@ -1071,7 +1071,14 @@ table tr:hover td { background: #f5f7fb; }
             <div class="field"><label>Usuário *</label><input type="text" id="f-usr-user"></div>
             <div class="field"><label>Senha *</label><input type="password" id="f-usr-senha"></div>
             <div class="field"><label>Email</label><input type="email" id="f-usr-email"></div>
-            <div class="field"><label>Perfil</label><input type="text" id="f-usr-perfil" value="USUARIO"></div>
+            <div class="field"><label>Perfil</label>
+              <select id="f-usr-perfil">
+                <option value="ADMIN">ADMIN</option>
+                <option value="COMPRAS">COMPRAS</option>
+                <option value="FILIAL">FILIAL</option>
+                <option value="USUARIO" selected>USUARIO</option>
+              </select>
+            </div>
           </div>
           <div class="form-actions">
             <button class="btn btn-primary" onclick="salvarCad('usuario')">Salvar</button>
