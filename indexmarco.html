@@ -2246,6 +2246,7 @@ function renderRecebimentosDetalhe(recs, valorPedido) {
         <h4>NF #${ri+1} — ${escHTML(String(r.NF_NUMERO||'—'))}</h4>
         ${badge}
         <span style="font-size:12px;color:var(--text3);margin-left:auto">${r.ID_RECEBIMENTO} · ${dataRec} · ${escHTML(String(r.USUARIO||''))}</span>
+        <button class="btn btn-outline btn-sm" style="margin-left:12px;color:var(--error);border-color:var(--error)" onclick="confirmarExcluirNF('${escHTML(String(r.ID_RECEBIMENTO))}','${escHTML(String(r.NF_NUMERO||'—'))}','${escHTML(String(r.ID_PEDIDO))}',${parseFloat(r.VALOR_TOTAL_PEDIDO||0)})">Excluir NF</button>
       </div>
       <div class="table-wrap">
         <table>
@@ -2272,6 +2273,46 @@ function renderRecebimentosDetalhe(recs, valorPedido) {
       ${_buildPagtoDetalhe(r)}
     </div>`;
   }).join('');
+}
+
+// ════════════════════════════════════════════════════
+// EXCLUIR RECEBIMENTO NF
+// ════════════════════════════════════════════════════
+let _excluirNFPendente = null;
+
+function confirmarExcluirNF(idRec, nfNum, idPedido, valorPedido) {
+  _excluirNFPendente = { idRec, idPedido, valorPedido };
+  document.getElementById('modal-excluir-text').innerHTML =
+    `Deseja excluir o recebimento <strong>${escHTML(idRec)}</strong> (NF ${escHTML(nfNum)})?<br>
+     O pedido ficará liberado para novo lançamento de NF.`;
+  document.getElementById('modal-excluir').classList.add('open');
+  // Redireciona o botão confirmar do modal para excluirNF
+  document.getElementById('btn-confirmar-exclusao').onclick = executarExcluirNF;
+}
+
+function executarExcluirNF() {
+  if (!_excluirNFPendente) return;
+  document.getElementById('modal-excluir').classList.remove('open');
+  const { idRec, idPedido, valorPedido } = _excluirNFPendente;
+  _excluirNFPendente = null;
+  toast('Excluindo NF...', 'info');
+  google.script.run
+    .withSuccessHandler(res => {
+      toast(res.ok ? res.msg : 'Erro: ' + res.msg, res.ok ? 'success' : 'error');
+      if (res.ok) {
+        // Recarrega recebimentos do mesmo pedido
+        const recSec = document.getElementById('hist-rec-section');
+        recSec.innerHTML = '<div class="rec-section"><div class="empty-state" style="padding:16px"><div class="icon">⏳</div>Atualizando...</div></div>';
+        google.script.run
+          .withSuccessHandler(recs => renderRecebimentosDetalhe(recs, valorPedido))
+          .withFailureHandler(err => { recSec.innerHTML = ''; toast('Erro ao recarregar: ' + err.message, 'error'); })
+          .getRecebimentosDoPedido(idPedido);
+        // Atualiza a lista do histórico para refletir o novo status do pedido
+        carregarTodosPedidos();
+      }
+    })
+    .withFailureHandler(err => toast('Erro: ' + err.message, 'error'))
+    .excluirRecebimento(idRec);
 }
 
 // ════════════════════════════════════════════════════
@@ -2505,7 +2546,8 @@ function confirmarExcluir(tipo, cod, nome) {
 
 function fecharModalExcluir() {
   document.getElementById('modal-excluir').classList.remove('open');
-  _excluirPendente = null;
+  _excluirPendente   = null;
+  _excluirNFPendente = null;
 }
 
 function executarExclusao() {
