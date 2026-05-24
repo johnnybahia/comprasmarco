@@ -24,7 +24,7 @@ const ABAS = {
 // ============================================================
 function doGet() {
   return HtmlService.createHtmlOutputFromFile('Index')
-    .setTitle('Sistema de Compras')
+    .setTitle('Compras Marfim')
     .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
 }
 
