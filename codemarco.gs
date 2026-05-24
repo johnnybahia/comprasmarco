@@ -15,7 +15,8 @@ const ABAS = {
   TRANSP_FORN_FILIAL:  'TRANSP_FORN_FILIAL',
   RECEBIMENTOS:        'RECEBIMENTOS',
   ITENS_RECEBIMENTO:'ITENS_RECEBIMENTO',
-  LOG:              'LOG_ERROS'
+  LOG:              'LOG_ERROS',
+  LOG_NF:           'LOG_NF'
 };
 
 // ============================================================
@@ -67,7 +68,9 @@ function validarLogin(usuario, senha) {
       String(r.SENHA).trim() === String(senha).trim()
     );
     if (!user) return null;
-    return { nome: user.NOME, usuario: user.USUARIO, email: user.EMAIL, perfil: user.PERFIL };
+    const filiaisRaw = String(user.FILIAIS_LIBERADAS || '');
+    const filiaisLiberadas = filiaisRaw ? filiaisRaw.split(',').map(f => f.trim()).filter(Boolean) : [];
+    return { nome: user.NOME, usuario: user.USUARIO, email: user.EMAIL, perfil: user.PERFIL, filiaisLiberadas };
   } catch(e) {
     logErro('validarLogin: ' + e.message);
     return null;
@@ -83,7 +86,8 @@ function buscarCodigo(tipo, codigo) {
       fornecedor:     { aba: ABAS.FORNECEDORES,   col: 'COD' },
       materia:        { aba: ABAS.MATERIAS,        col: 'COD' },
       transportadora: { aba: ABAS.TRANSPORTADORAS, col: 'COD' },
-      filial:         { aba: ABAS.FILIAIS,         col: 'COD' }
+      filial:         { aba: ABAS.FILIAIS,         col: 'COD' },
+      usuario:        { aba: ABAS.USUARIOS,        col: 'COD' }
     };
     if (!mapa[tipo]) return null;
     const rows = sheetToArray(mapa[tipo].aba);
@@ -126,7 +130,7 @@ function salvarCadastro(tipo, dados) {
       materia:        { aba: ABAS.MATERIAS,        cols: ['COD','DESCRICAO','UNIDADE','CATEGORIA'] },
       transportadora: { aba: ABAS.TRANSPORTADORAS, cols: ['COD','NOME','CNPJ','CONTATO','PRAZO','OBSERVACAO','CEP','BAIRRO','ENDERECO','CIDADE','ESTADO'] },
       filial:         { aba: ABAS.FILIAIS,         cols: ['COD','NOME','CNPJ','CEP','BAIRRO','ENDERECO','CIDADE','ESTADO','EMAIL_RESPONSAVEL','COD_TRANSPORTADORA'] },
-      usuario:        { aba: ABAS.USUARIOS,        cols: ['COD','NOME','USUARIO','SENHA','EMAIL','PERFIL'] }
+      usuario:        { aba: ABAS.USUARIOS,        cols: ['COD','NOME','USUARIO','SENHA','EMAIL','PERFIL','FILIAIS_LIBERADAS'] }
     };
     if (!mapa[tipo]) return { ok: false, msg: 'Tipo inválido' };
 
@@ -749,6 +753,8 @@ function salvarRecebimento(dados) {
       });
     });
 
+    _logNF('LANÇAMENTO', idRec, dados.idPedido, dados.nfNumero, dados.codFilial, dados.nomeFilial, dados.usuarioLogado || '');
+
     const temDivPagto = !!dados.divPagto;
     if (temDivQtd || temDivPreco || temDivPagto) {
       try {
@@ -891,10 +897,53 @@ function getRecebimentosDoPedido(idPedido) {
   }
 }
 
-function excluirRecebimento(idRec) {
+function _logNF(acao, idRec, idPedido, nfNumero, codFilial, nomeFilial, usuario, detalhe) {
+  try {
+    _appendRowMapeado(getSheet(ABAS.LOG_NF), {
+      DATA_HORA:   new Date(),
+      ACAO:        acao,
+      ID_RECEBIMENTO: idRec   || '',
+      ID_PEDIDO:   idPedido   || '',
+      NF_NUMERO:   nfNumero   || '',
+      COD_FILIAL:  codFilial  || '',
+      NOME_FILIAL: nomeFilial || '',
+      USUARIO:     usuario    || '',
+      DETALHE:     detalhe    || ''
+    });
+  } catch(e) {
+    logErro('_logNF: ' + e.message);
+  }
+}
+
+function getLogNF(idPedido) {
+  try {
+    return sheetToArray(ABAS.LOG_NF)
+      .filter(r => String(r.ID_PEDIDO).trim() === String(idPedido).trim())
+      .map(r => ({ ...r, DATA_HORA: r.DATA_HORA ? new Date(r.DATA_HORA).toISOString() : '' }))
+      .reverse(); // mais recente primeiro
+  } catch(e) {
+    logErro('getLogNF: ' + e.message);
+    return [];
+  }
+}
+
+function excluirRecebimento(idRec, usuarioLogado, filiaisLiberadas, perfil) {
   const lock = LockService.getScriptLock();
   try {
     lock.waitLock(15000);
+
+    // Busca dados do recebimento antes de apagar (para log e verificação de permissão)
+    const recs = sheetToArray(ABAS.RECEBIMENTOS);
+    const rec  = recs.find(r => String(r.ID_RECEBIMENTO).trim() === String(idRec).trim());
+    if (!rec) return { ok: false, msg: 'Recebimento não encontrado' };
+
+    // Verifica permissão: ADMIN pode tudo; outros precisam ter a filial liberada
+    if (String(perfil || '').toUpperCase() !== 'ADMIN') {
+      const liberadas = (filiaisLiberadas || []).map(f => String(f).trim());
+      if (!liberadas.includes(String(rec.COD_FILIAL).trim())) {
+        return { ok: false, msg: 'Sem permissão para excluir NF desta filial' };
+      }
+    }
 
     const _deleteRows = (sh, colName) => {
       const data = sh.getDataRange().getValues();
@@ -910,6 +959,8 @@ function excluirRecebimento(idRec) {
 
     _deleteRows(getSheet(ABAS.ITENS_RECEBIMENTO), 'ID_RECEBIMENTO');
     _deleteRows(getSheet(ABAS.RECEBIMENTOS),       'ID_RECEBIMENTO');
+
+    _logNF('EXCLUSÃO', idRec, rec.ID_PEDIDO, rec.NF_NUMERO, rec.COD_FILIAL, rec.NOME_FILIAL, usuarioLogado || '');
 
     return { ok: true, msg: 'NF excluída — pedido liberado para novo lançamento' };
   } catch(e) {
@@ -988,7 +1039,7 @@ function setupPlanilha() {
   const ss = SpreadsheetApp.openById(SHEET_ID);
 
   const estrutura = {
-    USUARIOS:         ['COD','NOME','USUARIO','SENHA','EMAIL','PERFIL'],
+    USUARIOS:         ['COD','NOME','USUARIO','SENHA','EMAIL','PERFIL','FILIAIS_LIBERADAS'],
     FORNECEDORES:     ['COD','NOME','CNPJ','EMAIL','CONTATO','COND_PAGAMENTO','CEP','BAIRRO','ENDERECO','CIDADE','ESTADO'],
     MATERIAS_PRIMAS:  ['COD','DESCRICAO','UNIDADE','CATEGORIA'],
     TRANSPORTADORAS:  ['COD','NOME','CNPJ','CONTATO','PRAZO','OBSERVACAO','CEP','BAIRRO','ENDERECO','CIDADE','ESTADO'],
@@ -999,7 +1050,8 @@ function setupPlanilha() {
     TRANSP_FORN_FILIAL: ['COD_FORNECEDOR','COD_FILIAL','COD_TRANSPORTADORA'],
     RECEBIMENTOS:      ['ID_RECEBIMENTO','ID_PEDIDO','NF_NUMERO','DATA_NF','DATA_RECEBIMENTO','COD_FILIAL','NOME_FILIAL','COD_FORNECEDOR','NOME_FORNECEDOR','USUARIO','VALOR_TOTAL_PEDIDO','VALOR_TOTAL_RECEBIDO','DIVERGENCIA_QTD','DIVERGENCIA_PRECO','DIVERGENCIA_PAGTO','PAGTO_PRAZO','PAGTO_ESPERADO','PAGTO_NF','OBSERVACAO'],
     ITENS_RECEBIMENTO: ['ID_RECEBIMENTO','ID_PEDIDO','COD_MP','DESCRICAO','QTD_PEDIDA','QTD_RECEBIDA','PRECO_PEDIDO','PRECO_RECEBIDO','SUBTOTAL_PEDIDO','SUBTOTAL_RECEBIDO','DIV_QTD','DIV_PRECO'],
-    LOG_ERROS:         ['DATA','MENSAGEM']
+    LOG_ERROS:         ['DATA','MENSAGEM'],
+    LOG_NF:            ['DATA_HORA','ACAO','ID_RECEBIMENTO','ID_PEDIDO','NF_NUMERO','COD_FILIAL','NOME_FILIAL','USUARIO','DETALHE']
   };
 
   Object.entries(estrutura).forEach(([nome, headers]) => {

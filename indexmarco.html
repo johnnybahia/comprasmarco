@@ -749,6 +749,12 @@ table tr:hover td { background: #f5f7fb; }
 
         <!-- Seção de recebimentos NF (carregada dinamicamente) -->
         <div id="hist-rec-section"></div>
+
+        <!-- Log de ações da NF -->
+        <div style="margin-top:16px">
+          <div style="font-size:12px;font-weight:600;color:var(--text2);letter-spacing:.5px;text-transform:uppercase;margin-bottom:6px">Histórico de Ações</div>
+          <div id="hist-log-nf"></div>
+        </div>
       </div>
     </div>
 
@@ -1078,6 +1084,19 @@ table tr:hover td { background: #f5f7fb; }
                 <option value="FILIAL">FILIAL</option>
                 <option value="USUARIO" selected>USUARIO</option>
               </select>
+            </div>
+            <div class="field" style="grid-column:1/-1">
+              <label>Filiais liberadas <span style="font-weight:400;color:var(--text3)">(pode excluir NF dessas filiais)</span></label>
+              <div class="email-tags-wrap" id="usr-filial-wrap" onclick="document.getElementById('usr-filial-inp').focus()" style="min-height:38px">
+                <div id="usr-filial-tags-display" style="display:flex;flex-wrap:wrap;gap:4px;align-items:center"></div>
+                <input type="text" id="usr-filial-inp" placeholder="Digite código ou nome da filial…"
+                       oninput="_usrFilialFiltrar(this.value)"
+                       onkeydown="_usrFilialKeydown(event)"
+                       autocomplete="off"
+                       style="border:none;outline:none;flex:1;min-width:160px;font-size:13px;background:transparent;padding:4px">
+              </div>
+              <div id="usr-filial-dropdown" style="display:none;position:absolute;z-index:200;background:#fff;border:1px solid var(--border);border-radius:var(--radius);box-shadow:0 4px 12px rgba(0,0,0,.1);max-height:180px;overflow-y:auto;width:320px"></div>
+              <input type="hidden" id="usr-filial-hidden" value="">
             </div>
           </div>
           <div class="form-actions">
@@ -2237,6 +2256,16 @@ function verDetalhe(idx) {
     .withSuccessHandler(recs => renderRecebimentosDetalhe(recs, p.VALOR_TOTAL))
     .withFailureHandler(() => { recSec.innerHTML = ''; })
     .getRecebimentosDoPedido(p.ID_PEDIDO);
+
+  // Carrega log de ações da NF
+  const logSec = document.getElementById('hist-log-nf');
+  if (logSec) {
+    logSec.innerHTML = '<p style="color:var(--text3);font-size:12px;padding:8px 0">Carregando histórico...</p>';
+    google.script.run
+      .withSuccessHandler(log => renderLogNF(log))
+      .withFailureHandler(() => { logSec.innerHTML = ''; })
+      .getLogNF(p.ID_PEDIDO);
+  }
 }
 
 function renderRecebimentosDetalhe(recs, valorPedido) {
@@ -2253,6 +2282,7 @@ function renderRecebimentosDetalhe(recs, valorPedido) {
       idRec:       String(r.ID_RECEBIMENTO),
       nfNum:       String(r.NF_NUMERO || '—'),
       idPedido:    String(r.ID_PEDIDO),
+      codFilial:   String(r.COD_FILIAL || ''),
       valorPedido: parseFloat(r.VALOR_TOTAL_PEDIDO || 0)
     };
   });
@@ -2331,6 +2361,114 @@ function renderRecebimentosDetalhe(recs, valorPedido) {
 }
 
 // ════════════════════════════════════════════════════
+// LOG DE AÇÕES DA NF
+// ════════════════════════════════════════════════════
+function renderLogNF(log) {
+  const sec = document.getElementById('hist-log-nf');
+  if (!sec) return;
+  if (!log || log.length === 0) {
+    sec.innerHTML = '<p style="color:var(--text3);font-size:12px;padding:4px 0">Nenhuma ação registrada.</p>';
+    return;
+  }
+  const corAcao = { 'LANÇAMENTO':'var(--success)', 'EXCLUSÃO':'var(--error)', 'EDIÇÃO':'var(--warning,#e8a020)' };
+  sec.innerHTML = `<table style="width:100%;border-collapse:collapse;font-size:12px">
+    <thead><tr style="background:var(--surface2);color:var(--text2)">
+      <th style="padding:6px 10px;text-align:left">Data/Hora</th>
+      <th style="padding:6px 10px;text-align:left">Ação</th>
+      <th style="padding:6px 10px;text-align:left">Recebimento</th>
+      <th style="padding:6px 10px;text-align:left">NF</th>
+      <th style="padding:6px 10px;text-align:left">Usuário</th>
+    </tr></thead>
+    <tbody>${log.map(r => {
+      const dt = r.DATA_HORA ? new Date(r.DATA_HORA).toLocaleString('pt-BR') : '—';
+      const cor = corAcao[String(r.ACAO)] || 'var(--text2)';
+      return `<tr style="border-bottom:1px solid var(--border)">
+        <td style="padding:5px 10px;color:var(--text3)">${escHTML(dt)}</td>
+        <td style="padding:5px 10px"><span style="font-weight:700;color:${cor}">${escHTML(String(r.ACAO||''))}</span></td>
+        <td style="padding:5px 10px;font-family:'IBM Plex Mono',monospace">${escHTML(String(r.ID_RECEBIMENTO||'—'))}</td>
+        <td style="padding:5px 10px">${escHTML(String(r.NF_NUMERO||'—'))}</td>
+        <td style="padding:5px 10px">${escHTML(String(r.USUARIO||'—'))}</td>
+      </tr>`;
+    }).join('')}</tbody>
+  </table>`;
+}
+
+// ════════════════════════════════════════════════════
+// SELETOR DE FILIAIS DO USUÁRIO
+// ════════════════════════════════════════════════════
+let _usrFiliaisSel = []; // CODs selecionados
+
+let _usrFilialDropItems = []; // cache dos itens visíveis no dropdown (índice seguro)
+
+function _usrFilialFiltrar(q) {
+  const drop = document.getElementById('usr-filial-dropdown');
+  const filiais = (_cache.filial || []);
+  _usrFilialDropItems = filiais.filter(f => {
+    const cod  = String(f.COD  || '').toLowerCase();
+    const nome = String(f.NOME || '').toLowerCase();
+    return (cod.includes(q.toLowerCase()) || nome.includes(q.toLowerCase()))
+      && !_usrFiliaisSel.includes(String(f.COD).trim());
+  }).slice(0, 8);
+  if (!q || _usrFilialDropItems.length === 0) { drop.style.display = 'none'; return; }
+  drop.style.display = 'block';
+  drop.innerHTML = _usrFilialDropItems.map((f, idx) =>
+    `<div style="padding:8px 12px;cursor:pointer;font-size:13px"
+          onmousedown="event.preventDefault();_usrFilialAddIdx(${idx})"
+          onmouseover="this.style.background='var(--surface2)'"
+          onmouseout="this.style.background=''">
+       <code style="font-size:11px;color:var(--text3)">${escHTML(String(f.COD))}</code> ${escHTML(String(f.NOME))}
+     </div>`
+  ).join('');
+}
+
+function _usrFilialKeydown(e) {
+  if (e.key === 'Escape') {
+    document.getElementById('usr-filial-dropdown').style.display = 'none';
+  }
+}
+
+function _usrFilialAddIdx(idx) {
+  const f = _usrFilialDropItems[idx];
+  if (!f) return;
+  const cod = String(f.COD).trim();
+  if (!cod || _usrFiliaisSel.includes(cod)) return;
+  _usrFiliaisSel.push(cod);
+  _usrFilialRender();
+  document.getElementById('usr-filial-inp').value = '';
+  document.getElementById('usr-filial-dropdown').style.display = 'none';
+  _usrFilialSyncHidden();
+}
+
+function _usrFilialRemoverIdx(idx) {
+  _usrFiliaisSel.splice(idx, 1);
+  _usrFilialRender();
+  _usrFilialSyncHidden();
+}
+
+function _usrFilialRender() {
+  const filiais = (_cache.filial || []);
+  const display = document.getElementById('usr-filial-tags-display');
+  display.innerHTML = _usrFiliaisSel.map((cod, idx) => {
+    const f = filiais.find(x => String(x.COD).trim() === cod);
+    const label = f ? `${cod} — ${f.NOME}` : cod;
+    return `<span style="display:inline-flex;align-items:center;gap:4px;background:var(--navy);color:#fff;border-radius:12px;padding:2px 10px;font-size:12px">
+      ${escHTML(label)}
+      <button type="button" onclick="_usrFilialRemoverIdx(${idx})" style="background:none;border:none;color:#fff;cursor:pointer;font-size:14px;padding:0;line-height:1">×</button>
+    </span>`;
+  }).join('');
+}
+
+function _usrFilialSyncHidden() {
+  document.getElementById('usr-filial-hidden').value = _usrFiliaisSel.join(',');
+}
+
+function _usrFilialSetTags(cods) {
+  _usrFiliaisSel = cods.map(c => String(c).trim()).filter(Boolean);
+  _usrFilialRender();
+  _usrFilialSyncHidden();
+}
+
+// ════════════════════════════════════════════════════
 // EXCLUIR RECEBIMENTO NF
 // ════════════════════════════════════════════════════
 let _excluirNFPendente = null;
@@ -2338,6 +2476,17 @@ let _excluirNFPendente = null;
 function confirmarExcluirNFById(idRec) {
   const d = (window._recExcluirMap || {})[idRec];
   if (!d) { toast('Dados não encontrados — recarregue a página', 'error'); return; }
+
+  // Verificação de permissão antecipada (validação definitiva é feita no servidor)
+  const perfil = (sessao?.perfil || '').toUpperCase();
+  if (perfil !== 'ADMIN') {
+    const liberadas = (sessao?.filiaisLiberadas || []).map(f => String(f).trim());
+    if (!liberadas.includes(String(d.codFilial).trim())) {
+      toast(`Sem permissão para excluir NF da filial ${d.codFilial}`, 'error');
+      return;
+    }
+  }
+
   _excluirNFPendente = d;
   document.getElementById('modal-excluir-text').innerHTML =
     `Deseja excluir o recebimento <strong>${escHTML(d.idRec)}</strong> (NF ${escHTML(d.nfNum)})?<br>
@@ -2368,7 +2517,7 @@ function executarExcluirNF() {
       }
     })
     .withFailureHandler(err => toast('Erro: ' + err.message, 'error'))
-    .excluirRecebimento(idRec);
+    .excluirRecebimento(idRec, sessao?.nome || '', sessao?.filiaisLiberadas || [], sessao?.perfil || '');
 }
 
 // ════════════════════════════════════════════════════
@@ -2406,7 +2555,8 @@ function salvarCad(tipo) {
     },
     usuario: {
       campos: {COD:'f-usr-cod',NOME:'f-usr-nome',USUARIO:'f-usr-user',SENHA:'f-usr-senha',EMAIL:'f-usr-email',PERFIL:'f-usr-perfil'},
-      prefixo:'usr', tabela:'usuario'
+      prefixo:'usr', tabela:'usuario',
+      filialHiddenId:'usr-filial-hidden', filialField:'FILIAIS_LIBERADAS'
     }
   };
 
@@ -2418,12 +2568,14 @@ function salvarCad(tipo) {
 
   // Coleta emails dos tags
   if (cfg.emailHiddenId) {
-    const emailVal = document.getElementById(cfg.emailHiddenId).value.trim();
-    // Também verifica se há algo no input que não virou tag
     emailTagBlur(cfg.emailInputId, cfg.emailHiddenId);
-    const emailFinal = document.getElementById(cfg.emailHiddenId).value.trim();
     const emailCol = cfg.emailField || 'EMAIL';
-    dados[emailCol] = emailFinal;
+    dados[emailCol] = document.getElementById(cfg.emailHiddenId).value.trim();
+  }
+
+  // Coleta filiais liberadas (usuario)
+  if (cfg.filialHiddenId) {
+    dados[cfg.filialField] = document.getElementById(cfg.filialHiddenId).value.trim();
   }
 
   if (!dados.COD) { toast('Código é obrigatório', 'error'); return; }
@@ -2459,6 +2611,11 @@ function limparForm(prefixo) {
   if (prefixo === 'usr') {
     const perfilEl = document.getElementById('f-usr-perfil');
     if (perfilEl) perfilEl.value = 'USUARIO';
+    _usrFiliaisSel = [];
+    document.getElementById('usr-filial-hidden').value = '';
+    document.getElementById('usr-filial-tags-display').innerHTML = '';
+    document.getElementById('usr-filial-inp').value = '';
+    document.getElementById('usr-filial-dropdown').style.display = 'none';
   }
 
   // Limpa email tags
@@ -2497,7 +2654,7 @@ function carregarTabelaCadastro(tipo) {
     materia:        { id:'tbl-materias',         cols:['COD','DESCRICAO','UNIDADE','CATEGORIA'] },
     transportadora: { id:'tbl-transportadoras',  cols:['COD','NOME','CONTATO','PRAZO'] },
     filial:         { id:'tbl-filiais',          cols:['COD','NOME','CEP','CIDADE','ESTADO','COD_TRANSPORTADORA','EMAIL_RESPONSAVEL'] },
-    usuario:        { id:'tbl-usuarios',         cols:['COD','NOME','USUARIO','EMAIL','PERFIL'] }
+    usuario:        { id:'tbl-usuarios',         cols:['COD','NOME','USUARIO','EMAIL','PERFIL','FILIAIS_LIBERADAS'] }
   };
 
   const cfg = tblMap[tipo];
@@ -2579,6 +2736,11 @@ function editarCadastro(tipo, cod) {
       }
       if (tipo === 'fornecedor') {
         abrirCardTranspForn(res.COD, res.NOME);
+      }
+      if (tipo === 'usuario') {
+        // Restaura filiais liberadas
+        const filiais = String(res.FILIAIS_LIBERADAS || '').split(',').map(f => f.trim()).filter(Boolean);
+        _usrFilialSetTags(filiais);
       }
       document.getElementById('sub-' + subMap[tipo]).scrollIntoView({ behavior:'smooth' });
     })
