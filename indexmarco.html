@@ -2121,17 +2121,18 @@ function carregarTodosPedidos() {
     .getTodosPedidos();
 }
 
+// Atualiza a lista do histórico sem fechar o painel de detalhe (usado após excluir NF)
 function _recarregarListaHist() {
-  if (!_ultimaBuscaHist) { carregarTodosPedidos(); return; }
-  if (_ultimaBuscaHist.tipo === 'todos') {
-    carregarTodosPedidos();
-  } else {
-    const tbody = document.getElementById('hist-tbody');
-    tbody.innerHTML = '<tr><td colspan="9"><div class="empty-state"><div class="icon">⏳</div>Atualizando...</div></td></tr>';
+  const run = (gsFunc, ...args) => {
     google.script.run
       .withSuccessHandler(res => renderHistorico(res))
       .withFailureHandler(() => toast('Erro ao recarregar histórico', 'error'))
-      .getHistorico(_ultimaBuscaHist.tipo, _ultimaBuscaHist.cod);
+      [gsFunc](...args);
+  };
+  if (!_ultimaBuscaHist || _ultimaBuscaHist.tipo === 'todos') {
+    run('getTodosPedidos');
+  } else {
+    run('getHistorico', _ultimaBuscaHist.tipo, _ultimaBuscaHist.cod);
   }
 }
 
@@ -2898,6 +2899,13 @@ function _renderPagtoNF() {
   const nfDataStr = document.getElementById('nf-data').value.trim();
   const podeCal   = /^\d{2}\/\d{2}\/\d{4}$/.test(nfDataStr);
 
+  // Preserva valores já digitados pelo usuário antes de reconstruir o HTML
+  const _valoresNF = {};
+  cond.dias.forEach((_, i) => {
+    const el = document.getElementById('pagto-nf-' + i);
+    if (el && el.value) _valoresNF[i] = el.value;
+  });
+
   info.innerHTML = `
     <p style="font-size:12px;color:var(--text2);margin-bottom:12px">
       Condição do pedido: <strong>${escHTML(String(p.COND_PAGAMENTO||''))}</strong>
@@ -2926,6 +2934,14 @@ function _renderPagtoNF() {
       </div>`;
     }).join('')}
     </div>`;
+
+  // Restaura valores que o usuário já havia digitado (sobrevivem à mudança da data da NF)
+  if (podeCal) {
+    Object.entries(_valoresNF).forEach(([i, v]) => {
+      const el = document.getElementById('pagto-nf-' + i);
+      if (el) { el.value = v; _verificarParcela(Number(i)); }
+    });
+  }
 }
 
 function _verificarParcela(idx) {
