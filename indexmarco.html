@@ -2512,6 +2512,11 @@ function executarExcluirNF() {
           .withSuccessHandler(recs => renderRecebimentosDetalhe(recs, valorPedido))
           .withFailureHandler(err => { recSec.innerHTML = ''; toast('Erro ao recarregar: ' + err.message, 'error'); })
           .getRecebimentosDoPedido(idPedido);
+        // Recarrega o log de ações
+        google.script.run
+          .withSuccessHandler(log => renderLogNF(log))
+          .withFailureHandler(() => {})
+          .getLogNF(idPedido);
         // Atualiza a lista do histórico repetindo a última busca ativa
         _recarregarListaHist();
       }
