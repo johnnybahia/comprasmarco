@@ -776,12 +776,21 @@ function getRecebimentosDoPedido(idPedido) {
 // ============================================================
 function _enriquecerPedidosComNF(pedidos) {
   try {
-    const recs = sheetToArray(ABAS.RECEBIMENTOS);
+    const recs  = sheetToArray(ABAS.RECEBIMENTOS);
+    const itRec = sheetToArray(ABAS.ITENS_RECEBIMENTO);
     return pedidos.map(p => {
-      const recPed = recs.filter(r => String(r.ID_PEDIDO).trim() === String(p.ID_PEDIDO).trim());
-      const temNF        = recPed.length > 0;
-      const temDivQtd    = recPed.some(r => String(r.DIVERGENCIA_QTD).trim()   === 'SIM');
-      const temDivPreco  = recPed.some(r => String(r.DIVERGENCIA_PRECO).trim() === 'SIM');
+      const idP   = String(p.ID_PEDIDO).trim();
+      const recPed = recs.filter(r => String(r.ID_PEDIDO).trim() === idP);
+      const temNF  = recPed.length > 0;
+      // Check divergence from header flags OR from item-level comparison (handles corrupted columns)
+      let temDivQtd   = recPed.some(r => String(r.DIVERGENCIA_QTD).trim()   === 'SIM');
+      let temDivPreco = recPed.some(r => String(r.DIVERGENCIA_PRECO).trim() === 'SIM');
+      if (!temDivQtd || !temDivPreco) {
+        const recIds = new Set(recPed.map(r => String(r.ID_RECEBIMENTO).trim()));
+        const itensRec = itRec.filter(i => recIds.has(String(i.ID_RECEBIMENTO).trim()));
+        if (!temDivQtd)   temDivQtd   = itensRec.some(i => Math.abs(parseFloat(i.QTD_RECEBIDA||0) - parseFloat(i.QTD_PEDIDA||0)) > 0.001);
+        if (!temDivPreco) temDivPreco = itensRec.some(i => Math.abs(parseFloat(i.PRECO_RECEBIDO||0) - parseFloat(i.PRECO_PEDIDO||0)) > 0.001);
+      }
       return { ...p, temNF, temDivQtd, temDivPreco };
     });
   } catch(e) {
@@ -874,43 +883,76 @@ function setupPlanilha() {
 }
 
 // ============================================================
+// DIAGNÓSTICO — rode no editor do Apps Script e veja o log
+// Mostra a ordem real das colunas de cada aba chave.
+// ============================================================
+function diagnosticarPlanilha() {
+  const abas = [ABAS.PEDIDOS, ABAS.RECEBIMENTOS, ABAS.ITENS_RECEBIMENTO, ABAS.ITENS_PEDIDO];
+  abas.forEach(nomeAba => {
+    const sh = getSheet(nomeAba);
+    if (!sh) { Logger.log(nomeAba + ': ABA NÃO ENCONTRADA'); return; }
+    const data = sh.getDataRange().getValues();
+    const headers = data[0].map((h, i) => i + ':' + String(h).trim());
+    Logger.log('=== ' + nomeAba + ' ===');
+    Logger.log('Colunas: ' + headers.join(' | '));
+    data.slice(1, 4).forEach((row, i) => {
+      const linha = row.map((v, j) => data[0][j] + '=' + (v instanceof Date ? v.toISOString() : v)).join(' | ');
+      Logger.log('Linha ' + (i + 2) + ': ' + linha);
+    });
+  });
+}
+
+// ============================================================
 // MIGRAÇÃO — rode uma única vez no editor do Apps Script
-// Corrige linhas da aba PEDIDOS que foram gravadas com colunas
-// trocadas (versão anterior usava appendRow com posições fixas).
+// Corrige linhas que foram gravadas com colunas trocadas.
+// Rode primeiro diagnosticarPlanilha() e confirme o resultado.
 // ============================================================
 function migrarPedidosCorretos() {
   const sh = getSheet(ABAS.PEDIDOS);
   if (!sh) { Logger.log('Aba PEDIDOS não encontrada.'); return; }
   const data = sh.getDataRange().getValues();
   const headers = data[0].map(h => String(h).trim());
-  const idxStatus = headers.indexOf('STATUS');
-  const idxValor  = headers.indexOf('VALOR_TOTAL');
-  const idxObs    = headers.indexOf('OBSERVACAO');
-  const idxPrazo  = headers.indexOf('PRAZO_ENTREGA');
 
-  if (idxStatus < 0 || idxValor < 0) {
-    Logger.log('Colunas STATUS ou VALOR_TOTAL não encontradas.');
-    return;
-  }
+  const idx = name => headers.indexOf(name);
+  const iStatus = idx('STATUS'), iValor = idx('VALOR_TOTAL');
+  const iUsuario = idx('USUARIO'), iNomeTrans = idx('NOME_TRANSPORTADORA');
+  const iPrazo = idx('PRAZO_ENTREGA'), iObs = idx('OBSERVACAO');
+  const iCond = idx('COND_PAGAMENTO');
+
+  if (iStatus < 0 || iValor < 0) { Logger.log('Colunas essenciais não encontradas.'); return; }
+
+  const statusValidos = ['ENVIADO','RECEBIDO','PENDENTE','CANCELADO','EM ANÁLISE'];
 
   let corrigidas = 0;
   for (let r = 1; r < data.length; r++) {
-    const row = data[r];
-    const status = String(row[idxStatus]).trim();
-    const valor  = String(row[idxValor]).trim();
+    const row    = data[r];
+    const status = String(row[iStatus]).trim();
+    const valor  = String(row[iValor]).trim();
+    const statusErrado = !statusValidos.includes(status.toUpperCase());
+    const valorErrado  = isNaN(parseFloat(valor));
 
-    // Se STATUS não é um dos valores válidos mas parece número,
-    // e VALOR_TOTAL não é número mas parece texto de status → troca.
-    const statusValidos = ['ENVIADO','RECEBIDO','PENDENTE','CANCELADO','EM ANÁLISE'];
-    const statusErrado  = !statusValidos.includes(status.toUpperCase()) && !isNaN(parseFloat(status));
-    const valorErrado   = isNaN(parseFloat(valor));
+    if (!statusErrado && !valorErrado) continue; // linha OK
 
-    if (statusErrado && valorErrado) {
-      sh.getRange(r + 1, idxStatus + 1).setValue(valor);   // status ← o que estava em valor
-      sh.getRange(r + 1, idxValor  + 1).setValue(parseFloat(status)); // valor ← o que estava em status
-      Logger.log('Linha ' + (r + 1) + ' (' + row[0] + '): STATUS e VALOR_TOTAL corrigidos.');
-      corrigidas++;
+    Logger.log('Linha ' + (r+1) + ' (' + row[0] + ') parece corrompida. Valores atuais:');
+    headers.forEach((h, j) => Logger.log('  ' + h + ' [col ' + (j+1) + ']: ' + row[j]));
+
+    // Encontra onde "ENVIADO"/"RECEBIDO" foi parar (esse é o STATUS real)
+    const posStatus = row.findIndex((v, j) => statusValidos.includes(String(v).trim().toUpperCase()));
+    // Encontra onde um número positivo > 0 foi parar que possa ser o total
+    const posValor  = row.findIndex((v, j) => !isNaN(parseFloat(v)) && parseFloat(v) > 0
+                                               && j !== headers.indexOf('DATA') && j > 5);
+    if (posStatus >= 0 && posValor >= 0 && posStatus !== iStatus) {
+      sh.getRange(r+1, iStatus+1).setValue(row[posStatus]);
+      sh.getRange(r+1, posStatus+1).setValue(row[iStatus]);
+      Logger.log('  → STATUS movido da col ' + (posStatus+1) + ' para col ' + (iStatus+1));
     }
+    if (posValor >= 0 && posValor !== iValor) {
+      const valorReal = parseFloat(row[posValor]);
+      sh.getRange(r+1, iValor+1).setValue(valorReal);
+      sh.getRange(r+1, posValor+1).setValue(row[iValor]);
+      Logger.log('  → VALOR_TOTAL movido da col ' + (posValor+1) + ' para col ' + (iValor+1));
+    }
+    corrigidas++;
   }
-  Logger.log('Migração concluída. ' + corrigidas + ' linhas corrigidas.');
+  Logger.log('Migração concluída. ' + corrigidas + ' linhas processadas.');
 }
