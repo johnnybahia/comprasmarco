@@ -2693,6 +2693,7 @@ function _isoDate(d) {
 function calcDataPagtoUtil(dataBaseStr, dias) {
   const [dd,mm,aaaa] = dataBaseStr.split('/');
   const d = new Date(parseInt(aaaa), parseInt(mm)-1, parseInt(dd));
+  if (isNaN(d.getTime()) || !dias || dias <= 0) return null;
   const fer = new Set([..._feriadosBR(d.getFullYear()), ..._feriadosBR(d.getFullYear()+1)]);
   let uteis = 0;
   while (uteis < dias) {
@@ -2798,8 +2799,8 @@ function _renderPagtoNF() {
       let espStr = '(informe a data da NF primeiro)', espISO = '';
       if (podeCal) {
         const dt = calcDataPagtoUtil(nfDataStr, d);
-        espStr = _fmtDataBR(dt);
-        espISO = _isoDate(dt);
+        if (dt) { espStr = _fmtDataBR(dt); espISO = _isoDate(dt); }
+        else espStr = '(data inválida)';
       }
       return `<div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;padding:8px;background:var(--surface2);border-radius:var(--radius);border:1px solid var(--border)">
         <span style="min-width:100px;font-size:12px;font-weight:600;color:var(--text2)">Parcela ${i+1} — ${d} du</span>
