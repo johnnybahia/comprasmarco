@@ -734,7 +734,7 @@ table tr:hover td { background: #f5f7fb; }
               <button class="btn btn-outline btn-sm" onclick="buscarHistorico('filial')">Buscar</button>
             </div>
           </div>
-          <div class="field">
+          <div class="field" id="hist-filtro-forn">
             <label>Por Fornecedor</label>
             <div class="input-lookup">
               <div class="ac-wrap" style="flex:1">
@@ -745,7 +745,7 @@ table tr:hover td { background: #f5f7fb; }
               <button class="btn btn-outline btn-sm" onclick="buscarHistorico('fornecedor')">Buscar</button>
             </div>
           </div>
-          <div class="field" style="display:flex;align-items:flex-end">
+          <div class="field" id="hist-filtro-todos" style="display:flex;align-items:flex-end">
             <button class="btn btn-primary btn-sm" onclick="carregarTodosPedidos()">Ver Todos</button>
           </div>
         </div>
@@ -1362,12 +1362,12 @@ function iniciarApp() {
   // ADMIN   → tudo
   // COMPRAS → Pedido + Histórico + NF  (sem Cadastros)
   // USUARIO → Pedido + Histórico       (sem NF, sem Cadastros)
-  // FILIAL  → apenas NF
+  // FILIAL  → NF + Histórico filtrado pelas filiais autorizadas
   const perfil = (sessao.perfil || '').toUpperCase();
   const podeNF        = perfil !== 'USUARIO';
   const podeCadastros = perfil === 'ADMIN';
   const podePedido    = perfil !== 'FILIAL';
-  const podeHistorico = perfil !== 'FILIAL';
+  const podeHistorico = true; // FILIAL agora tem acesso filtrado
 
   document.getElementById('nav-pedido').style.display    = podePedido    ? '' : 'none';
   document.getElementById('nav-historico').style.display = podeHistorico ? '' : 'none';
@@ -1375,7 +1375,14 @@ function iniciarApp() {
   document.getElementById('nav-cadastros').style.display = podeCadastros ? '' : 'none';
 
   if (perfil === 'FILIAL') {
-    // Filial: vai direto para lançar NF
+    // FILIAL: NF é a tela principal; Histórico fica acessível mas filtrado
+    document.getElementById('hist-filtro-forn').style.display  = 'none';
+    document.getElementById('hist-filtro-todos').style.display = 'none';
+    // Carrega cache de filiais para o autocomplete de busca no Histórico
+    google.script.run
+      .withSuccessHandler(rows => { _cache.filial = rows || []; registrarAutocompletes('filial'); })
+      .withFailureHandler(() => {})
+      .listarTodos('filial');
     document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
     document.getElementById('panel-nf').classList.add('active');
     document.getElementById('nav-nf').classList.add('active');
@@ -1968,7 +1975,7 @@ function navegarPara(panel, btn) {
   document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
   document.getElementById('panel-' + panel).classList.add('active');
   if (btn) btn.classList.add('active');
-  if (panel === 'historico') carregarTodosPedidos();
+  if (panel === 'historico') carregarHistoricoInicial();
   if (panel === 'nf') _nfCarregarIds();
 }
 
@@ -2164,6 +2171,28 @@ function enviarPedido() {
 // ════════════════════════════════════════════════════
 let _ultimaBuscaHist = null; // { tipo: 'todos'|'filial'|'fornecedor', cod? }
 
+function carregarHistoricoInicial() {
+  const pf = (sessao?.perfil || '').toUpperCase();
+  if (pf === 'FILIAL') {
+    const filiais = (sessao?.filiaisLiberadas || []).filter(Boolean);
+    _ultimaBuscaHist = { tipo: 'filial-multiplo', filiais };
+    document.getElementById('hist-detalhe').style.display = 'none';
+    document.getElementById('hist-tbody').innerHTML =
+      '<tr><td colspan="9"><div class="empty-state"><div class="icon">⏳</div>Carregando...</div></td></tr>';
+    if (filiais.length === 0) {
+      document.getElementById('hist-tbody').innerHTML =
+        '<tr><td colspan="9"><div class="empty-state"><div class="icon">⚠</div>Nenhuma filial autorizada. Contate o administrador.</div></td></tr>';
+      return;
+    }
+    google.script.run
+      .withSuccessHandler(res => renderHistorico(res))
+      .withFailureHandler(() => toast('Erro ao carregar histórico', 'error'))
+      .getHistoricoMultiFiliais(filiais);
+  } else {
+    carregarTodosPedidos();
+  }
+}
+
 function buscarHistorico(tipo) {
   const inputId = tipo === 'filial' ? 'hist-filial-cod' : 'hist-forn-cod';
   const raw = document.getElementById(inputId).value.trim();
@@ -2176,6 +2205,16 @@ function buscarHistorico(tipo) {
     String(r.NOME).trim().toLowerCase() === raw.toLowerCase()
   );
   const cod = found ? found.COD : raw;
+
+  // FILIAL: valida que a filial buscada está entre as autorizadas
+  if (tipo === 'filial' && (sessao?.perfil || '').toUpperCase() === 'FILIAL') {
+    const liberadas = (sessao?.filiaisLiberadas || []).map(f => String(f).trim());
+    if (!liberadas.includes(String(cod).trim())) {
+      toast('Você não tem acesso a esta filial', 'error');
+      return;
+    }
+  }
+
   _ultimaBuscaHist = { tipo, cod };
 
   document.getElementById('hist-detalhe').style.display = 'none';
@@ -2212,7 +2251,9 @@ function _recarregarListaHist() {
       .withFailureHandler(() => toast('Erro ao recarregar histórico', 'error'))
       [gsFunc](...args);
   };
-  if (!_ultimaBuscaHist || _ultimaBuscaHist.tipo === 'todos') {
+  if (_ultimaBuscaHist && _ultimaBuscaHist.tipo === 'filial-multiplo') {
+    run('getHistoricoMultiFiliais', _ultimaBuscaHist.filiais);
+  } else if (!_ultimaBuscaHist || _ultimaBuscaHist.tipo === 'todos') {
     run('getTodosPedidos');
   } else {
     run('getHistorico', _ultimaBuscaHist.tipo, _ultimaBuscaHist.cod);
@@ -3411,7 +3452,9 @@ function _recarregarHistoricoSemFecharDetalhe() {
       .withFailureHandler(() => toast('Erro ao recarregar histórico', 'error'))
       [gsFunc](...args);
   };
-  if (!_ultimaBuscaHist || _ultimaBuscaHist.tipo === 'todos') {
+  if (_ultimaBuscaHist && _ultimaBuscaHist.tipo === 'filial-multiplo') {
+    run('getHistoricoMultiFiliais', _ultimaBuscaHist.filiais);
+  } else if (!_ultimaBuscaHist || _ultimaBuscaHist.tipo === 'todos') {
     run('getTodosPedidos');
   } else {
     run('getHistorico', _ultimaBuscaHist.tipo, _ultimaBuscaHist.cod);

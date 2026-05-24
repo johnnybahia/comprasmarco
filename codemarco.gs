@@ -1027,6 +1027,24 @@ function excluirRecebimento(idRec, usuarioLogado, filiaisLiberadas, perfil) {
   }
 }
 
+function getHistoricoMultiFiliais(codFiliais) {
+  try {
+    const filiais = (codFiliais || []).map(f => String(f).trim()).filter(Boolean);
+    if (filiais.length === 0) return [];
+    const pedidos = sheetToArray(ABAS.PEDIDOS);
+    const filtrados = pedidos.filter(p => filiais.includes(String(p.COD_FILIAL).trim()));
+    const enriquecidos = _enriquecerPedidosComNF(filtrados);
+    const todosItens = sheetToArray(ABAS.ITENS_PEDIDO);
+    return enriquecidos.map(p => {
+      const itens = todosItens.filter(i => String(i.ID_PEDIDO).trim() === String(p.ID_PEDIDO).trim());
+      return { ...p, itens };
+    });
+  } catch(e) {
+    logErro('getHistoricoMultiFiliais: ' + e.message);
+    throw e;
+  }
+}
+
 function cancelarPedido(idPedido, observacao, usuarioNome, emailUsuario) {
   const lock = LockService.getScriptLock();
   try {
