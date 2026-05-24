@@ -1027,9 +1027,18 @@ function excluirRecebimento(idRec, usuarioLogado, filiaisLiberadas, perfil) {
   }
 }
 
-function getHistoricoMultiFiliais(codFiliais) {
+function getHistoricoMultiFiliais(codFiliais, usuarioLogin) {
   try {
-    const filiais = (codFiliais || []).map(f => String(f).trim()).filter(Boolean);
+    let filiais = (codFiliais || []).map(f => String(f).trim()).filter(Boolean);
+    // Valida filiais no servidor contra as permissões reais do usuário
+    if (usuarioLogin) {
+      const users = sheetToArray(ABAS.USUARIOS);
+      const user = users.find(u => String(u.USUARIO).trim().toLowerCase() === String(usuarioLogin).trim().toLowerCase());
+      if (user && String(user.PERFIL).toUpperCase() === 'FILIAL') {
+        const liberadas = String(user.FILIAIS_LIBERADAS || '').split(',').map(f => f.trim()).filter(Boolean);
+        filiais = filiais.filter(f => liberadas.includes(f));
+      }
+    }
     if (filiais.length === 0) return [];
     const pedidos = sheetToArray(ABAS.PEDIDOS);
     const filtrados = pedidos.filter(p => filiais.includes(String(p.COD_FILIAL).trim()));

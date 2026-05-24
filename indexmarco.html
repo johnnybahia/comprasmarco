@@ -1388,6 +1388,9 @@ function iniciarApp() {
     document.getElementById('nav-nf').classList.add('active');
     _nfCarregarIds();
   } else {
+    // Restaura filtros que podem ter sido ocultados por uma sessão FILIAL anterior
+    document.getElementById('hist-filtro-forn').style.display  = '';
+    document.getElementById('hist-filtro-todos').style.display = '';
     carregarCaches();
     if (podeCadastros) {
       carregarTabelaCadastro('fornecedor');
@@ -1414,6 +1417,7 @@ function iniciarApp() {
 
 function sair() {
   sessao = null;
+  _ultimaBuscaHist = null;
   sessionStorage.removeItem('sessao');
   document.getElementById('app-screen').style.display = 'none';
   document.getElementById('login-screen').style.display = 'flex';
@@ -2187,13 +2191,19 @@ function carregarHistoricoInicial() {
     google.script.run
       .withSuccessHandler(res => renderHistorico(res))
       .withFailureHandler(() => toast('Erro ao carregar histórico', 'error'))
-      .getHistoricoMultiFiliais(filiais);
+      .getHistoricoMultiFiliais(filiais, sessao?.usuario || '');
   } else {
     carregarTodosPedidos();
   }
 }
 
 function buscarHistorico(tipo) {
+  // FILIAL só pode buscar por filial — botões de fornecedor/todos já estão ocultos,
+  // mas este guard previne chamadas diretas via console
+  if ((sessao?.perfil || '').toUpperCase() === 'FILIAL' && tipo !== 'filial') {
+    toast('Pesquisa não disponível para este perfil', 'error'); return;
+  }
+
   const inputId = tipo === 'filial' ? 'hist-filial-cod' : 'hist-forn-cod';
   const raw = document.getElementById(inputId).value.trim();
   if (!raw) { toast('Informe o código ou nome para filtrar', 'error'); return; }
@@ -2252,7 +2262,7 @@ function _recarregarListaHist() {
       [gsFunc](...args);
   };
   if (_ultimaBuscaHist && _ultimaBuscaHist.tipo === 'filial-multiplo') {
-    run('getHistoricoMultiFiliais', _ultimaBuscaHist.filiais);
+    run('getHistoricoMultiFiliais', _ultimaBuscaHist.filiais, sessao?.usuario || '');
   } else if (!_ultimaBuscaHist || _ultimaBuscaHist.tipo === 'todos') {
     run('getTodosPedidos');
   } else {
@@ -3453,7 +3463,7 @@ function _recarregarHistoricoSemFecharDetalhe() {
       [gsFunc](...args);
   };
   if (_ultimaBuscaHist && _ultimaBuscaHist.tipo === 'filial-multiplo') {
-    run('getHistoricoMultiFiliais', _ultimaBuscaHist.filiais);
+    run('getHistoricoMultiFiliais', _ultimaBuscaHist.filiais, sessao?.usuario || '');
   } else if (!_ultimaBuscaHist || _ultimaBuscaHist.tipo === 'todos') {
     run('getTodosPedidos');
   } else {
