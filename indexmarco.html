@@ -2054,6 +2054,8 @@ function enviarPedido() {
 // ════════════════════════════════════════════════════
 // HISTÓRICO
 // ════════════════════════════════════════════════════
+let _ultimaBuscaHist = null; // { tipo: 'todos'|'filial'|'fornecedor', cod? }
+
 function buscarHistorico(tipo) {
   const inputId = tipo === 'filial' ? 'hist-filial-cod' : 'hist-forn-cod';
   const raw = document.getElementById(inputId).value.trim();
@@ -2066,6 +2068,7 @@ function buscarHistorico(tipo) {
     String(r.NOME).trim().toLowerCase() === raw.toLowerCase()
   );
   const cod = found ? found.COD : raw;
+  _ultimaBuscaHist = { tipo, cod };
 
   document.getElementById('hist-detalhe').style.display = 'none';
   const tbody = document.getElementById('hist-tbody');
@@ -2078,6 +2081,7 @@ function buscarHistorico(tipo) {
 }
 
 function carregarTodosPedidos() {
+  _ultimaBuscaHist = { tipo: 'todos' };
   document.getElementById('hist-detalhe').style.display = 'none';
   const tbody = document.getElementById('hist-tbody');
   tbody.innerHTML = '<tr><td colspan="9"><div class="empty-state"><div class="icon">⏳</div>Carregando...</div></td></tr>';
@@ -2090,6 +2094,20 @@ function carregarTodosPedidos() {
         '</div></td></tr>';
     })
     .getTodosPedidos();
+}
+
+function _recarregarListaHist() {
+  if (!_ultimaBuscaHist) return;
+  if (_ultimaBuscaHist.tipo === 'todos') {
+    carregarTodosPedidos();
+  } else {
+    const tbody = document.getElementById('hist-tbody');
+    tbody.innerHTML = '<tr><td colspan="9"><div class="empty-state"><div class="icon">⏳</div>Atualizando...</div></td></tr>';
+    google.script.run
+      .withSuccessHandler(res => renderHistorico(res))
+      .withFailureHandler(() => toast('Erro ao recarregar histórico', 'error'))
+      .getHistorico(_ultimaBuscaHist.tipo, _ultimaBuscaHist.cod);
+  }
 }
 
 function _fmtValor(v) {
@@ -2202,6 +2220,17 @@ function renderRecebimentosDetalhe(recs, valorPedido) {
     return;
   }
 
+  // Mapa seguro: ID_RECEBIMENTO → dados para excluir (evita injeção via onclick attributes)
+  window._recExcluirMap = {};
+  recs.forEach(r => {
+    window._recExcluirMap[String(r.ID_RECEBIMENTO)] = {
+      idRec:       String(r.ID_RECEBIMENTO),
+      nfNum:       String(r.NF_NUMERO || '—'),
+      idPedido:    String(r.ID_PEDIDO),
+      valorPedido: parseFloat(r.VALOR_TOTAL_PEDIDO || 0)
+    };
+  });
+
   recSec.innerHTML = recs.map((r, ri) => {
     const dataRec = r.DATA_RECEBIMENTO ? new Date(r.DATA_RECEBIMENTO).toLocaleDateString('pt-BR') : '—';
     const itens = r.itens || [];
@@ -2246,6 +2275,7 @@ function renderRecebimentosDetalhe(recs, valorPedido) {
         <h4>NF #${ri+1} — ${escHTML(String(r.NF_NUMERO||'—'))}</h4>
         ${badge}
         <span style="font-size:12px;color:var(--text3);margin-left:auto">${r.ID_RECEBIMENTO} · ${dataRec} · ${escHTML(String(r.USUARIO||''))}</span>
+        <button class="btn btn-outline btn-sm" style="margin-left:12px;color:var(--error);border-color:var(--error)" onclick="confirmarExcluirNFById('${escHTML(String(r.ID_RECEBIMENTO))}')">Excluir NF</button>
       </div>
       <div class="table-wrap">
         <table>
@@ -2272,6 +2302,47 @@ function renderRecebimentosDetalhe(recs, valorPedido) {
       ${_buildPagtoDetalhe(r)}
     </div>`;
   }).join('');
+}
+
+// ════════════════════════════════════════════════════
+// EXCLUIR RECEBIMENTO NF
+// ════════════════════════════════════════════════════
+let _excluirNFPendente = null;
+
+function confirmarExcluirNFById(idRec) {
+  const d = (window._recExcluirMap || {})[idRec];
+  if (!d) { toast('Dados não encontrados — recarregue a página', 'error'); return; }
+  _excluirNFPendente = d;
+  document.getElementById('modal-excluir-text').innerHTML =
+    `Deseja excluir o recebimento <strong>${escHTML(d.idRec)}</strong> (NF ${escHTML(d.nfNum)})?<br>
+     O pedido ficará liberado para novo lançamento de NF.`;
+  document.getElementById('modal-excluir').classList.add('open');
+  document.getElementById('btn-confirmar-exclusao').onclick = executarExcluirNF;
+}
+
+function executarExcluirNF() {
+  if (!_excluirNFPendente) return;
+  document.getElementById('modal-excluir').classList.remove('open');
+  const { idRec, idPedido, valorPedido } = _excluirNFPendente;
+  _excluirNFPendente = null;
+  toast('Excluindo NF...', 'info');
+  google.script.run
+    .withSuccessHandler(res => {
+      toast(res.ok ? res.msg : 'Erro: ' + res.msg, res.ok ? 'success' : 'error');
+      if (res.ok) {
+        // Recarrega recebimentos do mesmo pedido
+        const recSec = document.getElementById('hist-rec-section');
+        recSec.innerHTML = '<div class="rec-section"><div class="empty-state" style="padding:16px"><div class="icon">⏳</div>Atualizando...</div></div>';
+        google.script.run
+          .withSuccessHandler(recs => renderRecebimentosDetalhe(recs, valorPedido))
+          .withFailureHandler(err => { recSec.innerHTML = ''; toast('Erro ao recarregar: ' + err.message, 'error'); })
+          .getRecebimentosDoPedido(idPedido);
+        // Atualiza a lista do histórico repetindo a última busca ativa
+        _recarregarListaHist();
+      }
+    })
+    .withFailureHandler(err => toast('Erro: ' + err.message, 'error'))
+    .excluirRecebimento(idRec);
 }
 
 // ════════════════════════════════════════════════════
@@ -2505,7 +2576,8 @@ function confirmarExcluir(tipo, cod, nome) {
 
 function fecharModalExcluir() {
   document.getElementById('modal-excluir').classList.remove('open');
-  _excluirPendente = null;
+  _excluirPendente   = null;
+  _excluirNFPendente = null;
 }
 
 function executarExclusao() {

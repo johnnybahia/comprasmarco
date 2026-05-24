@@ -779,6 +779,35 @@ function getRecebimentosDoPedido(idPedido) {
   }
 }
 
+function excluirRecebimento(idRec) {
+  const lock = LockService.getScriptLock();
+  try {
+    lock.waitLock(15000);
+
+    const _deleteRows = (sh, colName) => {
+      const data = sh.getDataRange().getValues();
+      const hdrs = data[0].map(h => String(h).trim());
+      const col  = hdrs.indexOf(colName);
+      if (col < 0) return;
+      for (let i = data.length - 1; i >= 1; i--) {
+        if (String(data[i][col]).trim() === String(idRec).trim()) {
+          sh.deleteRow(i + 1);
+        }
+      }
+    };
+
+    _deleteRows(getSheet(ABAS.ITENS_RECEBIMENTO), 'ID_RECEBIMENTO');
+    _deleteRows(getSheet(ABAS.RECEBIMENTOS),       'ID_RECEBIMENTO');
+
+    return { ok: true, msg: 'NF excluída — pedido liberado para novo lançamento' };
+  } catch(e) {
+    logErro('excluirRecebimento: ' + e.message);
+    return { ok: false, msg: e.message };
+  } finally {
+    lock.releaseLock();
+  }
+}
+
 // ============================================================
 // HISTÓRICO
 // ============================================================
