@@ -1961,6 +1961,7 @@ function confirmarPedido() {
   if (!fornCod || !fornNome)     { toast('Informe o fornecedor', 'error'); return; }
   if (frete === 'FOB' && !document.getElementById('ped-transp-cod').value.trim()) { toast('Frete FOB requer transportadora', 'error'); return; }
   if (itensPedido.length === 0)  { toast('Adicione pelo menos um item', 'error'); return; }
+  if (!condPag) { toast('Informe a condição de pagamento (ex: 30, 30/60 ou marque "À vista")', 'error'); return; }
 
   // Monta lista de destinatários
   const forn    = (_cache.fornecedor || []).find(f => String(f.COD).trim() === fornCod);
@@ -2355,9 +2356,13 @@ function limparForm(prefixo) {
     mat:  ['f-mat-cod','f-mat-desc','f-mat-unidade','f-mat-cat'],
     tra:  ['f-tra-cod','f-tra-nome','f-tra-cnpj','f-tra-contato','f-tra-prazo','f-tra-obs','f-tra-cep','f-tra-bairro','f-tra-end','f-tra-cidade','f-tra-estado'],
     fil:  ['f-fil-cod','f-fil-nome','f-fil-cnpj','f-fil-transp-cod','f-fil-transp-nome','f-fil-cep','f-fil-bairro','f-fil-end','f-fil-cidade','f-fil-estado'],
-    usr:  ['f-usr-cod','f-usr-nome','f-usr-user','f-usr-senha','f-usr-email','f-usr-perfil']
+    usr:  ['f-usr-cod','f-usr-nome','f-usr-user','f-usr-senha','f-usr-email']
   };
   (mapIds[prefixo] || []).forEach(id => { document.getElementById(id).value = ''; });
+  if (prefixo === 'usr') {
+    const perfilEl = document.getElementById('f-usr-perfil');
+    if (perfilEl) perfilEl.value = 'USUARIO';
+  }
 
   // Limpa email tags
   if (prefixo === 'forn') {
