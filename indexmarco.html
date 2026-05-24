@@ -599,28 +599,12 @@ table tr:hover td { background: #f5f7fb; }
                 <input type="radio" name="ped-cond-tipo" value="PZ" checked onchange="atualizarCondPag()"> Prazo (dias úteis bancários)
               </label>
             </div>
-            <div id="ped-cond-parcelas" style="display:flex;gap:14px;margin-top:8px;flex-wrap:wrap">
-              <div style="display:flex;align-items:center;gap:4px">
-                <span style="font-size:12px;color:var(--text2);white-space:nowrap">Parc. 1:</span>
-                <input type="number" id="ped-parc-1" min="1" max="365" placeholder="30"
-                  style="width:62px;padding:6px 8px;border:1px solid var(--border);border-radius:var(--radius);font-size:14px"
-                  oninput="atualizarCondPag()">
-                <span style="font-size:11px;color:var(--text3)">du</span>
-              </div>
-              <div style="display:flex;align-items:center;gap:4px">
-                <span style="font-size:12px;color:var(--text2);white-space:nowrap">Parc. 2:</span>
-                <input type="number" id="ped-parc-2" min="1" max="365" placeholder="—"
-                  style="width:62px;padding:6px 8px;border:1px solid var(--border);border-radius:var(--radius);font-size:14px"
-                  oninput="atualizarCondPag()">
-                <span style="font-size:11px;color:var(--text3)">du</span>
-              </div>
-              <div style="display:flex;align-items:center;gap:4px">
-                <span style="font-size:12px;color:var(--text2);white-space:nowrap">Parc. 3:</span>
-                <input type="number" id="ped-parc-3" min="1" max="365" placeholder="—"
-                  style="width:62px;padding:6px 8px;border:1px solid var(--border);border-radius:var(--radius);font-size:14px"
-                  oninput="atualizarCondPag()">
-                <span style="font-size:11px;color:var(--text3)">du</span>
-              </div>
+            <div id="ped-cond-parcelas" style="margin-top:8px">
+              <div id="ped-parcelas-list" style="display:flex;flex-wrap:wrap;gap:6px 12px"></div>
+              <button type="button" onclick="adicionarParcela()"
+                style="margin-top:8px;padding:4px 12px;border:1px dashed var(--border);background:none;border-radius:var(--radius);cursor:pointer;font-size:12px;color:var(--text2)">
+                + Parcela
+              </button>
             </div>
             <input type="hidden" id="ped-cond-pag">
           </div>
@@ -1944,9 +1928,8 @@ function limparPedido() {
    'ped-transp-cod','ped-transp-nome','ped-prazo','ped-cond-pag','ped-obs'].forEach(id => {
     document.getElementById(id).value = '';
   });
-  ['ped-parc-1','ped-parc-2','ped-parc-3'].forEach(id => {
-    const el = document.getElementById(id); if (el) el.value = '';
-  });
+  _parcelasCondPag = [''];
+  renderParcelasUI();
   const pzRadio = document.querySelector('input[name="ped-cond-tipo"][value="PZ"]');
   if (pzRadio) { pzRadio.checked = true; atualizarCondPag(); }
   document.getElementById('ped-frete-cif').checked = true;
@@ -2731,8 +2714,44 @@ function _parsCondPag(v) {
 }
 
 // ════════════════════════════════════════════════════
-// CONDIÇÃO DE PAGAMENTO — PEDIDO
+// CONDIÇÃO DE PAGAMENTO — PEDIDO (dinâmico, até 10 parcelas)
 // ════════════════════════════════════════════════════
+let _parcelasCondPag = [''];
+
+function renderParcelasUI() {
+  const list = document.getElementById('ped-parcelas-list');
+  if (!list) return;
+  list.innerHTML = _parcelasCondPag.map((v, i) => `
+    <div style="display:flex;align-items:center;gap:4px">
+      <span style="font-size:11px;color:var(--text3);min-width:22px">${i+1}ª</span>
+      <input type="number" min="1" max="999" placeholder="${i===0?'30':'ex: 60'}"
+        value="${v}"
+        style="width:66px;padding:6px 8px;border:1px solid var(--border);border-radius:var(--radius);font-size:14px"
+        oninput="_parcelasCondPag[${i}]=this.value;atualizarCondPag()">
+      <span style="font-size:11px;color:var(--text3)">du</span>
+      ${_parcelasCondPag.length > 1
+        ? `<button type="button" onclick="removerParcela(${i})"
+             style="background:none;border:none;color:var(--error);cursor:pointer;font-size:15px;line-height:1;padding:0 2px">×</button>`
+        : ''}
+    </div>`).join('');
+}
+
+function adicionarParcela() {
+  if (_parcelasCondPag.length >= 10) { toast('Máximo de 10 parcelas', 'error'); return; }
+  document.querySelectorAll('#ped-parcelas-list input[type="number"]')
+    .forEach((inp, i) => { _parcelasCondPag[i] = inp.value; });
+  _parcelasCondPag.push('');
+  renderParcelasUI();
+}
+
+function removerParcela(idx) {
+  document.querySelectorAll('#ped-parcelas-list input[type="number"]')
+    .forEach((inp, i) => { _parcelasCondPag[i] = inp.value; });
+  _parcelasCondPag.splice(idx, 1);
+  renderParcelasUI();
+  atualizarCondPag();
+}
+
 function atualizarCondPag() {
   const tipo = document.querySelector('input[name="ped-cond-tipo"]:checked')?.value || 'PZ';
   const wrap = document.getElementById('ped-cond-parcelas');
@@ -2742,10 +2761,8 @@ function atualizarCondPag() {
     return;
   }
   if (wrap) wrap.style.display = '';
-  const dias = [1,2,3].map(i => {
-    const v = parseInt(document.getElementById('ped-parc-'+i)?.value||'', 10);
-    return (!isNaN(v) && v > 0) ? v : null;
-  }).filter(v => v !== null);
+  const dias = Array.from(document.querySelectorAll('#ped-parcelas-list input[type="number"]'))
+    .map(inp => parseInt(inp.value, 10)).filter(n => !isNaN(n) && n > 0);
   document.getElementById('ped-cond-pag').value = dias.join(',');
 }
 
@@ -2956,6 +2973,8 @@ function limparNF() {
   const pagtoCard = document.getElementById('nf-pagto-card');
   if (pagtoCard) { pagtoCard.style.display = 'none'; document.getElementById('nf-pagto-info').innerHTML = ''; }
 }
+
+renderParcelasUI();
 
 // ════════════════════════════════════════════════════
 // TOAST
