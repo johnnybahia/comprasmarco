@@ -2398,19 +2398,24 @@ function renderLogNF(log) {
 // ════════════════════════════════════════════════════
 let _usrFiliaisSel = []; // CODs selecionados
 
+let _usrFilialDropItems = []; // cache dos itens visíveis no dropdown (índice seguro)
+
 function _usrFilialFiltrar(q) {
   const drop = document.getElementById('usr-filial-dropdown');
   const filiais = (_cache.filial || []);
-  const matches = filiais.filter(f => {
+  _usrFilialDropItems = filiais.filter(f => {
     const cod  = String(f.COD  || '').toLowerCase();
     const nome = String(f.NOME || '').toLowerCase();
     return (cod.includes(q.toLowerCase()) || nome.includes(q.toLowerCase()))
       && !_usrFiliaisSel.includes(String(f.COD).trim());
-  });
-  if (!q || matches.length === 0) { drop.style.display = 'none'; return; }
+  }).slice(0, 8);
+  if (!q || _usrFilialDropItems.length === 0) { drop.style.display = 'none'; return; }
   drop.style.display = 'block';
-  drop.innerHTML = matches.slice(0, 8).map(f =>
-    `<div style="padding:8px 12px;cursor:pointer;font-size:13px" onmousedown="event.preventDefault();_usrFilialAdd('${escHTML(String(f.COD).trim())}','${escHTML(String(f.NOME).trim())}')" onmouseover="this.style.background='var(--surface2)'" onmouseout="this.style.background=''">
+  drop.innerHTML = _usrFilialDropItems.map((f, idx) =>
+    `<div style="padding:8px 12px;cursor:pointer;font-size:13px"
+          onmousedown="event.preventDefault();_usrFilialAddIdx(${idx})"
+          onmouseover="this.style.background='var(--surface2)'"
+          onmouseout="this.style.background=''">
        <code style="font-size:11px;color:var(--text3)">${escHTML(String(f.COD))}</code> ${escHTML(String(f.NOME))}
      </div>`
   ).join('');
@@ -2422,7 +2427,10 @@ function _usrFilialKeydown(e) {
   }
 }
 
-function _usrFilialAdd(cod, nome) {
+function _usrFilialAddIdx(idx) {
+  const f = _usrFilialDropItems[idx];
+  if (!f) return;
+  const cod = String(f.COD).trim();
   if (!cod || _usrFiliaisSel.includes(cod)) return;
   _usrFiliaisSel.push(cod);
   _usrFilialRender();
@@ -2431,8 +2439,8 @@ function _usrFilialAdd(cod, nome) {
   _usrFilialSyncHidden();
 }
 
-function _usrFilialRemover(cod) {
-  _usrFiliaisSel = _usrFiliaisSel.filter(c => c !== cod);
+function _usrFilialRemoverIdx(idx) {
+  _usrFiliaisSel.splice(idx, 1);
   _usrFilialRender();
   _usrFilialSyncHidden();
 }
@@ -2440,12 +2448,12 @@ function _usrFilialRemover(cod) {
 function _usrFilialRender() {
   const filiais = (_cache.filial || []);
   const display = document.getElementById('usr-filial-tags-display');
-  display.innerHTML = _usrFiliaisSel.map(cod => {
+  display.innerHTML = _usrFiliaisSel.map((cod, idx) => {
     const f = filiais.find(x => String(x.COD).trim() === cod);
     const label = f ? `${cod} — ${f.NOME}` : cod;
     return `<span style="display:inline-flex;align-items:center;gap:4px;background:var(--navy);color:#fff;border-radius:12px;padding:2px 10px;font-size:12px">
       ${escHTML(label)}
-      <button type="button" onclick="_usrFilialRemover('${escHTML(cod)}')" style="background:none;border:none;color:#fff;cursor:pointer;font-size:14px;padding:0;line-height:1">×</button>
+      <button type="button" onclick="_usrFilialRemoverIdx(${idx})" style="background:none;border:none;color:#fff;cursor:pointer;font-size:14px;padding:0;line-height:1">×</button>
     </span>`;
   }).join('');
 }

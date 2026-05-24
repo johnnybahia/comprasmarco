@@ -86,7 +86,8 @@ function buscarCodigo(tipo, codigo) {
       fornecedor:     { aba: ABAS.FORNECEDORES,   col: 'COD' },
       materia:        { aba: ABAS.MATERIAS,        col: 'COD' },
       transportadora: { aba: ABAS.TRANSPORTADORAS, col: 'COD' },
-      filial:         { aba: ABAS.FILIAIS,         col: 'COD' }
+      filial:         { aba: ABAS.FILIAIS,         col: 'COD' },
+      usuario:        { aba: ABAS.USUARIOS,        col: 'COD' }
     };
     if (!mapa[tipo]) return null;
     const rows = sheetToArray(mapa[tipo].aba);
