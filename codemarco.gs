@@ -133,7 +133,7 @@ function salvarCadastro(tipo, dados) {
     const cfg = mapa[tipo];
     const sh = getSheet(cfg.aba);
     const allData = sh.getDataRange().getValues();
-    let headers = allData[0].map(String);
+    let headers = allData[0].map(h => String(h).trim());
 
     // Adiciona colunas faltantes na planilha
     const missingCols = cfg.cols.filter(c => !headers.includes(c));
@@ -188,7 +188,7 @@ function excluirCadastro(tipo, cod) {
     if (!mapa[tipo]) return { ok: false, msg: 'Tipo inválido' };
     const sh = getSheet(mapa[tipo]);
     const data = sh.getDataRange().getValues();
-    const headers = data[0];
+    const headers = data[0].map(h => String(h).trim());
     const codIdx = headers.indexOf('COD');
     for (let i = 1; i < data.length; i++) {
       if (String(data[i][codIdx]).trim() === String(cod).trim()) {
@@ -214,14 +214,16 @@ function salvarPrecoFornecedor(codForn, codMP, preco) {
     lock.waitLock(10000);
     const sh = getSheet(ABAS.PRECO_FORNECEDOR);
     const allData = sh.getDataRange().getValues();
+    const hdrs = allData[0].map(h => String(h).trim());
+    const iCF = hdrs.indexOf('COD_FORNECEDOR'), iMP = hdrs.indexOf('COD_MP'), iPR = hdrs.indexOf('PRECO');
     for (let i = 1; i < allData.length; i++) {
-      if (String(allData[i][0]).trim() === String(codForn).trim() &&
-          String(allData[i][1]).trim() === String(codMP).trim()) {
-        sh.getRange(i + 1, 3).setValue(preco);
+      if (String(allData[i][iCF]).trim() === String(codForn).trim() &&
+          String(allData[i][iMP]).trim() === String(codMP).trim()) {
+        sh.getRange(i + 1, iPR + 1).setValue(preco);
         return { ok: true, msg: 'Preço atualizado' };
       }
     }
-    sh.appendRow([codForn, codMP, preco]);
+    _appendRowMapeado(sh, { COD_FORNECEDOR: codForn, COD_MP: codMP, PRECO: preco });
     return { ok: true, msg: 'Preço cadastrado' };
   } catch(e) {
     logErro('salvarPrecoFornecedor: ' + e.message);
@@ -557,14 +559,16 @@ function salvarTranspFornFilial(codForn, codFilial, codTransp) {
     lock.waitLock(10000);
     const sh = getSheet(ABAS.TRANSP_FORN_FILIAL);
     const allData = sh.getDataRange().getValues();
+    const hdrs = allData[0].map(h => String(h).trim());
+    const iCF = hdrs.indexOf('COD_FORNECEDOR'), iFI = hdrs.indexOf('COD_FILIAL'), iCT = hdrs.indexOf('COD_TRANSPORTADORA');
     for (let i = 1; i < allData.length; i++) {
-      if (String(allData[i][0]).trim() === String(codForn).trim() &&
-          String(allData[i][1]).trim() === String(codFilial).trim()) {
-        sh.getRange(i + 1, 3).setValue(codTransp);
+      if (String(allData[i][iCF]).trim() === String(codForn).trim() &&
+          String(allData[i][iFI]).trim() === String(codFilial).trim()) {
+        sh.getRange(i + 1, iCT + 1).setValue(codTransp);
         return { ok: true, msg: 'Transportadora atualizada' };
       }
     }
-    sh.appendRow([codForn, codFilial, codTransp]);
+    _appendRowMapeado(sh, { COD_FORNECEDOR: codForn, COD_FILIAL: codFilial, COD_TRANSPORTADORA: codTransp });
     return { ok: true, msg: 'Transportadora vinculada' };
   } catch(e) {
     logErro('salvarTranspFornFilial: ' + e.message);
@@ -811,7 +815,7 @@ function getHistorico(tipo, cod) {
     });
   } catch(e) {
     logErro('getHistorico: ' + e.message);
-    return [];
+    throw e;
   }
 }
 
@@ -863,7 +867,7 @@ function setupPlanilha() {
         .setFontWeight('bold');
     } else {
       // Migração: adiciona colunas faltantes
-      const existingHeaders = sh.getRange(1, 1, 1, sh.getLastColumn()).getValues()[0].map(String);
+      const existingHeaders = sh.getRange(1, 1, 1, sh.getLastColumn()).getValues()[0].map(h => String(h).trim());
       const missing = headers.filter(h => !existingHeaders.includes(h));
       missing.forEach((col, i) => {
         const colIdx = existingHeaders.length + i + 1;

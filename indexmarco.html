@@ -1293,9 +1293,9 @@ function carregarCaches() {
     google.script.run
       .withSuccessHandler(rows => {
         _cache[tipo] = rows || [];
-        // registra autocompletes após carregar cache
         registrarAutocompletes(tipo);
       })
+      .withFailureHandler(err => toast('Erro ao carregar cache de ' + tipo + ': ' + (err&&err.message||''), 'error'))
       .listarTodos(tipo);
   });
 }
@@ -2504,6 +2504,7 @@ function _nfCarregarIds() {
   }
   google.script.run
     .withSuccessHandler(ids => { _nfIdsList = ids || []; })
+    .withFailureHandler(err => toast('Erro ao carregar lista de pedidos: ' + (err&&err.message||''), 'error'))
     .listarIdsPedidos();
 }
 
@@ -2609,8 +2610,10 @@ function calcTotalNF() {
   if (!_nfPedidoAtual) return;
   let total = 0;
   _nfPedidoAtual.itens.forEach((item, idx) => {
-    const qtd  = parseFloat(document.getElementById('nf-qtd-' + idx)?.value)  || 0;
-    const prec = parseFloat(document.getElementById('nf-prec-' + idx)?.value) || 0;
+    const qtdRaw  = document.getElementById('nf-qtd-' + idx)?.value ?? '';
+    const precRaw = document.getElementById('nf-prec-' + idx)?.value ?? '';
+    const qtd  = qtdRaw  === '' ? 0 : (isNaN(parseFloat(qtdRaw))  ? 0 : parseFloat(qtdRaw));
+    const prec = precRaw === '' ? 0 : (isNaN(parseFloat(precRaw)) ? 0 : parseFloat(precRaw));
     const sub  = qtd * prec;
     total += sub;
     const subEl = document.getElementById('nf-sub-' + idx);
