@@ -749,12 +749,22 @@ function salvarRecebimento(dados) {
       });
     });
 
+    const temDivPagto = !!dados.divPagto;
+    if (temDivQtd || temDivPreco || temDivPagto) {
+      try {
+        _enviarEmailDivergencia(idRec, dados, temDivQtd, temDivPreco, temDivPagto, valorTotalRec);
+      } catch(eEmail) {
+        logErro('Email divergência: ' + eEmail.message);
+      }
+    }
+
     return {
       ok: true,
       msg: 'NF lançada com sucesso',
       id: idRec,
       divQtd: temDivQtd,
-      divPreco: temDivPreco
+      divPreco: temDivPreco,
+      divPagto: temDivPagto
     };
   } catch(e) {
     logErro('salvarRecebimento: ' + e.message);
@@ -762,6 +772,108 @@ function salvarRecebimento(dados) {
   } finally {
     lock.releaseLock();
   }
+}
+
+function _enviarEmailDivergencia(idRec, dados, temDivQtd, temDivPreco, temDivPagto, valorTotalRec) {
+  const EMAIL_FIXO = 'marco@marfim.ind.br';
+  const emailUsuario = String(dados.emailUsuario || '').trim().toLowerCase();
+  const destinatarios = [EMAIL_FIXO];
+  if (emailUsuario && emailUsuario !== EMAIL_FIXO.toLowerCase()) {
+    destinatarios.push(dados.emailUsuario.trim());
+  }
+
+  const dataFmt = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'dd/MM/yyyy HH:mm');
+  const divLabels = [temDivQtd && 'Quantidade', temDivPreco && 'Preço', temDivPagto && 'Prazo de Pagamento']
+    .filter(Boolean).join(', ');
+
+  const linhasItens = dados.itens.map(item => {
+    const qtdPed  = parseFloat(item.qtdPedida)    || 0;
+    const qtdRec  = parseFloat(item.qtdRecebida)  || 0;
+    const precPed = parseFloat(item.precoPedido)  || 0;
+    const precRec = parseFloat(item.precoRecebido)|| 0;
+    const divQ = Math.abs(qtdRec  - qtdPed)  > 0.001;
+    const divP = Math.abs(precRec - precPed) > 0.001;
+    const bg    = (divQ || divP) ? 'background:#fff3cd;' : '';
+    return `<tr style="${bg}">
+      <td style="padding:8px 10px;border-bottom:1px solid #eee;font-family:monospace;font-size:12px;">${item.codMP||''}</td>
+      <td style="padding:8px 10px;border-bottom:1px solid #eee;font-size:13px;">${item.descricao||''}</td>
+      <td style="padding:8px 10px;border-bottom:1px solid #eee;text-align:right;">${qtdPed.toFixed(3)}</td>
+      <td style="padding:8px 10px;border-bottom:1px solid #eee;text-align:right;${divQ?'color:#c0392b;font-weight:bold;':''}">${qtdRec.toFixed(3)}${divQ?' ⚠':''}</td>
+      <td style="padding:8px 10px;border-bottom:1px solid #eee;text-align:right;">R$ ${precPed.toFixed(2)}</td>
+      <td style="padding:8px 10px;border-bottom:1px solid #eee;text-align:right;${divP?'color:#c0392b;font-weight:bold;':''}">${'R$ '+precRec.toFixed(2)}${divP?' ⚠':''}</td>
+    </tr>`;
+  }).join('');
+
+  const secaoPagto = temDivPagto ? `
+    <div style="margin:20px 28px;padding:14px 16px;background:#fff3cd;border-left:4px solid #e8a020;border-radius:4px;">
+      <div style="font-weight:700;color:#5a4000;margin-bottom:6px;">⚠ Divergência de Prazo de Pagamento</div>
+      <table style="font-size:13px;width:100%;border-collapse:collapse;">
+        <tr><td style="padding:3px 0;color:#666;width:160px;">Condição do pedido:</td><td style="font-weight:600;">${dados.condPagamento||'—'}</td></tr>
+        <tr><td style="padding:3px 0;color:#666;">Datas esperadas:</td><td>${dados.pagtoEsperado||'—'}</td></tr>
+        <tr><td style="padding:3px 0;color:#666;">Datas na NF:</td><td style="color:#c0392b;font-weight:600;">${dados.pagtoNF||'—'}</td></tr>
+      </table>
+    </div>` : '';
+
+  const htmlBody = `
+  <div style="font-family:Arial,sans-serif;max-width:700px;margin:0 auto;border:1px solid #dde3ea;border-radius:6px;overflow:hidden;">
+    <div style="background:#1a3c5e;padding:20px 28px;">
+      <img src="https://i.ibb.co/FGGjdsM/LOGO-MARFIM.jpg" alt="Marfim" style="height:48px;width:auto;border-radius:4px;margin-bottom:10px;display:block;">
+      <div style="font-size:11px;font-weight:600;letter-spacing:3px;color:#e8a020;text-transform:uppercase;margin-bottom:4px;">Alerta de Divergência — Recebimento NF</div>
+      <div style="font-size:18px;font-weight:700;color:white;">${dados.idPedido} · NF ${dados.nfNumero}</div>
+      <div style="font-size:12px;color:rgba(255,255,255,0.65);margin-top:3px;">Registrado em ${dataFmt} por ${dados.usuarioLogado}</div>
+    </div>
+    <div style="background:#fdecea;border-left:4px solid #c0392b;padding:12px 28px;font-size:13px;color:#7b1a1a;">
+      <strong>Divergência detectada em:</strong> ${divLabels}
+    </div>
+    <div style="padding:16px 28px 0;">
+      <table style="width:100%;border-collapse:collapse;font-size:13px;">
+        <tr style="background:#1a3c5e;color:white;">
+          <th style="padding:8px 10px;text-align:left;">Código</th>
+          <th style="padding:8px 10px;text-align:left;">Descrição</th>
+          <th style="padding:8px 10px;text-align:right;">Qtd Ped.</th>
+          <th style="padding:8px 10px;text-align:right;">Qtd Rec.</th>
+          <th style="padding:8px 10px;text-align:right;">Preço Ped.</th>
+          <th style="padding:8px 10px;text-align:right;">Preço Rec.</th>
+        </tr>
+        ${linhasItens}
+      </table>
+    </div>
+    ${secaoPagto}
+    <div style="padding:16px 28px;">
+      <table style="font-size:13px;width:100%;">
+        <tr><td style="color:#666;width:180px;">Pedido:</td><td><strong>${dados.idPedido}</strong></td></tr>
+        <tr><td style="color:#666;">Recebimento:</td><td><strong>${idRec}</strong></td></tr>
+        <tr><td style="color:#666;">NF Nº:</td><td>${dados.nfNumero}</td></tr>
+        <tr><td style="color:#666;">Data NF:</td><td>${dados.nfData||'—'}</td></tr>
+        <tr><td style="color:#666;">Filial:</td><td>${dados.nomeFilial} (${dados.codFilial})</td></tr>
+        <tr><td style="color:#666;">Fornecedor:</td><td>${dados.nomeFornecedor}</td></tr>
+        <tr><td style="color:#666;">Total Recebido:</td><td><strong>R$ ${valorTotalRec.toFixed(2)}</strong></td></tr>
+        ${dados.observacao ? `<tr><td style="color:#666;">Observação:</td><td>${dados.observacao}</td></tr>` : ''}
+      </table>
+    </div>
+    <div style="background:#f4f7fb;padding:12px 28px;font-size:11px;color:#888;text-align:center;">
+      Sistema de Compras Marfim · Este é um email automático.
+    </div>
+  </div>`;
+
+  const textBody =
+    `ALERTA DE DIVERGÊNCIA — ${dados.idPedido} · NF ${dados.nfNumero}\n` +
+    `Registrado em ${dataFmt} por ${dados.usuarioLogado}\n` +
+    `Divergência em: ${divLabels}\n\n` +
+    dados.itens.map(item => {
+      const qtdPed = parseFloat(item.qtdPedida)||0, qtdRec = parseFloat(item.qtdRecebida)||0;
+      const pPed   = parseFloat(item.precoPedido)||0, pRec = parseFloat(item.precoRecebido)||0;
+      return `${item.codMP} ${item.descricao} | Qtd: ${qtdPed}→${qtdRec} | Preço: ${pPed.toFixed(2)}→${pRec.toFixed(2)}`;
+    }).join('\n') +
+    (temDivPagto ? `\n\nDivergência Pagto:\nCondição: ${dados.condPagamento}\nEsperado: ${dados.pagtoEsperado}\nNF: ${dados.pagtoNF}` : '');
+
+  MailApp.sendEmail({
+    to:      destinatarios.join(','),
+    replyTo: EMAIL_FIXO,
+    subject: `⚠ Divergência NF — ${dados.idPedido} · ${dados.nomeFornecedor}`,
+    body:    textBody,
+    htmlBody: htmlBody
+  });
 }
 
 function getRecebimentosDoPedido(idPedido) {

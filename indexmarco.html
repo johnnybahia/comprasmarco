@@ -1275,25 +1275,50 @@ function iniciarApp() {
   document.getElementById('user-display').textContent = sessao.nome;
   sessionStorage.setItem('sessao', JSON.stringify(sessao));
 
-  // Restringe navegação pelo perfil
-  const isFilial = sessao.perfil === 'FILIAL';
-  document.getElementById('nav-pedido').style.display    = isFilial ? 'none' : '';
-  document.getElementById('nav-historico').style.display = isFilial ? 'none' : '';
-  document.getElementById('nav-cadastros').style.display = isFilial ? 'none' : '';
+  // Permissões por perfil:
+  // ADMIN   → tudo
+  // COMPRAS → Pedido + Histórico + NF  (sem Cadastros)
+  // USUARIO → Pedido + Histórico       (sem NF, sem Cadastros)
+  // FILIAL  → apenas NF
+  const perfil = (sessao.perfil || '').toUpperCase();
+  const podeNF        = perfil !== 'USUARIO';
+  const podeCadastros = perfil === 'ADMIN';
+  const podePedido    = perfil !== 'FILIAL';
+  const podeHistorico = perfil !== 'FILIAL';
 
-  if (isFilial) {
-    // Usuário de filial: vai direto para lançar NF
+  document.getElementById('nav-pedido').style.display    = podePedido    ? '' : 'none';
+  document.getElementById('nav-historico').style.display = podeHistorico ? '' : 'none';
+  document.getElementById('nav-nf').style.display        = podeNF        ? '' : 'none';
+  document.getElementById('nav-cadastros').style.display = podeCadastros ? '' : 'none';
+
+  if (perfil === 'FILIAL') {
+    // Filial: vai direto para lançar NF
     document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
     document.getElementById('panel-nf').classList.add('active');
     document.getElementById('nav-nf').classList.add('active');
     _nfCarregarIds();
   } else {
     carregarCaches();
-    carregarTabelaCadastro('fornecedor');
-    carregarTabelaCadastro('materia');
-    carregarTabelaCadastro('transportadora');
-    carregarTabelaCadastro('filial');
-    carregarTabelaCadastro('usuario');
+    if (podeCadastros) {
+      carregarTabelaCadastro('fornecedor');
+      carregarTabelaCadastro('materia');
+      carregarTabelaCadastro('transportadora');
+      carregarTabelaCadastro('filial');
+      carregarTabelaCadastro('usuario');
+    }
+    // Garante painel inicial compatível com o perfil
+    if (!podePedido) {
+      document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+      document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+      if (podeHistorico) {
+        document.getElementById('panel-historico').classList.add('active');
+        document.getElementById('nav-historico').classList.add('active');
+      } else if (podeNF) {
+        document.getElementById('panel-nf').classList.add('active');
+        document.getElementById('nav-nf').classList.add('active');
+        _nfCarregarIds();
+      }
+    }
   }
 }
 
@@ -2096,17 +2121,18 @@ function carregarTodosPedidos() {
     .getTodosPedidos();
 }
 
+// Atualiza a lista do histórico sem fechar o painel de detalhe (usado após excluir NF)
 function _recarregarListaHist() {
-  if (!_ultimaBuscaHist) return;
-  if (_ultimaBuscaHist.tipo === 'todos') {
-    carregarTodosPedidos();
-  } else {
-    const tbody = document.getElementById('hist-tbody');
-    tbody.innerHTML = '<tr><td colspan="9"><div class="empty-state"><div class="icon">⏳</div>Atualizando...</div></td></tr>';
+  const run = (gsFunc, ...args) => {
     google.script.run
       .withSuccessHandler(res => renderHistorico(res))
       .withFailureHandler(() => toast('Erro ao recarregar histórico', 'error'))
-      .getHistorico(_ultimaBuscaHist.tipo, _ultimaBuscaHist.cod);
+      [gsFunc](...args);
+  };
+  if (!_ultimaBuscaHist || _ultimaBuscaHist.tipo === 'todos') {
+    run('getTodosPedidos');
+  } else {
+    run('getHistorico', _ultimaBuscaHist.tipo, _ultimaBuscaHist.cod);
   }
 }
 
@@ -2873,6 +2899,13 @@ function _renderPagtoNF() {
   const nfDataStr = document.getElementById('nf-data').value.trim();
   const podeCal   = /^\d{2}\/\d{2}\/\d{4}$/.test(nfDataStr);
 
+  // Preserva valores já digitados pelo usuário antes de reconstruir o HTML
+  const _valoresNF = {};
+  cond.dias.forEach((_, i) => {
+    const el = document.getElementById('pagto-nf-' + i);
+    if (el && el.value) _valoresNF[i] = el.value;
+  });
+
   info.innerHTML = `
     <p style="font-size:12px;color:var(--text2);margin-bottom:12px">
       Condição do pedido: <strong>${escHTML(String(p.COND_PAGAMENTO||''))}</strong>
@@ -2892,14 +2925,23 @@ function _renderPagtoNF() {
         <input type="hidden" id="pagto-esp-iso-${i}" value="${escHTML(espISO)}">
         <div style="display:flex;align-items:center;gap:6px;margin-left:auto">
           <label style="font-size:12px;font-weight:600;color:var(--text2)">Data na NF:</label>
-          <input type="text" class="nf-edit-input" id="pagto-nf-${i}" placeholder="DD/MM/AAAA" maxlength="10"
+          <input type="text" class="nf-edit-input" id="pagto-nf-${i}" placeholder="${podeCal ? 'DD/MM/AAAA' : 'Informe a data da NF'}" maxlength="10"
                  oninput="mascaraData(this);_verificarParcela(${i})"
-                 style="width:120px;font-family:'IBM Plex Mono',monospace;font-size:13px">
+                 ${podeCal ? '' : 'disabled'}
+                 style="width:140px;font-family:'IBM Plex Mono',monospace;font-size:13px${podeCal ? '' : ';opacity:0.45;cursor:not-allowed'}">
           <span id="pagto-badge-${i}" class="badge" style="display:none"></span>
         </div>
       </div>`;
     }).join('')}
     </div>`;
+
+  // Restaura valores que o usuário já havia digitado (sobrevivem à mudança da data da NF)
+  if (podeCal) {
+    Object.entries(_valoresNF).forEach(([i, v]) => {
+      const el = document.getElementById('pagto-nf-' + i);
+      if (el) { el.value = v; _verificarParcela(Number(i)); }
+    });
+  }
 }
 
 function _verificarParcela(idx) {
@@ -3006,6 +3048,7 @@ function confirmarLancarNF() {
     codFornecedor:    p.COD_FORNECEDOR,
     nomeFornecedor:   p.NOME_FORNECEDOR,
     usuarioLogado:    sessao.nome,
+    emailUsuario:     sessao.email  || '',
     valorTotalPedido: isNaN(parseFloat(p.VALOR_TOTAL)) ? 0 : parseFloat(p.VALOR_TOTAL),
     observacao:       document.getElementById('nf-obs').value.trim(),
     condPagamento:    p.COND_PAGAMENTO || '',
@@ -3037,11 +3080,12 @@ function executarLancarNF() {
     .withSuccessHandler(res => {
       if (!res.ok) { toast('Erro: ' + res.msg, 'error'); return; }
       let msg = `✓ ${res.msg} — ${res.id}`;
-      if (res.divQtd || res.divPreco) {
-        const divs = [res.divQtd && 'quantidade', res.divPreco && 'preço'].filter(Boolean).join(' e ');
-        msg += ` ⚠ Divergência de ${divs} registrada.`;
+      const temDiv = res.divQtd || res.divPreco || res.divPagto;
+      if (temDiv) {
+        const divs = [res.divQtd && 'quantidade', res.divPreco && 'preço', res.divPagto && 'prazo'].filter(Boolean).join(', ');
+        msg += ` ⚠ Divergência de ${divs} registrada. Email enviado.`;
       }
-      toast(msg, res.divQtd || res.divPreco ? 'error' : 'success');
+      toast(msg, temDiv ? 'error' : 'success');
       limparNF();
     })
     .withFailureHandler(err => toast('Erro: ' + err.message, 'error'))
