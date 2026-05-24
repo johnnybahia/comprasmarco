@@ -2062,8 +2062,8 @@ function carregarTodosPedidos() {
 
 function _fmtValor(v) {
   if (v == null || v === '') return '—';
-  const n = parseFloat(v);
-  if (isNaN(n)) return '—';
+  const n = Number(v);
+  if (isNaN(n) || n === 0 && String(v).trim() !== '0') return '—';
   return 'R$ ' + n.toLocaleString('pt-BR', {minimumFractionDigits: 2, maximumFractionDigits: 2});
 }
 const _STATUS_VALIDOS = ['ENVIADO','RECEBIDO','PENDENTE','CANCELADO','EM ANÁLISE'];
