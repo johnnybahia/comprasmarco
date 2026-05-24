@@ -3006,6 +3006,7 @@ function confirmarLancarNF() {
     codFornecedor:    p.COD_FORNECEDOR,
     nomeFornecedor:   p.NOME_FORNECEDOR,
     usuarioLogado:    sessao.nome,
+    emailUsuario:     sessao.email  || '',
     valorTotalPedido: isNaN(parseFloat(p.VALOR_TOTAL)) ? 0 : parseFloat(p.VALOR_TOTAL),
     observacao:       document.getElementById('nf-obs').value.trim(),
     condPagamento:    p.COND_PAGAMENTO || '',
@@ -3037,11 +3038,12 @@ function executarLancarNF() {
     .withSuccessHandler(res => {
       if (!res.ok) { toast('Erro: ' + res.msg, 'error'); return; }
       let msg = `✓ ${res.msg} — ${res.id}`;
-      if (res.divQtd || res.divPreco) {
-        const divs = [res.divQtd && 'quantidade', res.divPreco && 'preço'].filter(Boolean).join(' e ');
-        msg += ` ⚠ Divergência de ${divs} registrada.`;
+      const temDiv = res.divQtd || res.divPreco || res.divPagto;
+      if (temDiv) {
+        const divs = [res.divQtd && 'quantidade', res.divPreco && 'preço', res.divPagto && 'prazo'].filter(Boolean).join(', ');
+        msg += ` ⚠ Divergência de ${divs} registrada. Email enviado.`;
       }
-      toast(msg, res.divQtd || res.divPreco ? 'error' : 'success');
+      toast(msg, temDiv ? 'error' : 'success');
       limparNF();
     })
     .withFailureHandler(err => toast('Erro: ' + err.message, 'error'))
