@@ -4,14 +4,44 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Compras Marfim</title>
-<link rel="icon" type="image/svg+xml" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA1MTIgNTEyIj48cmVjdCB3aWR0aD0iNTEyIiBoZWlnaHQ9IjUxMiIgcng9Ijg4IiBmaWxsPSIjMWEzYzVlIi8+PHRleHQgeD0iMjU2IiB5PSI0MDAiIGZvbnQtZmFtaWx5PSJBcmlhbCBCbGFjayxBcmlhbCxzYW5zLXNlcmlmIiBmb250LXdlaWdodD0iOTAwIiBmb250LXNpemU9IjM5MCIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZmlsbD0iI2U4YTAyMCI+TTwvdGV4dD48L3N2Zz4=">
-<link rel="apple-touch-icon" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA1MTIgNTEyIj48cmVjdCB3aWR0aD0iNTEyIiBoZWlnaHQ9IjUxMiIgcng9Ijg4IiBmaWxsPSIjMWEzYzVlIi8+PHRleHQgeD0iMjU2IiB5PSI0MDAiIGZvbnQtZmFtaWx5PSJBcmlhbCBCbGFjayxBcmlhbCxzYW5zLXNlcmlmIiBmb250LXdlaWdodD0iOTAwIiBmb250LXNpemU9IjM5MCIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZmlsbD0iI2U4YTAyMCI+TTwvdGV4dD48L3N2Zz4=">
+<link rel="icon" id="app-favicon" type="image/svg+xml" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA1MTIgNTEyIj48cmVjdCB3aWR0aD0iNTEyIiBoZWlnaHQ9IjUxMiIgcng9Ijg4IiBmaWxsPSIjMWEzYzVlIi8+PHRleHQgeD0iMjU2IiB5PSI0MDAiIGZvbnQtZmFtaWx5PSJBcmlhbCBCbGFjayxBcmlhbCxzYW5zLXNlcmlmIiBmb250LXdlaWdodD0iOTAwIiBmb250LXNpemU9IjM5MCIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZmlsbD0iI2U4YTAyMCI+TTwvdGV4dD48L3N2Zz4=">
+<link rel="apple-touch-icon" id="app-apple-icon" href="">
+<link rel="manifest" id="app-manifest">
 <meta name="application-name" content="Compras Marfim">
 <meta name="theme-color" content="#1a3c5e">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Compras Marfim">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<link rel="manifest" href="data:application/manifest+json;base64,eyJuYW1lIjogIkNvbXByYXMgTWFyZmltIiwgInNob3J0X25hbWUiOiAiQ29tcHJhcyBNYXJmaW0iLCAiZGlzcGxheSI6ICJzdGFuZGFsb25lIiwgInRoZW1lX2NvbG9yIjogIiMxYTNjNWUiLCAiYmFja2dyb3VuZF9jb2xvciI6ICIjMWEzYzVlIiwgInN0YXJ0X3VybCI6ICIuIiwgImljb25zIjogW3sic3JjIjogImRhdGE6aW1hZ2Uvc3ZnK3htbDtiYXNlNjQsUEhOMlp5QjRiV3h1Y3owaWFIUjBjRG92TDNkM2R5NTNNeTV2Y21jdk1qQXdNQzl6ZG1jaUlIWnBaWGRDYjNnOUlqQWdNQ0ExTVRJZ05URXlJajQ4Y21WamRDQjNhV1IwYUQwaU5URXlJaUJvWldsbmFIUTlJalV4TWlJZ2NuZzlJamc0SWlCbWFXeHNQU0lqTVdFell6VmxJaTgrUEhSbGVIUWdlRDBpTWpVMklpQjVQU0kwTURBaUlHWnZiblF0Wm1GdGFXeDVQU0pCY21saGJDQkNiR0ZqYXl4QmNtbGhiQ3h6WVc1ekxYTmxjbWxtSWlCbWIyNTBMWGRsYVdkb2REMGlPVEF3SWlCbWIyNTBMWE5wZW1VOUlqTTVNQ0lnZEdWNGRDMWhibU5vYjNJOUltMXBaR1JzWlNJZ1ptbHNiRDBpSTJVNFlUQXlNQ0krVFR3dmRHVjRkRDQ4TDNOMlp6ND0iLCAic2l6ZXMiOiAiYW55IiwgInR5cGUiOiAiaW1hZ2Uvc3ZnK3htbCIsICJwdXJwb3NlIjogImFueSBtYXNrYWJsZSJ9XX0=">
+<script>(function(){
+  function icon(s){
+    var c=document.createElement('canvas');c.width=c.height=s;
+    var x=c.getContext('2d'),r=Math.round(s*0.172);
+    x.beginPath();x.moveTo(r,0);x.lineTo(s-r,0);
+    x.arcTo(s,0,s,r,r);x.lineTo(s,s-r);
+    x.arcTo(s,s,s-r,s,r);x.lineTo(r,s);
+    x.arcTo(0,s,0,s-r,r);x.lineTo(0,r);
+    x.arcTo(0,0,r,0,r);x.closePath();
+    x.fillStyle='#1a3c5e';x.fill();
+    x.fillStyle='#e8a020';
+    x.font='900 '+Math.round(s*0.76)+'px "Arial Black",Arial,sans-serif';
+    x.textAlign='center';x.textBaseline='alphabetic';
+    x.fillText('M',s/2,Math.round(s*0.782));
+    return c.toDataURL('image/png');
+  }
+  try{
+    var p192=icon(192),p512=icon(512);
+    document.getElementById('app-favicon').href=p192;
+    document.getElementById('app-favicon').type='image/png';
+    document.getElementById('app-apple-icon').href=p192;
+    var m=JSON.stringify({name:'Compras Marfim',short_name:'Compras Marfim',
+      display:'standalone',theme_color:'#1a3c5e',background_color:'#1a3c5e',
+      start_url:'.',
+      icons:[{src:p192,sizes:'192x192',type:'image/png',purpose:'any maskable'},
+             {src:p512,sizes:'512x512',type:'image/png',purpose:'any maskable'}]});
+    var b=new Blob([m],{type:'application/manifest+json'});
+    document.getElementById('app-manifest').href=URL.createObjectURL(b);
+  }catch(e){}
+})();</script>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
 <style>
 :root {
