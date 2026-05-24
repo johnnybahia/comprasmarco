@@ -719,7 +719,11 @@ function salvarRecebimento(dados) {
       VALOR_TOTAL_RECEBIDO: valorTotalRec,
       DIVERGENCIA_QTD:   temDivQtd   ? 'SIM' : 'NÃO',
       DIVERGENCIA_PRECO: temDivPreco ? 'SIM' : 'NÃO',
-      OBSERVACAO:        dados.observacao || ''
+      DIVERGENCIA_PAGTO: dados.divPagto ? 'SIM' : 'NÃO',
+      PAGTO_PRAZO:       dados.condPagamento  || '',
+      PAGTO_ESPERADO:    dados.pagtoEsperado  || '',
+      PAGTO_NF:          dados.pagtoNF        || '',
+      OBSERVACAO:        dados.observacao     || ''
     });
 
     dados.itens.forEach(item => {
@@ -789,13 +793,14 @@ function _enriquecerPedidosComNF(pedidos) {
       // Check divergence from header flags OR from item-level comparison (handles corrupted columns)
       let temDivQtd   = recPed.some(r => String(r.DIVERGENCIA_QTD).trim()   === 'SIM');
       let temDivPreco = recPed.some(r => String(r.DIVERGENCIA_PRECO).trim() === 'SIM');
+      const temDivPagto = recPed.some(r => String(r.DIVERGENCIA_PAGTO).trim() === 'SIM');
       if (!temDivQtd || !temDivPreco) {
         const recIds = new Set(recPed.map(r => String(r.ID_RECEBIMENTO).trim()));
         const itensRec = itRec.filter(i => recIds.has(String(i.ID_RECEBIMENTO).trim()));
         if (!temDivQtd)   temDivQtd   = itensRec.some(i => Math.abs(parseFloat(i.QTD_RECEBIDA||0) - parseFloat(i.QTD_PEDIDA||0)) > 0.001);
         if (!temDivPreco) temDivPreco = itensRec.some(i => Math.abs(parseFloat(i.PRECO_RECEBIDO||0) - parseFloat(i.PRECO_PEDIDO||0)) > 0.001);
       }
-      return { ...p, temNF, temDivQtd, temDivPreco };
+      return { ...p, temNF, temDivQtd, temDivPreco, temDivPagto };
     });
   } catch(e) {
     return pedidos;
@@ -851,7 +856,7 @@ function setupPlanilha() {
     ITENS_PEDIDO:     ['ID_PEDIDO','COD_MP','DESCRICAO','QUANTIDADE','UNIDADE','PRECO_UNIT','SUBTOTAL'],
     PRECO_FORNECEDOR:   ['COD_FORNECEDOR','COD_MP','PRECO'],
     TRANSP_FORN_FILIAL: ['COD_FORNECEDOR','COD_FILIAL','COD_TRANSPORTADORA'],
-    RECEBIMENTOS:      ['ID_RECEBIMENTO','ID_PEDIDO','NF_NUMERO','DATA_NF','DATA_RECEBIMENTO','COD_FILIAL','NOME_FILIAL','COD_FORNECEDOR','NOME_FORNECEDOR','USUARIO','VALOR_TOTAL_PEDIDO','VALOR_TOTAL_RECEBIDO','DIVERGENCIA_QTD','DIVERGENCIA_PRECO','OBSERVACAO'],
+    RECEBIMENTOS:      ['ID_RECEBIMENTO','ID_PEDIDO','NF_NUMERO','DATA_NF','DATA_RECEBIMENTO','COD_FILIAL','NOME_FILIAL','COD_FORNECEDOR','NOME_FORNECEDOR','USUARIO','VALOR_TOTAL_PEDIDO','VALOR_TOTAL_RECEBIDO','DIVERGENCIA_QTD','DIVERGENCIA_PRECO','DIVERGENCIA_PAGTO','PAGTO_PRAZO','PAGTO_ESPERADO','PAGTO_NF','OBSERVACAO'],
     ITENS_RECEBIMENTO: ['ID_RECEBIMENTO','ID_PEDIDO','COD_MP','DESCRICAO','QTD_PEDIDA','QTD_RECEBIDA','PRECO_PEDIDO','PRECO_RECEBIDO','SUBTOTAL_PEDIDO','SUBTOTAL_RECEBIDO','DIV_QTD','DIV_PRECO'],
     LOG_ERROS:         ['DATA','MENSAGEM']
   };
