@@ -723,6 +723,10 @@ function buscarPedidoParaRecebimento(idPedido) {
     if (!ped) return { erro: 'Pedido "' + idPedido + '" não encontrado. IDs disponíveis: ' + pedidos.slice(0,5).map(p=>p.ID_PEDIDO).join(', ') + (pedidos.length > 5 ? '...' : '') };
     const itens = sheetToArray(ABAS.ITENS_PEDIDO)
       .filter(i => String(i.ID_PEDIDO).trim() === String(ped.ID_PEDIDO).trim());
+    const cancelado = String(ped.STATUS || '').trim().toUpperCase() === 'CANCELADO';
+    if (cancelado) {
+      return { cancelado: true, pedido: ped, itens, jaRecebido: false, recebimentos: [] };
+    }
     const recebimentos = sheetToArray(ABAS.RECEBIMENTOS)
       .filter(r => String(r.ID_PEDIDO).trim() === String(ped.ID_PEDIDO).trim());
     return { pedido: ped, itens, jaRecebido: recebimentos.length > 0, recebimentos };
@@ -1020,6 +1024,163 @@ function excluirRecebimento(idRec, usuarioLogado, filiaisLiberadas, perfil) {
     return { ok: false, msg: e.message };
   } finally {
     lock.releaseLock();
+  }
+}
+
+function cancelarPedido(idPedido, observacao, usuarioNome, emailUsuario) {
+  const lock = LockService.getScriptLock();
+  try {
+    lock.waitLock(10000);
+
+    const sh = getSheet(ABAS.PEDIDOS);
+    const data = sh.getDataRange().getValues();
+    const headers = data[0].map(h => String(h).trim());
+
+    const iStatus = headers.indexOf('STATUS');
+    const iId     = headers.indexOf('ID_PEDIDO');
+    const iObs    = headers.indexOf('OBSERVACAO');
+    const iCodFilial  = headers.indexOf('COD_FILIAL');
+    const iNomeFilial = headers.indexOf('NOME_FILIAL');
+
+    let rowIdx = -1;
+    for (let i = 1; i < data.length; i++) {
+      if (String(data[i][iId]).trim() === String(idPedido).trim()) {
+        rowIdx = i;
+        break;
+      }
+    }
+    if (rowIdx < 0) return { ok: false, msg: 'Pedido não encontrado' };
+
+    const statusAtual = String(data[rowIdx][iStatus] || '').trim().toUpperCase();
+    if (statusAtual === 'CANCELADO') return { ok: false, msg: 'Pedido já está cancelado' };
+
+    // Atualiza STATUS
+    sh.getRange(rowIdx + 1, iStatus + 1).setValue('CANCELADO');
+
+    // Atualiza OBSERVACAO
+    if (iObs >= 0 && observacao) {
+      const obsAtual = String(data[rowIdx][iObs] || '').trim();
+      const novaObs = obsAtual ? obsAtual + ' | CANCELADO: ' + observacao : 'CANCELADO: ' + observacao;
+      sh.getRange(rowIdx + 1, iObs + 1).setValue(novaObs);
+    }
+
+    const codFilial  = String(data[rowIdx][iCodFilial]  || '');
+    const nomeFilial = String(data[rowIdx][iNomeFilial] || '');
+    const rowData    = data[rowIdx];
+
+    _logNF('CANCELAMENTO', '', idPedido, '', codFilial, nomeFilial, usuarioNome, observacao || '');
+
+    _enviarEmailCancelamento(rowData, headers, usuarioNome, emailUsuario, observacao || '');
+
+    return { ok: true, msg: 'Pedido cancelado com sucesso' };
+  } catch(e) {
+    logErro('cancelarPedido: ' + e.message);
+    return { ok: false, msg: e.message };
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+function _enviarEmailCancelamento(rowData, headers, usuarioNome, emailUsuario, observacao) {
+  try {
+    const get = col => {
+      const idx = headers.indexOf(col);
+      return idx >= 0 ? String(rowData[idx] || '') : '';
+    };
+
+    const codFornecedor  = get('COD_FORNECEDOR');
+    const codFilial      = get('COD_FILIAL');
+    const nomeFilial     = get('NOME_FILIAL');
+    const nomeFornecedor = get('NOME_FORNECEDOR');
+    const idPedido       = get('ID_PEDIDO');
+    const valorTotal     = get('VALOR_TOTAL');
+
+    const dataRaw = get('DATA');
+    let dataFmt = '—';
+    try {
+      if (dataRaw) {
+        const d = new Date(dataRaw);
+        if (!isNaN(d.getTime())) dataFmt = Utilities.formatDate(d, Session.getScriptTimeZone(), 'dd/MM/yyyy');
+      }
+    } catch(e) {}
+
+    // Emails do fornecedor
+    const fornecedor = buscarCodigo('fornecedor', codFornecedor) || {};
+    const emailsForn = String(fornecedor.EMAIL || '')
+      .split(';').map(e => e.trim()).filter(e => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e));
+
+    // Emails da filial
+    const filial = buscarCodigo('filial', codFilial) || {};
+    const emailsFilial = String(filial.EMAIL_RESPONSAVEL || '')
+      .split(';').map(e => e.trim()).filter(e => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e));
+
+    if (emailsForn.length === 0) {
+      logErro('_enviarEmailCancelamento: nenhum email válido para fornecedor ' + codFornecedor);
+      return;
+    }
+
+    const ccSet = new Set([...emailsFilial, 'marco@marfim.ind.br']);
+    if (emailUsuario && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailUsuario.trim())) {
+      ccSet.add(emailUsuario.trim());
+    }
+    const ccList = [...ccSet].filter(Boolean).join(',');
+
+    const valorFmt = (() => {
+      const n = parseFloat(valorTotal);
+      return isNaN(n) ? '—' : 'R$ ' + n.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    })();
+
+    const htmlBody = `
+  <div style="font-family:Arial,sans-serif;max-width:700px;margin:0 auto;border:1px solid #dde3ea;border-radius:6px;overflow:hidden;">
+    <div style="background:#c0392b;padding:20px 28px;">
+      <img src="https://i.ibb.co/FGGjdsM/LOGO-MARFIM.jpg" alt="Marfim" style="height:48px;width:auto;border-radius:4px;margin-bottom:10px;display:block;">
+      <div style="font-size:11px;font-weight:600;letter-spacing:3px;color:#fdecea;text-transform:uppercase;margin-bottom:4px;">Pedido Cancelado</div>
+      <div style="font-size:20px;font-weight:700;color:white;">${idPedido} — ${nomeFornecedor}</div>
+      <div style="font-size:12px;color:rgba(255,255,255,0.7);margin-top:2px;">Cancelado por: ${usuarioNome}</div>
+    </div>
+    <div style="background:#fdecea;border-left:4px solid #c0392b;padding:16px 28px;text-align:center;">
+      <div style="font-size:28px;margin-bottom:8px;">🚫</div>
+      <div style="font-size:18px;font-weight:700;color:#c0392b;margin-bottom:4px;">PEDIDO CANCELADO</div>
+      <div style="font-size:13px;color:#7b1a1a;">Este pedido foi cancelado e não terá entrega.</div>
+    </div>
+    <div style="padding:20px 28px;background:#fff;">
+      <table style="width:100%;border-collapse:collapse;font-size:13px;">
+        <tr><td style="padding:6px 0;color:#666;width:180px;">ID do Pedido:</td><td><strong style="font-family:monospace">${idPedido}</strong></td></tr>
+        <tr><td style="padding:6px 0;color:#666;">Fornecedor:</td><td>${nomeFornecedor}</td></tr>
+        <tr><td style="padding:6px 0;color:#666;">Filial:</td><td>${nomeFilial} (${codFilial})</td></tr>
+        <tr><td style="padding:6px 0;color:#666;">Valor Total:</td><td><strong>${valorFmt}</strong></td></tr>
+        <tr><td style="padding:6px 0;color:#666;">Data do Pedido:</td><td>${dataFmt}</td></tr>
+        <tr><td style="padding:6px 0;color:#666;">Cancelado por:</td><td>${usuarioNome}</td></tr>
+        ${observacao ? `<tr><td style="padding:6px 0;color:#666;vertical-align:top">Motivo:</td><td style="color:#c0392b;font-weight:600">${observacao}</td></tr>` : ''}
+      </table>
+    </div>
+    <div style="background:#f4f7fb;padding:12px 28px;font-size:11px;color:#888;text-align:center;">
+      Sistema de Compras Marfim · Este é um email automático.
+    </div>
+    <div style="background:#1a3c5e;padding:18px 28px;">
+      <div style="font-size:14px;font-weight:700;color:white;">Marco Aurélio Bonalume — Marfim</div>
+    </div>
+  </div>`;
+
+    const textBody =
+      `PEDIDO CANCELADO — ${idPedido}\n` +
+      `Fornecedor: ${nomeFornecedor}\n` +
+      `Filial: ${nomeFilial} (${codFilial})\n` +
+      `Valor: ${valorFmt}\n` +
+      `Data do Pedido: ${dataFmt}\n` +
+      `Cancelado por: ${usuarioNome}\n` +
+      (observacao ? `Motivo: ${observacao}\n` : '');
+
+    MailApp.sendEmail({
+      to:       emailsForn.join(','),
+      cc:       ccList,
+      replyTo:  'marco@marfim.ind.br',
+      subject:  `Pedido Cancelado: ${idPedido} — ${nomeFornecedor}`,
+      body:     textBody,
+      htmlBody: htmlBody
+    });
+  } catch(e) {
+    logErro('_enviarEmailCancelamento: ' + e.message);
   }
 }
 
