@@ -2917,9 +2917,10 @@ function _renderPagtoNF() {
         <input type="hidden" id="pagto-esp-iso-${i}" value="${escHTML(espISO)}">
         <div style="display:flex;align-items:center;gap:6px;margin-left:auto">
           <label style="font-size:12px;font-weight:600;color:var(--text2)">Data na NF:</label>
-          <input type="text" class="nf-edit-input" id="pagto-nf-${i}" placeholder="DD/MM/AAAA" maxlength="10"
+          <input type="text" class="nf-edit-input" id="pagto-nf-${i}" placeholder="${podeCal ? 'DD/MM/AAAA' : 'Informe a data da NF'}" maxlength="10"
                  oninput="mascaraData(this);_verificarParcela(${i})"
-                 style="width:120px;font-family:'IBM Plex Mono',monospace;font-size:13px">
+                 ${podeCal ? '' : 'disabled'}
+                 style="width:140px;font-family:'IBM Plex Mono',monospace;font-size:13px${podeCal ? '' : ';opacity:0.45;cursor:not-allowed'}">
           <span id="pagto-badge-${i}" class="badge" style="display:none"></span>
         </div>
       </div>`;
