@@ -591,7 +591,38 @@ table tr:hover td { background: #f5f7fb; }
         <div class="form-grid cols-2" style="margin-top:14px">
           <div class="field">
             <label>Condição de Pagamento</label>
-            <input type="text" id="ped-cond-pag" placeholder="Ex: 30/60/90 dias, À vista...">
+            <div style="margin-top:6px;display:flex;gap:20px">
+              <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-weight:400">
+                <input type="radio" name="ped-cond-tipo" value="AV" onchange="atualizarCondPag()"> À vista
+              </label>
+              <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-weight:400">
+                <input type="radio" name="ped-cond-tipo" value="PZ" checked onchange="atualizarCondPag()"> Prazo (dias úteis bancários)
+              </label>
+            </div>
+            <div id="ped-cond-parcelas" style="display:flex;gap:14px;margin-top:8px;flex-wrap:wrap">
+              <div style="display:flex;align-items:center;gap:4px">
+                <span style="font-size:12px;color:var(--text2);white-space:nowrap">Parc. 1:</span>
+                <input type="number" id="ped-parc-1" min="1" max="365" placeholder="30"
+                  style="width:62px;padding:6px 8px;border:1px solid var(--border);border-radius:var(--radius);font-size:14px"
+                  oninput="atualizarCondPag()">
+                <span style="font-size:11px;color:var(--text3)">du</span>
+              </div>
+              <div style="display:flex;align-items:center;gap:4px">
+                <span style="font-size:12px;color:var(--text2);white-space:nowrap">Parc. 2:</span>
+                <input type="number" id="ped-parc-2" min="1" max="365" placeholder="—"
+                  style="width:62px;padding:6px 8px;border:1px solid var(--border);border-radius:var(--radius);font-size:14px"
+                  oninput="atualizarCondPag()">
+                <span style="font-size:11px;color:var(--text3)">du</span>
+              </div>
+              <div style="display:flex;align-items:center;gap:4px">
+                <span style="font-size:12px;color:var(--text2);white-space:nowrap">Parc. 3:</span>
+                <input type="number" id="ped-parc-3" min="1" max="365" placeholder="—"
+                  style="width:62px;padding:6px 8px;border:1px solid var(--border);border-radius:var(--radius);font-size:14px"
+                  oninput="atualizarCondPag()">
+                <span style="font-size:11px;color:var(--text3)">du</span>
+              </div>
+            </div>
+            <input type="hidden" id="ped-cond-pag">
           </div>
           <div class="field">
             <label>Observações</label>
@@ -1095,7 +1126,7 @@ table tr:hover td { background: #f5f7fb; }
           </div>
           <div class="field">
             <label>Data da NF *</label>
-            <input type="text" id="nf-data" placeholder="DD/MM/AAAA" maxlength="10" oninput="mascaraData(this)">
+            <input type="text" id="nf-data" placeholder="DD/MM/AAAA" maxlength="10" oninput="mascaraData(this);_renderPagtoNF()">
           </div>
           <div>
             <button class="btn btn-primary" onclick="buscarPedidoNF()">🔍 Buscar Pedido</button>
@@ -1139,6 +1170,11 @@ table tr:hover td { background: #f5f7fb; }
             <span class="total-label">Total Recebido</span>
             <span class="total-value" id="nf-total-rec">R$ 0,00</span>
           </div>
+        </div>
+
+        <div class="card" id="nf-pagto-card" style="display:none">
+          <div class="card-title">Prazo de Pagamento — Verificação</div>
+          <div id="nf-pagto-info"></div>
         </div>
 
         <div class="card">
@@ -1908,6 +1944,11 @@ function limparPedido() {
    'ped-transp-cod','ped-transp-nome','ped-prazo','ped-cond-pag','ped-obs'].forEach(id => {
     document.getElementById(id).value = '';
   });
+  ['ped-parc-1','ped-parc-2','ped-parc-3'].forEach(id => {
+    const el = document.getElementById(id); if (el) el.value = '';
+  });
+  const pzRadio = document.querySelector('input[name="ped-cond-tipo"][value="PZ"]');
+  if (pzRadio) { pzRadio.checked = true; atualizarCondPag(); }
   document.getElementById('ped-frete-cif').checked = true;
   toggleTransportadora();
   renderItens();
@@ -2094,8 +2135,8 @@ function renderHistorico(pedidos) {
       const total = _fmtValor(p.VALOR_TOTAL);
       let nfBadge = '<span class="badge badge-gray">Aguardando</span>';
       if (p.temNF) {
-        if (p.temDivQtd || p.temDivPreco) {
-          const divTxt = [p.temDivQtd && 'Qtd', p.temDivPreco && 'Preço'].filter(Boolean).join('+');
+        if (p.temDivQtd || p.temDivPreco || p.temDivPagto) {
+          const divTxt = [p.temDivQtd && 'Qtd', p.temDivPreco && 'Preço', p.temDivPagto && 'Pagto'].filter(Boolean).join('+');
           nfBadge = `<span class="badge badge-red" title="Divergência em ${divTxt}">⚠ Div. ${divTxt}</span>`;
         } else {
           nfBadge = '<span class="badge badge-green">✓ Recebido</span>';
@@ -2237,6 +2278,7 @@ function renderRecebimentosDetalhe(recs, valorPedido) {
         </span>
       </div>
       ${_fmtObs(r.OBSERVACAO) !== '—' ? `<p style="margin-top:8px;font-size:13px;color:var(--text2)"><strong>Obs.:</strong> ${escHTML(_fmtObs(r.OBSERVACAO))}</p>` : ''}
+      ${_buildPagtoDetalhe(r)}
     </div>`;
   }).join('');
 }
@@ -2599,6 +2641,7 @@ function renderPedidoNF(res) {
   }).join('');
 
   calcTotalNF();
+  _renderPagtoNF();
   document.getElementById('nf-pedido-card').style.display = 'block';
   document.getElementById('nf-pedido-card').scrollIntoView({ behavior: 'smooth' });
   } catch(e) {
@@ -2638,6 +2681,173 @@ function calcTotalNF() {
 
 let _nfDadosPendente = null;
 
+// ════════════════════════════════════════════════════
+// DIAS ÚTEIS BANCÁRIOS — FERIADOS NACIONAIS BR
+// ════════════════════════════════════════════════════
+function _pascoa(ano) {
+  const a=ano%19, b=Math.floor(ano/100), c=ano%100,
+        d=Math.floor(b/4), e=b%4, f=Math.floor((b+8)/25),
+        g=Math.floor((b-f+1)/3), h=(19*a+b-d-g+15)%30,
+        i2=Math.floor(c/4), k=c%4, l=(32+2*e+2*i2-h-k)%7,
+        m=Math.floor((a+11*h+22*l)/451),
+        mes=Math.floor((h+l-7*m+114)/31),
+        dia=((h+l-7*m+114)%31)+1;
+  return new Date(ano, mes-1, dia);
+}
+function _feriadosBR(ano) {
+  const p = _pascoa(ano);
+  const add = (d,n) => { const r=new Date(d); r.setDate(r.getDate()+n); return r; };
+  const iso = d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+  return new Set([
+    `${ano}-01-01`,`${ano}-04-21`,`${ano}-05-01`,`${ano}-09-07`,
+    `${ano}-10-12`,`${ano}-11-02`,`${ano}-11-15`,`${ano}-11-20`,`${ano}-12-25`,
+    iso(add(p,-48)), iso(add(p,-47)), iso(add(p,-2)), iso(add(p,60))
+  ]);
+}
+function _isoDate(d) {
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+function calcDataPagtoUtil(dataBaseStr, dias) {
+  const [dd,mm,aaaa] = dataBaseStr.split('/');
+  const d = new Date(parseInt(aaaa), parseInt(mm)-1, parseInt(dd));
+  const fer = new Set([..._feriadosBR(d.getFullYear()), ..._feriadosBR(d.getFullYear()+1)]);
+  let uteis = 0;
+  while (uteis < dias) {
+    d.setDate(d.getDate()+1);
+    const dow = d.getDay();
+    if (dow !== 0 && dow !== 6 && !fer.has(_isoDate(d))) uteis++;
+  }
+  return d;
+}
+function _fmtDataBR(d) {
+  return String(d.getDate()).padStart(2,'0')+'/'+String(d.getMonth()+1).padStart(2,'0')+'/'+d.getFullYear();
+}
+function _parsCondPag(v) {
+  const s = String(v||'').trim().toUpperCase().normalize('NFD').replace(/[̀-ͯ]/g,'');
+  if (!s) return { avista: false, dias: [] };
+  if (s === 'AV' || s === 'A VISTA' || s === '0') return { avista: true, dias: [] };
+  const nums = s.split(/[,\/\s]+/).map(n => parseInt(n,10)).filter(n => !isNaN(n) && n > 0);
+  return { avista: false, dias: nums };
+}
+
+// ════════════════════════════════════════════════════
+// CONDIÇÃO DE PAGAMENTO — PEDIDO
+// ════════════════════════════════════════════════════
+function atualizarCondPag() {
+  const tipo = document.querySelector('input[name="ped-cond-tipo"]:checked')?.value || 'PZ';
+  const wrap = document.getElementById('ped-cond-parcelas');
+  if (tipo === 'AV') {
+    if (wrap) wrap.style.display = 'none';
+    document.getElementById('ped-cond-pag').value = 'AV';
+    return;
+  }
+  if (wrap) wrap.style.display = '';
+  const dias = [1,2,3].map(i => {
+    const v = parseInt(document.getElementById('ped-parc-'+i)?.value||'', 10);
+    return (!isNaN(v) && v > 0) ? v : null;
+  }).filter(v => v !== null);
+  document.getElementById('ped-cond-pag').value = dias.join(',');
+}
+
+// ════════════════════════════════════════════════════
+// PRAZO DE PAGAMENTO — VERIFICAÇÃO NO LANÇAMENTO NF
+// ════════════════════════════════════════════════════
+function _renderPagtoNF() {
+  const p = _nfPedidoAtual?.pedido;
+  if (!p) return;
+  const cond = _parsCondPag(p.COND_PAGAMENTO);
+  const card = document.getElementById('nf-pagto-card');
+  const info = document.getElementById('nf-pagto-info');
+  if (!card || !info) return;
+
+  if (cond.avista) {
+    card.style.display = 'block';
+    info.innerHTML = '<p style="color:var(--success);padding:4px 0">✓ Condição à vista — sem parcelas a verificar.</p>';
+    return;
+  }
+  if (cond.dias.length === 0) { card.style.display = 'none'; return; }
+
+  card.style.display = 'block';
+  const nfDataStr = document.getElementById('nf-data').value.trim();
+  const podeCal   = /^\d{2}\/\d{2}\/\d{4}$/.test(nfDataStr);
+
+  info.innerHTML = `
+    <p style="font-size:12px;color:var(--text2);margin-bottom:12px">
+      Condição do pedido: <strong>${escHTML(String(p.COND_PAGAMENTO||''))}</strong>
+      — Informe as datas de vencimento da NF para detectar divergência de prazo.
+    </p>
+    <div style="display:grid;gap:12px">
+    ${cond.dias.map((d, i) => {
+      let espStr = '(informe a data da NF primeiro)', espISO = '';
+      if (podeCal) {
+        const dt = calcDataPagtoUtil(nfDataStr, d);
+        espStr = _fmtDataBR(dt);
+        espISO = _isoDate(dt);
+      }
+      return `<div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;padding:8px;background:var(--surface2);border-radius:var(--radius);border:1px solid var(--border)">
+        <span style="min-width:100px;font-size:12px;font-weight:600;color:var(--text2)">Parcela ${i+1} — ${d} du</span>
+        <span style="font-size:12px;color:var(--text2)">Venc. esperado: <strong id="pagto-esp-${i}">${escHTML(espStr)}</strong></span>
+        <input type="hidden" id="pagto-esp-iso-${i}" value="${escHTML(espISO)}">
+        <div style="display:flex;align-items:center;gap:6px;margin-left:auto">
+          <label style="font-size:12px;font-weight:600;color:var(--text2)">Data na NF:</label>
+          <input type="text" class="nf-edit-input" id="pagto-nf-${i}" placeholder="DD/MM/AAAA" maxlength="10"
+                 oninput="mascaraData(this);_verificarParcela(${i})"
+                 style="width:120px;font-family:'IBM Plex Mono',monospace;font-size:13px">
+          <span id="pagto-badge-${i}" class="badge" style="display:none"></span>
+        </div>
+      </div>`;
+    }).join('')}
+    </div>`;
+}
+
+function _verificarParcela(idx) {
+  const nfVal  = document.getElementById('pagto-nf-'+idx)?.value.trim() || '';
+  const espISO = document.getElementById('pagto-esp-iso-'+idx)?.value || '';
+  const badge  = document.getElementById('pagto-badge-'+idx);
+  if (!badge) return;
+  if (!nfVal || !/^\d{2}\/\d{2}\/\d{4}$/.test(nfVal) || !espISO) { badge.style.display = 'none'; return; }
+  const [dd,mm,aaaa] = nfVal.split('/');
+  const nfDate  = new Date(parseInt(aaaa), parseInt(mm)-1, parseInt(dd));
+  const espDate = new Date(espISO);
+  const diff    = Math.round((nfDate - espDate) / 86400000);
+  badge.style.display = '';
+  if (diff === 0) { badge.className = 'badge badge-green'; badge.textContent = '✓ Correto'; }
+  else if (diff < 0) { badge.className = 'badge badge-orange'; badge.textContent = `⚠ ${Math.abs(diff)}d antes`; }
+  else               { badge.className = 'badge badge-red';    badge.textContent = `⚠ +${diff}d depois`; }
+}
+
+function _buildPagtoDetalhe(r) {
+  const prazo     = String(r.PAGTO_PRAZO    ||'').trim();
+  const esperadas = String(r.PAGTO_ESPERADO ||'').split(',').filter(Boolean);
+  const informadas = String(r.PAGTO_NF      ||'').split(',').filter(Boolean);
+  if (!prazo && esperadas.length === 0) return '';
+  const cond = _parsCondPag(prazo);
+  if (cond.avista) return '<p style="font-size:12px;margin-top:8px;color:var(--text2)"><strong>Pagamento:</strong> À vista</p>';
+  if (cond.dias.length === 0) return '';
+  const rows = cond.dias.map((d, i) => {
+    const espISO = esperadas[i] || '';
+    const espStr = espISO ? new Date(espISO).toLocaleDateString('pt-BR') : '—';
+    let infStr = '—', div = false;
+    if (informadas[i] && /^\d{2}\/\d{2}\/\d{4}$/.test(informadas[i])) {
+      const [dd,mm,aaaa] = informadas[i].split('/');
+      const infDate = new Date(parseInt(aaaa), parseInt(mm)-1, parseInt(dd));
+      infStr = infDate.toLocaleDateString('pt-BR');
+      div = espISO ? infDate.getTime() !== new Date(espISO).getTime() : false;
+    }
+    return `<div style="display:flex;gap:12px;align-items:center;font-size:12px;padding:3px 0;flex-wrap:wrap">
+      <span style="color:var(--text2);min-width:100px">Parcela ${i+1} (${d}du):</span>
+      <span>Esperado <strong>${espStr}</strong></span>
+      <span style="color:var(--text3)">→</span>
+      <span>NF informou <strong style="color:${div?'var(--error)':'var(--success)'}">${infStr}</strong></span>
+      ${div ? '<span class="badge badge-red" style="font-size:10px;padding:1px 6px">⚠ Divergência</span>' : (infStr!=='—'?'<span class="badge badge-green" style="font-size:10px;padding:1px 6px">✓</span>':'')}
+    </div>`;
+  }).join('');
+  return `<div style="border-top:1px solid var(--border);margin-top:10px;padding-top:10px">
+    <p style="font-size:11px;font-weight:600;letter-spacing:1px;text-transform:uppercase;color:var(--text2);margin-bottom:6px">Prazo de Pagamento</p>
+    ${rows}
+  </div>`;
+}
+
 function confirmarLancarNF() {
   if (!_nfPedidoAtual) { toast('Nenhum pedido carregado', 'error'); return; }
 
@@ -2666,6 +2876,25 @@ function confirmarLancarNF() {
 
   if (erros.length > 0) { toast(erros[0], 'error'); return; }
 
+  // Coleta datas de pagamento informadas na NF
+  const condPag = _parsCondPag(p.COND_PAGAMENTO);
+  let parcelasEsp = [], parcelasNF = [], temDivPagto = false;
+  if (!condPag.avista && condPag.dias.length > 0) {
+    condPag.dias.forEach((d, i) => {
+      const espISO = document.getElementById('pagto-esp-iso-' + i)?.value || '';
+      const nfVal  = document.getElementById('pagto-nf-' + i)?.value.trim() || '';
+      parcelasEsp.push(espISO);
+      parcelasNF.push(nfVal);
+      if (espISO && nfVal && /^\d{2}\/\d{2}\/\d{4}$/.test(nfVal)) {
+        const [dd, mm, aaaa] = nfVal.split('/');
+        const nfDate  = new Date(parseInt(aaaa), parseInt(mm)-1, parseInt(dd));
+        const espDate = new Date(espISO);
+        if (nfDate.getTime() !== espDate.getTime()) temDivPagto = true;
+      }
+    });
+  }
+  if (temDivPagto) tudoIgual = false;
+
   _nfDadosPendente = {
     idPedido:         p.ID_PEDIDO,
     nfNumero:         nfNum,
@@ -2677,6 +2906,10 @@ function confirmarLancarNF() {
     usuarioLogado:    sessao.nome,
     valorTotalPedido: isNaN(parseFloat(p.VALOR_TOTAL)) ? 0 : parseFloat(p.VALOR_TOTAL),
     observacao:       document.getElementById('nf-obs').value.trim(),
+    condPagamento:    p.COND_PAGAMENTO || '',
+    pagtoEsperado:    parcelasEsp.join(','),
+    pagtoNF:          parcelasNF.join(','),
+    divPagto:         temDivPagto,
     itens
   };
 
@@ -2720,6 +2953,8 @@ function limparNF() {
     document.getElementById(id).value = '';
   });
   document.getElementById('nf-pedido-card').style.display = 'none';
+  const pagtoCard = document.getElementById('nf-pagto-card');
+  if (pagtoCard) { pagtoCard.style.display = 'none'; document.getElementById('nf-pagto-info').innerHTML = ''; }
 }
 
 // ════════════════════════════════════════════════════
