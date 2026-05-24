@@ -1275,25 +1275,50 @@ function iniciarApp() {
   document.getElementById('user-display').textContent = sessao.nome;
   sessionStorage.setItem('sessao', JSON.stringify(sessao));
 
-  // Restringe navegação pelo perfil
-  const isFilial = sessao.perfil === 'FILIAL';
-  document.getElementById('nav-pedido').style.display    = isFilial ? 'none' : '';
-  document.getElementById('nav-historico').style.display = isFilial ? 'none' : '';
-  document.getElementById('nav-cadastros').style.display = isFilial ? 'none' : '';
+  // Permissões por perfil:
+  // ADMIN   → tudo
+  // COMPRAS → Pedido + Histórico + NF  (sem Cadastros)
+  // USUARIO → Pedido + Histórico       (sem NF, sem Cadastros)
+  // FILIAL  → apenas NF
+  const perfil = (sessao.perfil || '').toUpperCase();
+  const podeNF        = perfil !== 'USUARIO';
+  const podeCadastros = perfil === 'ADMIN';
+  const podePedido    = perfil !== 'FILIAL';
+  const podeHistorico = perfil !== 'FILIAL';
 
-  if (isFilial) {
-    // Usuário de filial: vai direto para lançar NF
+  document.getElementById('nav-pedido').style.display    = podePedido    ? '' : 'none';
+  document.getElementById('nav-historico').style.display = podeHistorico ? '' : 'none';
+  document.getElementById('nav-nf').style.display        = podeNF        ? '' : 'none';
+  document.getElementById('nav-cadastros').style.display = podeCadastros ? '' : 'none';
+
+  if (perfil === 'FILIAL') {
+    // Filial: vai direto para lançar NF
     document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
     document.getElementById('panel-nf').classList.add('active');
     document.getElementById('nav-nf').classList.add('active');
     _nfCarregarIds();
   } else {
     carregarCaches();
-    carregarTabelaCadastro('fornecedor');
-    carregarTabelaCadastro('materia');
-    carregarTabelaCadastro('transportadora');
-    carregarTabelaCadastro('filial');
-    carregarTabelaCadastro('usuario');
+    if (podeCadastros) {
+      carregarTabelaCadastro('fornecedor');
+      carregarTabelaCadastro('materia');
+      carregarTabelaCadastro('transportadora');
+      carregarTabelaCadastro('filial');
+      carregarTabelaCadastro('usuario');
+    }
+    // Garante painel inicial compatível com o perfil
+    if (!podePedido) {
+      document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+      document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+      if (podeHistorico) {
+        document.getElementById('panel-historico').classList.add('active');
+        document.getElementById('nav-historico').classList.add('active');
+      } else if (podeNF) {
+        document.getElementById('panel-nf').classList.add('active');
+        document.getElementById('nav-nf').classList.add('active');
+        _nfCarregarIds();
+      }
+    }
   }
 }
 
@@ -2097,7 +2122,7 @@ function carregarTodosPedidos() {
 }
 
 function _recarregarListaHist() {
-  if (!_ultimaBuscaHist) return;
+  if (!_ultimaBuscaHist) { carregarTodosPedidos(); return; }
   if (_ultimaBuscaHist.tipo === 'todos') {
     carregarTodosPedidos();
   } else {
