@@ -57,6 +57,29 @@ function logErro(msg) {
   } catch(e) {}
 }
 
+// Gera salt aleatório de 16 bytes em hex
+function _gerarSalt() {
+  const bytes = [];
+  for (let i = 0; i < 16; i++) bytes.push(Math.floor(Math.random() * 256));
+  return bytes.map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
+// SHA-256(senha + salt) → hex string
+function _hashSenha(senha, salt) {
+  const raw = Utilities.computeDigest(
+    Utilities.DigestAlgorithm.SHA_256,
+    String(senha) + String(salt),
+    Utilities.Charset.UTF_8
+  );
+  return raw.map(b => (b < 0 ? b + 256 : b).toString(16).padStart(2, '0')).join('');
+}
+
+// Retorna "hash|salt" pronto para gravar na planilha
+function _encriptarSenha(senha) {
+  const salt = _gerarSalt();
+  return _hashSenha(senha, salt) + '|' + salt;
+}
+
 // ============================================================
 // AUTH
 // ============================================================
@@ -64,10 +87,24 @@ function validarLogin(usuario, senha) {
   try {
     const rows = sheetToArray(ABAS.USUARIOS);
     const user = rows.find(r =>
-      String(r.USUARIO).trim().toLowerCase() === String(usuario).trim().toLowerCase() &&
-      String(r.SENHA).trim() === String(senha).trim()
+      String(r.USUARIO).trim().toLowerCase() === String(usuario).trim().toLowerCase()
     );
     if (!user) return null;
+
+    const senhaArmazenada = String(user.SENHA).trim();
+    let senhaOk = false;
+    if (senhaArmazenada.includes('|')) {
+      // Formato seguro: "hash|salt"
+      const partes = senhaArmazenada.split('|');
+      const hashArmazenado = partes[0];
+      const salt = partes[1];
+      senhaOk = _hashSenha(senha, salt) === hashArmazenado;
+    } else {
+      // Legado: texto puro — ainda aceita para não travar usuários existentes
+      senhaOk = senhaArmazenada === String(senha).trim();
+    }
+
+    if (!senhaOk) return null;
     const filiaisRaw = String(user.FILIAIS_LIBERADAS || '');
     const filiaisLiberadas = filiaisRaw ? filiaisRaw.split(',').map(f => f.trim()).filter(Boolean) : [];
     return { nome: user.NOME, usuario: user.USUARIO, email: user.EMAIL, perfil: user.PERFIL, filiaisLiberadas };
@@ -153,6 +190,18 @@ function salvarCadastro(tipo, dados) {
 
     const codIdx = headers.indexOf('COD');
 
+    // Para usuários: hasheia a senha se uma nova for fornecida
+    if (tipo === 'usuario') {
+      const novaSenha = String(dados.SENHA || '').trim();
+      if (novaSenha) {
+        dados = Object.assign({}, dados, { SENHA: _encriptarSenha(novaSenha) });
+      } else {
+        // Sem nova senha → não sobrescreve o campo
+        dados = Object.assign({}, dados);
+        delete dados.SENHA;
+      }
+    }
+
     // Verifica se já existe
     for (let i = 1; i < allData.length; i++) {
       if (String(allData[i][codIdx]).trim() === String(dados.COD).trim()) {
@@ -166,7 +215,10 @@ function salvarCadastro(tipo, dados) {
       }
     }
 
-    // Novo registro
+    // Novo registro — senha obrigatória
+    if (tipo === 'usuario' && !dados.SENHA) {
+      return { ok: false, msg: 'Informe uma senha para o novo usuário' };
+    }
     const newRow = headers.map(h => dados[h] !== undefined ? dados[h] : '');
     sh.appendRow(newRow);
     return { ok: true, msg: 'Cadastrado com sucesso' };
@@ -1078,7 +1130,7 @@ function setupPlanilha() {
 
   const shUser = ss.getSheetByName('USUARIOS');
   if (shUser.getLastRow() <= 1) {
-    shUser.appendRow(['USR001','Administrador','admin','admin123','admin@empresa.com','ADMIN']);
+    shUser.appendRow(['USR001','Administrador','admin',_encriptarSenha('admin123'),'admin@empresa.com','ADMIN']);
   }
 
   Logger.log('Setup concluído.');
@@ -1157,4 +1209,28 @@ function migrarPedidosCorretos() {
     corrigidas++;
   }
   Logger.log('Migração concluída. ' + corrigidas + ' linhas processadas.');
+}
+
+// ============================================================
+// MIGRAÇÃO DE SENHAS — rode UMA VEZ no editor do Apps Script
+// Converte todas as senhas em texto puro para hash+salt.
+// Após rodar, qualquer senha que não seja "hash|salt" vira hash.
+// ============================================================
+function migrarSenhas() {
+  const sh = getSheet(ABAS.USUARIOS);
+  if (!sh) { Logger.log('Aba USUARIOS não encontrada.'); return; }
+  const data = sh.getDataRange().getValues();
+  const headers = data[0].map(h => String(h).trim());
+  const colSenha = headers.indexOf('SENHA');
+  if (colSenha < 0) { Logger.log('Coluna SENHA não encontrada.'); return; }
+
+  let migradas = 0;
+  for (let i = 1; i < data.length; i++) {
+    const senhaAtual = String(data[i][colSenha]).trim();
+    if (!senhaAtual || senhaAtual.includes('|')) continue; // vazia ou já hasheada
+    sh.getRange(i + 1, colSenha + 1).setValue(_encriptarSenha(senhaAtual));
+    Logger.log('Usuário linha ' + (i + 1) + ': senha migrada.');
+    migradas++;
+  }
+  Logger.log('migrarSenhas concluída. ' + migradas + ' senha(s) convertida(s).');
 }
