@@ -423,9 +423,7 @@ function salvarPedido(dados) {
       ...(dados.emailUsuario ? [dados.emailUsuario] : [])
     ])].join(',');
 
-    const usuarios = sheetToArray(ABAS.USUARIOS);
-    const usuarioInfo = usuarios.find(u => String(u.USUARIO).trim().toLowerCase() === String(dados.usuarioLogado).trim().toLowerCase());
-    const nomeRemetente = usuarioInfo ? String(usuarioInfo.NOME).trim() : dados.usuarioLogado;
+    const nomeRemetente = dados.usuarioLogado || '';
 
     const dadosEmail = Object.assign({}, dados, {
       filialCNPJ:      filial.CNPJ      || '',
