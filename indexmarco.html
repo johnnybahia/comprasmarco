@@ -423,6 +423,7 @@ table tr:hover td { background: #f5f7fb; }
 #toast.success { background: var(--success); color: white; }
 #toast.error   { background: var(--error); color: white; }
 #toast.info    { background: var(--navy); color: white; }
+#toast.warning { background: var(--warning); color: white; }
 
 /* ── MODAL ── */
 .modal-backdrop {
@@ -1833,6 +1834,8 @@ function emailTagBlur(inputId, hiddenId) {
   if (email) adicionarEmailTag(email, inputId, hiddenId);
 }
 
+const _DOMINIOS_PESSOAIS = ['gmail.com','googlemail.com','hotmail.com','hotmail.com.br','outlook.com','outlook.com.br','live.com','yahoo.com','yahoo.com.br','icloud.com','msn.com','bol.com.br','uol.com.br','terra.com.br','ig.com.br','r7.com'];
+
 function adicionarEmailTag(email, inputId, hiddenId) {
   const input = document.getElementById(inputId);
   if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
@@ -1846,6 +1849,10 @@ function adicionarEmailTag(email, inputId, hiddenId) {
   hidden.value = atual.join(';');
   input.value = '';
   renderEmailTags(inputId, hiddenId);
+  const dominio = email.split('@')[1].toLowerCase();
+  if (_DOMINIOS_PESSOAIS.includes(dominio)) {
+    toast('⚠ Email pessoal adicionado (' + dominio + ') — confirme se está correto', 'warning');
+  }
 }
 
 function removerEmailTag(email, inputId, hiddenId) {
