@@ -506,18 +506,26 @@ function montarEmailHTML(idPedido, data, dados) {
     </table>
 
     <!-- Entrega -->
-    <table style="width:100%;border-collapse:collapse;background:#fff;border-top:1px solid #dde3ea;border-bottom:1px solid #dde3ea;">
+    <table width="100%" style="border-collapse:collapse;background:#fff;border-top:1px solid #dde3ea;border-bottom:1px solid #dde3ea;" cellpadding="0" cellspacing="0">
       <tr>
-        <td style="padding:14px 28px;width:1%;white-space:nowrap;vertical-align:top;border-right:1px solid #dde3ea;">
+        <td width="80" style="padding:14px 20px;vertical-align:top;border-right:1px solid #dde3ea;white-space:nowrap;">
           <div style="font-size:11px;font-weight:600;color:#888;text-transform:uppercase;letter-spacing:1px;margin-bottom:5px;">Frete</div>
           <span style="display:inline-block;background:${dados.frete==='CIF'?'#e8f5e9':'#fff3e0'};border:1px solid ${dados.frete==='CIF'?'#a5d6a7':'#ffcc80'};border-radius:4px;padding:2px 12px;font-size:13px;font-weight:700;color:${dados.frete==='CIF'?'#2e7d32':'#e65100'};">${dados.frete || 'CIF'}</span>
         </td>
-        ${dados.frete !== 'CIF' ? `<td style="padding:14px 28px;width:1%;white-space:nowrap;vertical-align:top;border-right:1px solid #dde3ea;"><div style="font-size:11px;font-weight:600;color:#888;text-transform:uppercase;letter-spacing:1px;margin-bottom:5px;">Transportadora</div><div style="font-size:13px;color:#1a1a1a;">${dados.transportadoraNome || '—'}</div></td>` : ''}
-        <td style="padding:14px 28px;width:1%;white-space:nowrap;vertical-align:top;${dados.condPagamento ? 'border-right:1px solid #dde3ea;' : ''}">
+        ${dados.frete !== 'CIF' ? `
+        <td style="padding:14px 20px;vertical-align:top;border-right:1px solid #dde3ea;">
+          <div style="font-size:11px;font-weight:600;color:#888;text-transform:uppercase;letter-spacing:1px;margin-bottom:5px;">Transportadora</div>
+          <div style="font-size:13px;color:#1a1a1a;">${dados.transportadoraNome || '—'}</div>
+        </td>` : ''}
+        <td width="140" style="padding:14px 20px;vertical-align:top;white-space:nowrap;${dados.condPagamento ? 'border-right:1px solid #dde3ea;' : ''}">
           <div style="font-size:11px;font-weight:600;color:#888;text-transform:uppercase;letter-spacing:1px;margin-bottom:5px;">Prazo de Entrega</div>
           <div style="font-size:13px;color:#1a1a1a;">${dados.prazoEntrega || '—'}</div>
         </td>
-        ${dados.condPagamento ? `<td style="padding:14px 28px;vertical-align:top;"><div style="font-size:11px;font-weight:600;color:#888;text-transform:uppercase;letter-spacing:1px;margin-bottom:5px;">Condição de Pagamento</div><div style="font-size:13px;color:#1a1a1a;">${dados.condPagamento}</div></td>` : ''}
+        ${dados.condPagamento ? `
+        <td width="140" style="padding:14px 20px;vertical-align:top;white-space:nowrap;">
+          <div style="font-size:11px;font-weight:600;color:#888;text-transform:uppercase;letter-spacing:1px;margin-bottom:5px;">Condição de Pagamento</div>
+          <div style="font-size:13px;color:#1a1a1a;">${dados.condPagamento}</div>
+        </td>` : ''}
       </tr>
     </table>
 
