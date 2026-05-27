@@ -627,6 +627,97 @@ function montarEmailTexto(idPedido, data, dados) {
 }
 
 // ============================================================
+// TESTE DE LAYOUT DE EMAIL
+// Execute esta função diretamente no Apps Script Editor para
+// receber os pedidos 1–4 em johnny@marfim-bahia.ind.br
+// ============================================================
+function enviarEmailTestePedidos() {
+  const EMAIL_TESTE  = 'johnny@marfim-bahia.ind.br';
+  const NUMEROS_ALVO = ['1', '2', '3', '4'];
+
+  const todosPedidos = sheetToArray(ABAS.PEDIDOS);
+  const todosItens   = sheetToArray(ABAS.ITENS_PEDIDO);
+
+  if (todosPedidos.length === 0) {
+    Logger.log('Nenhum pedido encontrado na planilha.');
+    return;
+  }
+
+  const erros    = [];
+  let   enviados = 0;
+
+  NUMEROS_ALVO.forEach(function(num) {
+    const ped = todosPedidos.find(function(p) {
+      const id = String(p.ID_PEDIDO || '').trim().toUpperCase();
+      const n  = id.replace(/^PED-?0*/i, '') || '0';
+      return n === num;
+    });
+
+    if (!ped) {
+      erros.push('Pedido #' + num + ' não encontrado');
+      return;
+    }
+
+    const idPedido   = String(ped.ID_PEDIDO).trim();
+    const itensPed   = todosItens.filter(function(i) {
+      return String(i.ID_PEDIDO || '').trim() === idPedido;
+    });
+    const fornecedor = buscarCodigo('fornecedor', ped.COD_FORNECEDOR) || {};
+    const filial     = buscarCodigo('filial',     ped.COD_FILIAL)     || {};
+
+    const dados = {
+      filialNome:         String(ped.NOME_FILIAL      || ''),
+      filialCNPJ:         String(filial.CNPJ          || ''),
+      filialEndereco:     [filial.ENDERECO, filial.BAIRRO, filial.CIDADE, filial.ESTADO].filter(Boolean).join(', '),
+      fornecedorNome:     String(ped.NOME_FORNECEDOR  || ''),
+      fornecedorCNPJ:     String(fornecedor.CNPJ      || ''),
+      fornecedorEndereco: [fornecedor.ENDERECO, fornecedor.BAIRRO, fornecedor.CIDADE, fornecedor.ESTADO].filter(Boolean).join(', '),
+      frete:              String(ped.FRETE             || 'CIF'),
+      transportadoraNome: String(ped.NOME_TRANSPORTADORA || ''),
+      prazoEntrega:       String(ped.PRAZO_ENTREGA     || ''),
+      condPagamento:      String(ped.COND_PAGAMENTO    || ''),
+      observacao:         String(ped.OBSERVACAO        || ''),
+      usuarioLogado:      String(ped.USUARIO           || ''),
+      nomeRemetente:      String(ped.USUARIO           || ''),
+      valorTotal:         parseFloat(ped.VALOR_TOTAL)  || 0,
+      itens: itensPed.map(function(i) {
+        return {
+          cod:        String(i.COD_MP    || ''),
+          descricao:  String(i.DESCRICAO || ''),
+          quantidade: i.QUANTIDADE,
+          unidade:    String(i.UNIDADE   || ''),
+          preco:      parseFloat(i.PRECO_UNIT) || 0,
+          subtotal:   parseFloat(i.SUBTOTAL)   || 0
+        };
+      })
+    };
+
+    // DATA vem como string ISO do sheetToArray; converte de volta para Date
+    const dataPedido = ped.DATA ? new Date(ped.DATA) : new Date();
+
+    try {
+      const htmlEmail  = montarEmailHTML(idPedido, dataPedido, dados);
+      const textoEmail = montarEmailTexto(idPedido, dataPedido, dados);
+      MailApp.sendEmail({
+        to:       EMAIL_TESTE,
+        subject:  '[TESTE LAYOUT] Pedido ' + idPedido + ' — ' + (dados.filialNome || 'Filial'),
+        body:     textoEmail,
+        htmlBody: htmlEmail
+      });
+      enviados++;
+      Logger.log('OK — ' + idPedido + ' enviado para ' + EMAIL_TESTE);
+    } catch(e) {
+      erros.push(idPedido + ': ' + e.message);
+      Logger.log('ERRO ao enviar ' + idPedido + ': ' + e.message);
+    }
+  });
+
+  const resumo = 'Enviados: ' + enviados + '/' + NUMEROS_ALVO.length +
+    (erros.length ? ' | Erros: ' + erros.join('; ') : ' | Tudo OK');
+  Logger.log(resumo);
+}
+
+// ============================================================
 // TRANSPORTADORA POR FORNECEDOR × FILIAL
 // ============================================================
 function salvarTranspFornFilial(codForn, codFilial, codTransp) {
