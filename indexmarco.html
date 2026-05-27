@@ -3268,6 +3268,13 @@ function _renderPagtoNF() {
   }
 }
 
+function _proximoDiaUtil(d) {
+  const r = new Date(d);
+  const dow = r.getDay();
+  if (dow === 6) r.setDate(r.getDate() + 2);
+  else if (dow === 0) r.setDate(r.getDate() + 1);
+  return r;
+}
 function _verificarParcela(idx) {
   const nfVal  = document.getElementById('pagto-nf-'+idx)?.value.trim() || '';
   const espISO = document.getElementById('pagto-esp-iso-'+idx)?.value || '';
@@ -3277,9 +3284,14 @@ function _verificarParcela(idx) {
   const [dd,mm,aaaa] = nfVal.split('/');
   const nfDate  = new Date(parseInt(aaaa), parseInt(mm)-1, parseInt(dd));
   const espDate = new Date(espISO);
-  const diff    = Math.round((nfDate - espDate) / 86400000);
+  const dow     = espDate.getDay();
+  const fimDeSemana = dow === 0 || dow === 6;
+  const proxUtil = fimDeSemana ? _proximoDiaUtil(espDate) : null;
+  const correto  = nfDate.getTime() === espDate.getTime() ||
+                   (proxUtil && nfDate.getTime() === proxUtil.getTime());
+  const diff     = Math.round((nfDate - espDate) / 86400000);
   badge.style.display = '';
-  if (diff === 0) { badge.className = 'badge badge-green'; badge.textContent = '✓ Correto'; }
+  if (correto)       { badge.className = 'badge badge-green';  badge.textContent = '✓ Correto'; }
   else if (diff < 0) { badge.className = 'badge badge-orange'; badge.textContent = `⚠ ${Math.abs(diff)}d antes`; }
   else               { badge.className = 'badge badge-red';    badge.textContent = `⚠ +${diff}d depois`; }
 }
