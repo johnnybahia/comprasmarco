@@ -455,16 +455,19 @@ function salvarPedido(dados) {
 
 function montarEmailHTML(idPedido, data, dados) {
   const dataFmt = Utilities.formatDate(data, Session.getScriptTimeZone(), 'dd/MM/yyyy');
-  const linhasItens = dados.itens.map(item => `
+  const linhasItens = dados.itens.map(item => {
+    const descricaoLimpa = String(item.descricao || '').replace(/[\n\r]+/g, ' ').trim();
+    return `
     <tr>
-      <td style="padding:10px 12px;border-bottom:1px solid #eee;font-family:monospace;font-size:12px;white-space:nowrap;color:#1a3c5e;">${item.cod}</td>
-      <td style="padding:10px 12px;border-bottom:1px solid #eee;font-size:13px;">${item.descricao}</td>
-      <td style="padding:10px 12px;border-bottom:1px solid #eee;text-align:right;white-space:nowrap;font-size:13px;">${item.quantidade}</td>
-      <td style="padding:10px 12px;border-bottom:1px solid #eee;text-align:left;white-space:nowrap;font-size:12px;color:#666;">${item.unidade}</td>
-      <td style="padding:10px 12px;border-bottom:1px solid #eee;text-align:right;white-space:nowrap;font-size:13px;">R$&nbsp;${parseFloat(item.preco).toFixed(2)}</td>
-      <td style="padding:10px 12px;border-bottom:1px solid #eee;text-align:right;white-space:nowrap;font-size:13px;font-weight:600;">R$&nbsp;${parseFloat(item.subtotal).toFixed(2)}</td>
+      <td style="padding:10px 12px;border-bottom:1px solid #eee;font-family:monospace;font-size:11px;white-space:nowrap;color:#1a3c5e;width:130px;">${item.cod}</td>
+      <td style="padding:10px 12px;border-bottom:1px solid #eee;font-size:13px;word-break:break-word;">${descricaoLimpa}</td>
+      <td style="padding:10px 12px;border-bottom:1px solid #eee;text-align:right;white-space:nowrap;font-size:13px;width:60px;">${item.quantidade}</td>
+      <td style="padding:10px 12px;border-bottom:1px solid #eee;text-align:left;white-space:nowrap;font-size:12px;color:#666;width:40px;">${item.unidade}</td>
+      <td style="padding:10px 12px;border-bottom:1px solid #eee;text-align:right;white-space:nowrap;font-size:13px;width:100px;">R$&nbsp;${parseFloat(item.preco).toFixed(2)}</td>
+      <td style="padding:10px 12px;border-bottom:1px solid #eee;text-align:right;white-space:nowrap;font-size:13px;font-weight:600;width:100px;">R$&nbsp;${parseFloat(item.subtotal).toFixed(2)}</td>
     </tr>
-  `).join('');
+  `;
+  }).join('');
 
   return `
   <div style="font-family:Arial,sans-serif;max-width:700px;margin:0 auto;border:1px solid #dde3ea;border-radius:6px;overflow:hidden;">
@@ -520,7 +523,15 @@ function montarEmailHTML(idPedido, data, dados) {
 
     <!-- Itens -->
     <div style="padding:20px 28px;background:#fff;">
-      <table style="width:100%;border-collapse:collapse;">
+      <table style="width:100%;border-collapse:collapse;table-layout:fixed;">
+        <colgroup>
+          <col style="width:130px;">
+          <col>
+          <col style="width:60px;">
+          <col style="width:40px;">
+          <col style="width:100px;">
+          <col style="width:100px;">
+        </colgroup>
         <thead>
           <tr style="background:#1a3c5e;color:white;">
             <th style="padding:11px 12px;text-align:left;font-size:12px;font-weight:600;white-space:nowrap;">Código</th>
@@ -613,6 +624,97 @@ function montarEmailTexto(idPedido, data, dados) {
     `${dados.nomeRemetente || dados.usuarioLogado} — Marfim`,
     sep2,
   ].filter(l => l !== null && l !== undefined).join('\n');
+}
+
+// ============================================================
+// TESTE DE LAYOUT DE EMAIL
+// Execute esta função diretamente no Apps Script Editor para
+// receber os pedidos 1–4 em johnny@marfim-bahia.ind.br
+// ============================================================
+function enviarEmailTestePedidos() {
+  const EMAIL_TESTE  = 'johnny@marfim-bahia.ind.br';
+  const NUMEROS_ALVO = ['1', '2', '3', '4'];
+
+  const todosPedidos = sheetToArray(ABAS.PEDIDOS);
+  const todosItens   = sheetToArray(ABAS.ITENS_PEDIDO);
+
+  if (todosPedidos.length === 0) {
+    Logger.log('Nenhum pedido encontrado na planilha.');
+    return;
+  }
+
+  const erros    = [];
+  let   enviados = 0;
+
+  NUMEROS_ALVO.forEach(function(num) {
+    const ped = todosPedidos.find(function(p) {
+      const id = String(p.ID_PEDIDO || '').trim().toUpperCase();
+      const n  = id.replace(/^PED-?0*/i, '') || '0';
+      return n === num;
+    });
+
+    if (!ped) {
+      erros.push('Pedido #' + num + ' não encontrado');
+      return;
+    }
+
+    const idPedido   = String(ped.ID_PEDIDO).trim();
+    const itensPed   = todosItens.filter(function(i) {
+      return String(i.ID_PEDIDO || '').trim() === idPedido;
+    });
+    const fornecedor = buscarCodigo('fornecedor', ped.COD_FORNECEDOR) || {};
+    const filial     = buscarCodigo('filial',     ped.COD_FILIAL)     || {};
+
+    const dados = {
+      filialNome:         String(ped.NOME_FILIAL      || ''),
+      filialCNPJ:         String(filial.CNPJ          || ''),
+      filialEndereco:     [filial.ENDERECO, filial.BAIRRO, filial.CIDADE, filial.ESTADO].filter(Boolean).join(', '),
+      fornecedorNome:     String(ped.NOME_FORNECEDOR  || ''),
+      fornecedorCNPJ:     String(fornecedor.CNPJ      || ''),
+      fornecedorEndereco: [fornecedor.ENDERECO, fornecedor.BAIRRO, fornecedor.CIDADE, fornecedor.ESTADO].filter(Boolean).join(', '),
+      frete:              String(ped.FRETE             || 'CIF'),
+      transportadoraNome: String(ped.NOME_TRANSPORTADORA || ''),
+      prazoEntrega:       String(ped.PRAZO_ENTREGA     || ''),
+      condPagamento:      String(ped.COND_PAGAMENTO    || ''),
+      observacao:         String(ped.OBSERVACAO        || ''),
+      usuarioLogado:      String(ped.USUARIO           || ''),
+      nomeRemetente:      String(ped.USUARIO           || ''),
+      valorTotal:         parseFloat(ped.VALOR_TOTAL)  || 0,
+      itens: itensPed.map(function(i) {
+        return {
+          cod:        String(i.COD_MP    || ''),
+          descricao:  String(i.DESCRICAO || ''),
+          quantidade: i.QUANTIDADE,
+          unidade:    String(i.UNIDADE   || ''),
+          preco:      parseFloat(i.PRECO_UNIT) || 0,
+          subtotal:   parseFloat(i.SUBTOTAL)   || 0
+        };
+      })
+    };
+
+    // DATA vem como string ISO do sheetToArray; converte de volta para Date
+    const dataPedido = ped.DATA ? new Date(ped.DATA) : new Date();
+
+    try {
+      const htmlEmail  = montarEmailHTML(idPedido, dataPedido, dados);
+      const textoEmail = montarEmailTexto(idPedido, dataPedido, dados);
+      MailApp.sendEmail({
+        to:       EMAIL_TESTE,
+        subject:  '[TESTE LAYOUT] Pedido ' + idPedido + ' — ' + (dados.filialNome || 'Filial'),
+        body:     textoEmail,
+        htmlBody: htmlEmail
+      });
+      enviados++;
+      Logger.log('OK — ' + idPedido + ' enviado para ' + EMAIL_TESTE);
+    } catch(e) {
+      erros.push(idPedido + ': ' + e.message);
+      Logger.log('ERRO ao enviar ' + idPedido + ': ' + e.message);
+    }
+  });
+
+  const resumo = 'Enviados: ' + enviados + '/' + NUMEROS_ALVO.length +
+    (erros.length ? ' | Erros: ' + erros.join('; ') : ' | Tudo OK');
+  Logger.log(resumo);
 }
 
 // ============================================================
