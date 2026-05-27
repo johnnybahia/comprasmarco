@@ -459,12 +459,12 @@ function montarEmailHTML(idPedido, data, dados) {
     const descricaoLimpa = String(item.descricao || '').replace(/[\n\r]+/g, ' ').trim();
     return `
     <tr>
-      <td style="padding:10px 12px;border-bottom:1px solid #eee;font-family:monospace;font-size:11px;white-space:nowrap;color:#1a3c5e;width:130px;">${item.cod}</td>
-      <td style="padding:10px 12px;border-bottom:1px solid #eee;font-size:13px;word-break:break-word;">${descricaoLimpa}</td>
-      <td style="padding:10px 12px;border-bottom:1px solid #eee;text-align:right;white-space:nowrap;font-size:13px;width:60px;">${item.quantidade}</td>
-      <td style="padding:10px 12px;border-bottom:1px solid #eee;text-align:left;white-space:nowrap;font-size:12px;color:#666;width:40px;">${item.unidade}</td>
-      <td style="padding:10px 12px;border-bottom:1px solid #eee;text-align:right;white-space:nowrap;font-size:13px;width:100px;">R$&nbsp;${parseFloat(item.preco).toFixed(2)}</td>
-      <td style="padding:10px 12px;border-bottom:1px solid #eee;text-align:right;white-space:nowrap;font-size:13px;font-weight:600;width:100px;">R$&nbsp;${parseFloat(item.subtotal).toFixed(2)}</td>
+      <td width="110" style="padding:9px 10px;border-bottom:1px solid #eee;font-family:monospace;font-size:11px;word-break:break-all;color:#1a3c5e;">${item.cod}</td>
+      <td style="padding:9px 10px;border-bottom:1px solid #eee;font-size:12px;word-break:break-word;">${descricaoLimpa}</td>
+      <td width="50" style="padding:9px 10px;border-bottom:1px solid #eee;text-align:right;white-space:nowrap;font-size:12px;">${item.quantidade}</td>
+      <td width="35" style="padding:9px 10px;border-bottom:1px solid #eee;text-align:left;white-space:nowrap;font-size:11px;color:#666;">${item.unidade}</td>
+      <td width="90" style="padding:9px 10px;border-bottom:1px solid #eee;text-align:right;white-space:nowrap;font-size:12px;">R$&nbsp;${parseFloat(item.preco).toFixed(2)}</td>
+      <td width="90" style="padding:9px 10px;border-bottom:1px solid #eee;text-align:right;white-space:nowrap;font-size:12px;font-weight:600;">R$&nbsp;${parseFloat(item.subtotal).toFixed(2)}</td>
     </tr>
   `;
   }).join('');
@@ -522,24 +522,16 @@ function montarEmailHTML(idPedido, data, dados) {
     </table>
 
     <!-- Itens -->
-    <div style="padding:20px 28px;background:#fff;">
-      <table style="width:100%;border-collapse:collapse;table-layout:fixed;">
-        <colgroup>
-          <col style="width:130px;">
-          <col>
-          <col style="width:60px;">
-          <col style="width:40px;">
-          <col style="width:100px;">
-          <col style="width:100px;">
-        </colgroup>
+    <div style="padding:20px 20px;background:#fff;">
+      <table width="100%" style="border-collapse:collapse;" cellpadding="0" cellspacing="0">
         <thead>
           <tr style="background:#1a3c5e;color:white;">
-            <th style="padding:11px 12px;text-align:left;font-size:12px;font-weight:600;white-space:nowrap;">Código</th>
-            <th style="padding:11px 12px;text-align:left;font-size:12px;font-weight:600;">Descrição</th>
-            <th style="padding:11px 12px;text-align:right;font-size:12px;font-weight:600;white-space:nowrap;">Qtd</th>
-            <th style="padding:11px 12px;text-align:left;font-size:12px;font-weight:600;white-space:nowrap;">Un</th>
-            <th style="padding:11px 12px;text-align:right;font-size:12px;font-weight:600;white-space:nowrap;">Preço Unit.</th>
-            <th style="padding:11px 12px;text-align:right;font-size:12px;font-weight:600;white-space:nowrap;">Subtotal</th>
+            <th width="110" style="padding:10px 10px;text-align:left;font-size:11px;font-weight:600;">Código</th>
+            <th style="padding:10px 10px;text-align:left;font-size:11px;font-weight:600;">Descrição</th>
+            <th width="50" style="padding:10px 10px;text-align:right;font-size:11px;font-weight:600;white-space:nowrap;">Qtd</th>
+            <th width="35" style="padding:10px 10px;text-align:left;font-size:11px;font-weight:600;white-space:nowrap;">Un</th>
+            <th width="90" style="padding:10px 10px;text-align:right;font-size:11px;font-weight:600;white-space:nowrap;">Preço Unit.</th>
+            <th width="90" style="padding:10px 10px;text-align:right;font-size:11px;font-weight:600;white-space:nowrap;">Subtotal</th>
           </tr>
         </thead>
         <tbody>${linhasItens}</tbody>
@@ -626,6 +618,19 @@ function montarEmailTexto(idPedido, data, dados) {
   ].filter(l => l !== null && l !== undefined).join('\n');
 }
 
+// Converte string ISO (vinda de sheetToArray) para dd/MM/yyyy.
+// Se já for texto comum (ex: "150", "29/05/2026"), devolve como está.
+function _formatarDataISO(val) {
+  if (!val) return '';
+  const s = String(val);
+  if (/^\d{4}-\d{2}-\d{2}T/.test(s)) {
+    try {
+      return Utilities.formatDate(new Date(s), Session.getScriptTimeZone(), 'dd/MM/yyyy');
+    } catch(e) { return s; }
+  }
+  return s;
+}
+
 // ============================================================
 // TESTE DE LAYOUT DE EMAIL
 // Execute esta função diretamente no Apps Script Editor para
@@ -674,7 +679,7 @@ function enviarEmailTestePedidos() {
       fornecedorEndereco: [fornecedor.ENDERECO, fornecedor.BAIRRO, fornecedor.CIDADE, fornecedor.ESTADO].filter(Boolean).join(', '),
       frete:              String(ped.FRETE             || 'CIF'),
       transportadoraNome: String(ped.NOME_TRANSPORTADORA || ''),
-      prazoEntrega:       String(ped.PRAZO_ENTREGA     || ''),
+      prazoEntrega:       _formatarDataISO(ped.PRAZO_ENTREGA),
       condPagamento:      String(ped.COND_PAGAMENTO    || ''),
       observacao:         String(ped.OBSERVACAO        || ''),
       usuarioLogado:      String(ped.USUARIO           || ''),
