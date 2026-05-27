@@ -3163,7 +3163,7 @@ function renderParcelasUI() {
         value="${v}"
         style="width:66px;padding:6px 8px;border:1px solid var(--border);border-radius:var(--radius);font-size:14px"
         oninput="_parcelasCondPag[${i}]=this.value;atualizarCondPag()">
-      <span style="font-size:11px;color:var(--text3)">dc</span>
+      <span style="font-size:11px;color:var(--text3)">DD</span>
       ${_parcelasCondPag.length > 1
         ? `<button type="button" onclick="removerParcela(${i})"
              style="background:none;border:none;color:var(--error);cursor:pointer;font-size:15px;line-height:1;padding:0 2px">×</button>`
@@ -3244,7 +3244,7 @@ function _renderPagtoNF() {
         else espStr = '(data inválida)';
       }
       return `<div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;padding:8px;background:var(--surface2);border-radius:var(--radius);border:1px solid var(--border)">
-        <span style="min-width:100px;font-size:12px;font-weight:600;color:var(--text2)">Parcela ${i+1} — ${d} dc</span>
+        <span style="min-width:100px;font-size:12px;font-weight:600;color:var(--text2)">Parcela ${i+1} — ${d} DD</span>
         <span style="font-size:12px;color:var(--text2)">Venc. esperado: <strong id="pagto-esp-${i}">${escHTML(espStr)}</strong></span>
         <input type="hidden" id="pagto-esp-iso-${i}" value="${escHTML(espISO)}">
         <div style="display:flex;align-items:center;gap:6px;margin-left:auto">
@@ -3303,7 +3303,7 @@ function _buildPagtoDetalhe(r) {
       div = espISO ? infDate.getTime() !== new Date(espISO).getTime() : false;
     }
     return `<div style="display:flex;gap:12px;align-items:center;font-size:12px;padding:3px 0;flex-wrap:wrap">
-      <span style="color:var(--text2);min-width:100px">Parcela ${i+1} (${d}dc):</span>
+      <span style="color:var(--text2);min-width:100px">Parcela ${i+1} (${d}DD):</span>
       <span>Esperado <strong>${espStr}</strong></span>
       <span style="color:var(--text3)">→</span>
       <span>NF informou <strong style="color:${div?'var(--error)':'var(--success)'}">${infStr}</strong></span>
