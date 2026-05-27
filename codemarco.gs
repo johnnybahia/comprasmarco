@@ -455,16 +455,19 @@ function salvarPedido(dados) {
 
 function montarEmailHTML(idPedido, data, dados) {
   const dataFmt = Utilities.formatDate(data, Session.getScriptTimeZone(), 'dd/MM/yyyy');
-  const linhasItens = dados.itens.map(item => `
+  const linhasItens = dados.itens.map(item => {
+    const descricaoLimpa = String(item.descricao || '').replace(/[\n\r]+/g, ' ').trim();
+    return `
     <tr>
-      <td style="padding:10px 12px;border-bottom:1px solid #eee;font-family:monospace;font-size:12px;white-space:nowrap;color:#1a3c5e;">${item.cod}</td>
-      <td style="padding:10px 12px;border-bottom:1px solid #eee;font-size:13px;">${item.descricao}</td>
-      <td style="padding:10px 12px;border-bottom:1px solid #eee;text-align:right;white-space:nowrap;font-size:13px;">${item.quantidade}</td>
-      <td style="padding:10px 12px;border-bottom:1px solid #eee;text-align:left;white-space:nowrap;font-size:12px;color:#666;">${item.unidade}</td>
-      <td style="padding:10px 12px;border-bottom:1px solid #eee;text-align:right;white-space:nowrap;font-size:13px;">R$&nbsp;${parseFloat(item.preco).toFixed(2)}</td>
-      <td style="padding:10px 12px;border-bottom:1px solid #eee;text-align:right;white-space:nowrap;font-size:13px;font-weight:600;">R$&nbsp;${parseFloat(item.subtotal).toFixed(2)}</td>
+      <td style="padding:10px 12px;border-bottom:1px solid #eee;font-family:monospace;font-size:11px;white-space:nowrap;color:#1a3c5e;width:130px;">${item.cod}</td>
+      <td style="padding:10px 12px;border-bottom:1px solid #eee;font-size:13px;word-break:break-word;">${descricaoLimpa}</td>
+      <td style="padding:10px 12px;border-bottom:1px solid #eee;text-align:right;white-space:nowrap;font-size:13px;width:60px;">${item.quantidade}</td>
+      <td style="padding:10px 12px;border-bottom:1px solid #eee;text-align:left;white-space:nowrap;font-size:12px;color:#666;width:40px;">${item.unidade}</td>
+      <td style="padding:10px 12px;border-bottom:1px solid #eee;text-align:right;white-space:nowrap;font-size:13px;width:100px;">R$&nbsp;${parseFloat(item.preco).toFixed(2)}</td>
+      <td style="padding:10px 12px;border-bottom:1px solid #eee;text-align:right;white-space:nowrap;font-size:13px;font-weight:600;width:100px;">R$&nbsp;${parseFloat(item.subtotal).toFixed(2)}</td>
     </tr>
-  `).join('');
+  `;
+  }).join('');
 
   return `
   <div style="font-family:Arial,sans-serif;max-width:700px;margin:0 auto;border:1px solid #dde3ea;border-radius:6px;overflow:hidden;">
@@ -520,7 +523,15 @@ function montarEmailHTML(idPedido, data, dados) {
 
     <!-- Itens -->
     <div style="padding:20px 28px;background:#fff;">
-      <table style="width:100%;border-collapse:collapse;">
+      <table style="width:100%;border-collapse:collapse;table-layout:fixed;">
+        <colgroup>
+          <col style="width:130px;">
+          <col>
+          <col style="width:60px;">
+          <col style="width:40px;">
+          <col style="width:100px;">
+          <col style="width:100px;">
+        </colgroup>
         <thead>
           <tr style="background:#1a3c5e;color:white;">
             <th style="padding:11px 12px;text-align:left;font-size:12px;font-weight:600;white-space:nowrap;">Código</th>
