@@ -423,11 +423,14 @@ function salvarPedido(dados) {
       ...(dados.emailUsuario ? [dados.emailUsuario] : [])
     ])].join(',');
 
+    const nomeRemetente = dados.usuarioLogado || '';
+
     const dadosEmail = Object.assign({}, dados, {
       filialCNPJ:      filial.CNPJ      || '',
       filialEndereco:  [filial.ENDERECO, filial.BAIRRO, filial.CIDADE, filial.ESTADO].filter(Boolean).join(', '),
       fornecedorCNPJ:  fornecedor.CNPJ  || '',
-      fornecedorEndereco: [fornecedor.ENDERECO, fornecedor.BAIRRO, fornecedor.CIDADE, fornecedor.ESTADO].filter(Boolean).join(', ')
+      fornecedorEndereco: [fornecedor.ENDERECO, fornecedor.BAIRRO, fornecedor.CIDADE, fornecedor.ESTADO].filter(Boolean).join(', '),
+      nomeRemetente
     });
     const htmlEmail  = montarEmailHTML(idPedido, dataHoje, dadosEmail);
     const textoEmail = montarEmailTexto(idPedido, dataHoje, dadosEmail);
@@ -547,7 +550,7 @@ function montarEmailHTML(idPedido, data, dados) {
             <img src="https://i.ibb.co/FGGjdsM/LOGO-MARFIM.jpg" alt="Marfim" style="height:52px;width:auto;display:block;border-radius:4px;">
           </td>
           <td style="vertical-align:middle;padding-left:16px;border-left:1px solid rgba(255,255,255,0.2);">
-            <div style="font-size:14px;font-weight:700;color:white;">Marco Aurélio Bonalume</div>
+            <div style="font-size:14px;font-weight:700;color:white;">${dados.nomeRemetente || dados.usuarioLogado}</div>
           </td>
         </tr>
       </table>
@@ -601,7 +604,7 @@ function montarEmailTexto(idPedido, data, dados) {
     '',
     'Dúvidas ou confirmações? Responda para: marco@marfim.ind.br',
     sep2,
-    'Marco Aurélio Bonalume — Marfim',
+    `${dados.nomeRemetente || dados.usuarioLogado} — Marfim`,
     sep2,
   ].filter(l => l !== null && l !== undefined).join('\n');
 }
@@ -1185,7 +1188,7 @@ function _enviarEmailCancelamento(rowData, headers, usuarioNome, emailUsuario, o
       Sistema de Compras Marfim · Este é um email automático.
     </div>
     <div style="background:#1a3c5e;padding:18px 28px;">
-      <div style="font-size:14px;font-weight:700;color:white;">Marco Aurélio Bonalume — Marfim</div>
+      <div style="font-size:14px;font-weight:700;color:white;">${usuarioNome} — Marfim</div>
     </div>
   </div>`;
 
