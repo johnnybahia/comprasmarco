@@ -512,7 +512,7 @@ function montarEmailHTML(idPedido, data, dados) {
         ${dados.frete !== 'CIF' ? `<td style="padding:14px 28px;width:1%;white-space:nowrap;vertical-align:top;border-right:1px solid #dde3ea;"><div style="font-size:11px;font-weight:600;color:#888;text-transform:uppercase;letter-spacing:1px;margin-bottom:5px;">Transportadora</div><div style="font-size:13px;color:#1a1a1a;">${dados.transportadoraNome || '—'}</div></td>` : ''}
         <td style="padding:14px 28px;width:1%;white-space:nowrap;vertical-align:top;${dados.condPagamento ? 'border-right:1px solid #dde3ea;' : ''}">
           <div style="font-size:11px;font-weight:600;color:#888;text-transform:uppercase;letter-spacing:1px;margin-bottom:5px;">Prazo de Entrega</div>
-          <div style="font-size:13px;color:#1a1a1a;">${dados.prazoEntrega || '—'} dias</div>
+          <div style="font-size:13px;color:#1a1a1a;">${dados.prazoEntrega || '—'}</div>
         </td>
         ${dados.condPagamento ? `<td style="padding:14px 28px;vertical-align:top;"><div style="font-size:11px;font-weight:600;color:#888;text-transform:uppercase;letter-spacing:1px;margin-bottom:5px;">Condição de Pagamento</div><div style="font-size:13px;color:#1a1a1a;">${dados.condPagamento}</div></td>` : ''}
       </tr>
