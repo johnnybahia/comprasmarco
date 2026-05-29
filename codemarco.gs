@@ -63,6 +63,37 @@ function _escHTML(s) {
     .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
 }
 
+// Retorna o perfil real do usuário consultando a planilha; null se não encontrado.
+function _getPerfilReal(usuarioLogin) {
+  if (!usuarioLogin) return null;
+  const users = sheetToArray(ABAS.USUARIOS);
+  const user = users.find(u =>
+    String(u.USUARIO).trim().toLowerCase() === String(usuarioLogin).trim().toLowerCase()
+  );
+  return user ? String(user.PERFIL || '').toUpperCase().trim() : null;
+}
+
+// Gera próximo ID sequencial baseado no máximo existente (imune a deleções de linha).
+function _proximoId(sh, colNome, prefixo) {
+  const data = sh.getDataRange().getValues();
+  if (data.length <= 1) return prefixo + '00001';
+  const headers = data[0].map(h => String(h).trim());
+  const col = headers.indexOf(colNome);
+  if (col < 0) return prefixo + '00001';
+  const re = new RegExp('^' + prefixo.replace('-', '\\-') + '(\\d+)$');
+  const nums = data.slice(1)
+    .map(r => { const m = re.exec(String(r[col] || '')); return m ? parseInt(m[1], 10) : 0; })
+    .filter(n => n > 0);
+  const max = nums.length > 0 ? Math.max(...nums) : 0;
+  return prefixo + String(max + 1).padStart(5, '0');
+}
+
+// Previne injeção de fórmula no Sheets: prefixa com ' valores que começam com = + - @.
+function _sanVal(v) {
+  if (typeof v !== 'string') return v;
+  return /^[=+\-@]/.test(v) ? "'" + v : v;
+}
+
 // Gera salt aleatório de 16 bytes em hex
 function _gerarSalt() {
   const bytes = [];
@@ -164,10 +195,19 @@ function listarTodos(tipo) {
 // ============================================================
 // CADASTROS — coluna-aware (adiciona colunas faltantes automaticamente)
 // ============================================================
-function salvarCadastro(tipo, dados) {
+function salvarCadastro(tipo, dados, usuarioLogado) {
   const lock = LockService.getScriptLock();
   try {
     lock.waitLock(10000);
+
+    // Impede criação/edição de usuário ADMIN por quem não é ADMIN
+    if (tipo === 'usuario' && String(dados.PERFIL || '').toUpperCase() === 'ADMIN') {
+      const perfilReal = _getPerfilReal(usuarioLogado);
+      if (perfilReal !== 'ADMIN') {
+        return { ok: false, msg: 'Apenas administradores podem criar ou editar usuários ADMIN' };
+      }
+    }
+
     const mapa = {
       fornecedor:     { aba: ABAS.FORNECEDORES,   cols: ['COD','NOME','CNPJ','EMAIL','CONTATO','COND_PAGAMENTO','CEP','BAIRRO','ENDERECO','CIDADE','ESTADO'] },
       materia:        { aba: ABAS.MATERIAS,        cols: ['COD','DESCRICAO','UNIDADE','CATEGORIA'] },
@@ -236,10 +276,19 @@ function salvarCadastro(tipo, dados) {
   }
 }
 
-function excluirCadastro(tipo, cod) {
+function excluirCadastro(tipo, cod, usuarioLogado) {
   const lock = LockService.getScriptLock();
   try {
     lock.waitLock(10000);
+
+    // Apenas ADMIN pode excluir usuários
+    if (tipo === 'usuario') {
+      const perfilReal = _getPerfilReal(usuarioLogado);
+      if (perfilReal !== 'ADMIN') {
+        return { ok: false, msg: 'Apenas administradores podem excluir usuários' };
+      }
+    }
+
     const mapa = {
       fornecedor:     ABAS.FORNECEDORES,
       materia:        ABAS.MATERIAS,
@@ -351,10 +400,15 @@ function listarPrecosPorMateria(codMP) {
   }
 }
 
-// Insere linha no sheet mapeando por nome de coluna (ignora colunas extras)
+// Insere linha no sheet mapeando por nome de coluna (ignora colunas extras).
+// Sanitiza strings para evitar injeção de fórmula.
 function _appendRowMapeado(sh, dadosMap) {
   const headers = sh.getRange(1, 1, 1, sh.getLastColumn()).getValues()[0].map(h => String(h).trim());
-  const row = headers.map(h => (dadosMap.hasOwnProperty(h) ? dadosMap[h] : ''));
+  const row = headers.map(h => {
+    if (!dadosMap.hasOwnProperty(h)) return '';
+    const v = dadosMap[h];
+    return _sanVal(v);
+  });
   sh.appendRow(row);
 }
 
@@ -368,9 +422,15 @@ function salvarPedido(dados) {
 
     const shPedidos = getSheet(ABAS.PEDIDOS);
     const shItens   = getSheet(ABAS.ITENS_PEDIDO);
+    if (!shPedidos) throw new Error('Aba PEDIDOS não encontrada — execute setupPlanilha().');
+    if (!shItens)   throw new Error('Aba ITENS_PEDIDO não encontrada — execute setupPlanilha().');
 
-    const totalPedidos = shPedidos.getLastRow();
-    const idPedido = 'PED-' + String(totalPedidos).padStart(5, '0');
+    // Valida itens ANTES de gravar o cabeçalho do pedido (evita pedido órfão sem itens)
+    if (!Array.isArray(dados.itens) || dados.itens.length === 0) {
+      return { ok: false, msg: 'O pedido deve ter pelo menos um item' };
+    }
+
+    const idPedido = _proximoId(shPedidos, 'ID_PEDIDO', 'PED-');
     const dataHoje = new Date();
 
     _appendRowMapeado(shPedidos, {
@@ -462,13 +522,13 @@ function salvarPedido(dados) {
 function montarEmailHTML(idPedido, data, dados) {
   const dataFmt = Utilities.formatDate(data, Session.getScriptTimeZone(), 'dd/MM/yyyy');
   const linhasItens = dados.itens.map(item => {
-    const descricaoLimpa = String(item.descricao || '').replace(/[\n\r]+/g, ' ').trim();
+    const descricaoLimpa = _escHTML(String(item.descricao || '').replace(/[\n\r]+/g, ' ').trim());
     return `
     <tr>
-      <td width="110" style="padding:9px 10px;border-bottom:1px solid #eee;font-family:monospace;font-size:11px;word-break:break-all;color:#1a3c5e;">${item.cod}</td>
+      <td width="110" style="padding:9px 10px;border-bottom:1px solid #eee;font-family:monospace;font-size:11px;word-break:break-all;color:#1a3c5e;">${_escHTML(item.cod)}</td>
       <td style="padding:9px 10px;border-bottom:1px solid #eee;font-size:12px;word-break:break-word;">${descricaoLimpa}</td>
-      <td width="50" style="padding:9px 10px;border-bottom:1px solid #eee;text-align:right;white-space:nowrap;font-size:12px;">${item.quantidade}</td>
-      <td width="35" style="padding:9px 10px;border-bottom:1px solid #eee;text-align:left;white-space:nowrap;font-size:11px;color:#666;">${item.unidade}</td>
+      <td width="50" style="padding:9px 10px;border-bottom:1px solid #eee;text-align:right;white-space:nowrap;font-size:12px;">${_escHTML(item.quantidade)}</td>
+      <td width="35" style="padding:9px 10px;border-bottom:1px solid #eee;text-align:left;white-space:nowrap;font-size:11px;color:#666;">${_escHTML(item.unidade)}</td>
       <td width="90" style="padding:9px 10px;border-bottom:1px solid #eee;text-align:right;white-space:nowrap;font-size:12px;">R$&nbsp;${parseFloat(item.preco).toFixed(2)}</td>
       <td width="90" style="padding:9px 10px;border-bottom:1px solid #eee;text-align:right;white-space:nowrap;font-size:12px;font-weight:600;">R$&nbsp;${parseFloat(item.subtotal).toFixed(2)}</td>
     </tr>
@@ -483,14 +543,14 @@ function montarEmailHTML(idPedido, data, dados) {
       <img src="https://i.ibb.co/FGGjdsM/LOGO-MARFIM.jpg" alt="Marfim" style="height:52px;width:auto;border-radius:4px;flex-shrink:0;">
       <div>
         <div style="font-size:11px;font-weight:600;letter-spacing:3px;color:#e8a020;text-transform:uppercase;margin-bottom:4px;">Pedido de Compra</div>
-        <div style="font-size:20px;font-weight:700;color:white;">${idPedido}</div>
-        <div style="font-size:12px;color:rgba(255,255,255,0.6);margin-top:2px;">Emitido em ${dataFmt} · Solicitante: ${dados.usuarioLogado}</div>
+        <div style="font-size:20px;font-weight:700;color:white;">${_escHTML(idPedido)}</div>
+        <div style="font-size:12px;color:rgba(255,255,255,0.6);margin-top:2px;">Emitido em ${dataFmt} · Solicitante: ${_escHTML(dados.usuarioLogado)}</div>
       </div>
     </div>
 
     <!-- Aviso NF -->
     <div style="background:#fff8e1;border-left:4px solid #e8a020;padding:10px 28px;font-size:13px;color:#5a4000;">
-      <strong>Para a filial:</strong> ao receber esta entrega, informe o número <strong style="font-family:monospace;">${idPedido}</strong> no sistema para registrar o recebimento da NF.
+      <strong>Para a filial:</strong> ao receber esta entrega, informe o número <strong style="font-family:monospace;">${_escHTML(idPedido)}</strong> no sistema para registrar o recebimento da NF.
     </div>
 
     <!-- Partes: Comprador × Fornecedor -->
@@ -498,15 +558,15 @@ function montarEmailHTML(idPedido, data, dados) {
       <tr>
         <td style="width:50%;padding:16px 28px;vertical-align:top;border-right:1px solid #dde3ea;">
           <div style="font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#1a3c5e;margin-bottom:8px;">Comprador</div>
-          <div style="font-size:14px;font-weight:700;color:#1a1a1a;">${dados.filialNome}</div>
-          ${dados.filialCNPJ ? `<div style="font-size:12px;color:#555;margin-top:3px;">CNPJ: ${dados.filialCNPJ}</div>` : ''}
-          ${dados.filialEndereco ? `<div style="font-size:12px;color:#777;margin-top:3px;">${dados.filialEndereco}</div>` : ''}
+          <div style="font-size:14px;font-weight:700;color:#1a1a1a;">${_escHTML(dados.filialNome)}</div>
+          ${dados.filialCNPJ ? `<div style="font-size:12px;color:#555;margin-top:3px;">CNPJ: ${_escHTML(dados.filialCNPJ)}</div>` : ''}
+          ${dados.filialEndereco ? `<div style="font-size:12px;color:#777;margin-top:3px;">${_escHTML(dados.filialEndereco)}</div>` : ''}
         </td>
         <td style="width:50%;padding:16px 28px;vertical-align:top;">
           <div style="font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#1a3c5e;margin-bottom:8px;">Fornecedor</div>
-          <div style="font-size:14px;font-weight:700;color:#1a1a1a;">${dados.fornecedorNome}</div>
-          ${dados.fornecedorCNPJ ? `<div style="font-size:12px;color:#555;margin-top:3px;">CNPJ: ${dados.fornecedorCNPJ}</div>` : ''}
-          ${dados.fornecedorEndereco ? `<div style="font-size:12px;color:#777;margin-top:3px;">${dados.fornecedorEndereco}</div>` : ''}
+          <div style="font-size:14px;font-weight:700;color:#1a1a1a;">${_escHTML(dados.fornecedorNome)}</div>
+          ${dados.fornecedorCNPJ ? `<div style="font-size:12px;color:#555;margin-top:3px;">CNPJ: ${_escHTML(dados.fornecedorCNPJ)}</div>` : ''}
+          ${dados.fornecedorEndereco ? `<div style="font-size:12px;color:#777;margin-top:3px;">${_escHTML(dados.fornecedorEndereco)}</div>` : ''}
         </td>
       </tr>
     </table>
@@ -521,16 +581,16 @@ function montarEmailHTML(idPedido, data, dados) {
         ${dados.frete !== 'CIF' ? `
         <td style="padding:14px 20px;vertical-align:top;border-right:1px solid #dde3ea;">
           <div style="font-size:11px;font-weight:600;color:#888;text-transform:uppercase;letter-spacing:1px;margin-bottom:5px;">Transportadora</div>
-          <div style="font-size:13px;color:#1a1a1a;">${dados.transportadoraNome || '—'}</div>
+          <div style="font-size:13px;color:#1a1a1a;">${_escHTML(dados.transportadoraNome || '—')}</div>
         </td>` : ''}
         <td width="140" style="padding:14px 20px;vertical-align:top;white-space:nowrap;${dados.condPagamento ? 'border-right:1px solid #dde3ea;' : ''}">
           <div style="font-size:11px;font-weight:600;color:#888;text-transform:uppercase;letter-spacing:1px;margin-bottom:5px;">Prazo de Entrega</div>
-          <div style="font-size:13px;color:#1a1a1a;">${dados.prazoEntrega || '—'}</div>
+          <div style="font-size:13px;color:#1a1a1a;">${_escHTML(dados.prazoEntrega || '—')}</div>
         </td>
         ${dados.condPagamento ? `
         <td width="140" style="padding:14px 20px;vertical-align:top;white-space:nowrap;">
           <div style="font-size:11px;font-weight:600;color:#888;text-transform:uppercase;letter-spacing:1px;margin-bottom:5px;">Condição de Pagamento</div>
-          <div style="font-size:13px;color:#1a1a1a;">${dados.condPagamento}</div>
+          <div style="font-size:13px;color:#1a1a1a;">${_escHTML(dados.condPagamento)}</div>
         </td>` : ''}
       </tr>
     </table>
@@ -556,7 +616,7 @@ function montarEmailHTML(idPedido, data, dados) {
           </tr>
         </tfoot>
       </table>
-      ${dados.observacao ? `<div style="margin-top:16px;padding:12px 14px;background:#f9f9f9;border-left:3px solid #1a3c5e;border-radius:3px;font-size:13px;color:#333;"><strong>Observações:</strong> ${dados.observacao}</div>` : ''}
+      ${dados.observacao ? `<div style="margin-top:16px;padding:12px 14px;background:#f9f9f9;border-left:3px solid #1a3c5e;border-radius:3px;font-size:13px;color:#333;"><strong>Observações:</strong> ${_escHTML(dados.observacao)}</div>` : ''}
     </div>
 
     <!-- Responder -->
@@ -872,9 +932,20 @@ function salvarRecebimento(dados) {
     lock.waitLock(15000);
     const sh      = getSheet(ABAS.RECEBIMENTOS);
     const shItens = getSheet(ABAS.ITENS_RECEBIMENTO);
+    if (!sh)      throw new Error('Aba RECEBIMENTOS não encontrada — execute setupPlanilha().');
+    if (!shItens) throw new Error('Aba ITENS_RECEBIMENTO não encontrada — execute setupPlanilha().');
 
-    const total   = sh.getLastRow();
-    const idRec   = 'REC-' + String(total).padStart(5, '0');
+    // Bloqueia NF duplicada para o mesmo pedido
+    const recsExist = sheetToArray(ABAS.RECEBIMENTOS);
+    const nfDup = recsExist.find(r =>
+      String(r.ID_PEDIDO).trim()  === String(dados.idPedido).trim() &&
+      String(r.NF_NUMERO).trim()  === String(dados.nfNumero).trim()
+    );
+    if (nfDup) {
+      return { ok: false, msg: `NF ${dados.nfNumero} já lançada para este pedido (${nfDup.ID_RECEBIMENTO})` };
+    }
+
+    const idRec   = _proximoId(sh, 'ID_RECEBIMENTO', 'REC-');
     const dataHoje = new Date();
 
     let temDivQtd   = false;
@@ -1168,9 +1239,15 @@ function excluirRecebimento(idRec, usuarioLogado, filiaisLiberadas, perfil) {
     const rec  = recs.find(r => String(r.ID_RECEBIMENTO).trim() === String(idRec).trim());
     if (!rec) return { ok: false, msg: 'Recebimento não encontrado' };
 
-    // Verifica permissão: ADMIN pode tudo; outros precisam ter a filial liberada
-    if (String(perfil || '').toUpperCase() !== 'ADMIN') {
-      const liberadas = (filiaisLiberadas || []).map(f => String(f).trim());
+    // Busca perfil real do usuário na planilha (não confia no param enviado pelo frontend)
+    const perfilReal = _getPerfilReal(usuarioLogado);
+    if (!perfilReal) return { ok: false, msg: 'Usuário não encontrado' };
+
+    if (perfilReal !== 'ADMIN') {
+      // Usuário não-ADMIN só pode excluir NFs das suas filiais liberadas
+      const users = sheetToArray(ABAS.USUARIOS);
+      const user  = users.find(u => String(u.USUARIO).trim().toLowerCase() === String(usuarioLogado).trim().toLowerCase());
+      const liberadas = String(user?.FILIAIS_LIBERADAS || '').split(',').map(f => f.trim()).filter(Boolean);
       if (!liberadas.includes(String(rec.COD_FILIAL).trim())) {
         return { ok: false, msg: 'Sem permissão para excluir NF desta filial' };
       }
@@ -1256,6 +1333,14 @@ function cancelarPedido(idPedido, observacao, usuarioNome, emailUsuario) {
     const statusAtual = String(data[rowIdx][iStatus] || '').trim().toUpperCase();
     if (statusAtual === 'CANCELADO') return { ok: false, msg: 'Pedido já está cancelado' };
 
+    // Bloqueia cancelamento se há NFs lançadas
+    const nfsLancadas = sheetToArray(ABAS.RECEBIMENTOS)
+      .filter(r => String(r.ID_PEDIDO).trim() === String(idPedido).trim());
+    if (nfsLancadas.length > 0) {
+      const ids = nfsLancadas.map(r => r.ID_RECEBIMENTO).join(', ');
+      return { ok: false, msg: `Pedido possui ${nfsLancadas.length} NF(s) lançada(s) (${ids}). Exclua as NFs antes de cancelar.` };
+    }
+
     // Atualiza STATUS
     sh.getRange(rowIdx + 1, iStatus + 1).setValue('CANCELADO');
 
@@ -1337,8 +1422,8 @@ function _enviarEmailCancelamento(rowData, headers, usuarioNome, emailUsuario, o
     <div style="background:#c0392b;padding:20px 28px;">
       <img src="https://i.ibb.co/FGGjdsM/LOGO-MARFIM.jpg" alt="Marfim" style="height:48px;width:auto;border-radius:4px;margin-bottom:10px;display:block;">
       <div style="font-size:11px;font-weight:600;letter-spacing:3px;color:#fdecea;text-transform:uppercase;margin-bottom:4px;">Pedido Cancelado</div>
-      <div style="font-size:20px;font-weight:700;color:white;">${idPedido} — ${nomeFornecedor}</div>
-      <div style="font-size:12px;color:rgba(255,255,255,0.7);margin-top:2px;">Cancelado por: ${usuarioNome}</div>
+      <div style="font-size:20px;font-weight:700;color:white;">${_escHTML(idPedido)} — ${_escHTML(nomeFornecedor)}</div>
+      <div style="font-size:12px;color:rgba(255,255,255,0.7);margin-top:2px;">Cancelado por: ${_escHTML(usuarioNome)}</div>
     </div>
     <div style="background:#fdecea;border-left:4px solid #c0392b;padding:16px 28px;text-align:center;">
       <div style="font-size:28px;margin-bottom:8px;">🚫</div>
@@ -1347,20 +1432,20 @@ function _enviarEmailCancelamento(rowData, headers, usuarioNome, emailUsuario, o
     </div>
     <div style="padding:20px 28px;background:#fff;">
       <table style="width:100%;border-collapse:collapse;font-size:13px;">
-        <tr><td style="padding:6px 0;color:#666;width:180px;">ID do Pedido:</td><td><strong style="font-family:monospace">${idPedido}</strong></td></tr>
-        <tr><td style="padding:6px 0;color:#666;">Fornecedor:</td><td>${nomeFornecedor}</td></tr>
-        <tr><td style="padding:6px 0;color:#666;">Filial:</td><td>${nomeFilial} (${codFilial})</td></tr>
-        <tr><td style="padding:6px 0;color:#666;">Valor Total:</td><td><strong>${valorFmt}</strong></td></tr>
-        <tr><td style="padding:6px 0;color:#666;">Data do Pedido:</td><td>${dataFmt}</td></tr>
-        <tr><td style="padding:6px 0;color:#666;">Cancelado por:</td><td>${usuarioNome}</td></tr>
-        ${observacao ? `<tr><td style="padding:6px 0;color:#666;vertical-align:top">Motivo:</td><td style="color:#c0392b;font-weight:600">${observacao}</td></tr>` : ''}
+        <tr><td style="padding:6px 0;color:#666;width:180px;">ID do Pedido:</td><td><strong style="font-family:monospace">${_escHTML(idPedido)}</strong></td></tr>
+        <tr><td style="padding:6px 0;color:#666;">Fornecedor:</td><td>${_escHTML(nomeFornecedor)}</td></tr>
+        <tr><td style="padding:6px 0;color:#666;">Filial:</td><td>${_escHTML(nomeFilial)} (${_escHTML(codFilial)})</td></tr>
+        <tr><td style="padding:6px 0;color:#666;">Valor Total:</td><td><strong>${_escHTML(valorFmt)}</strong></td></tr>
+        <tr><td style="padding:6px 0;color:#666;">Data do Pedido:</td><td>${_escHTML(dataFmt)}</td></tr>
+        <tr><td style="padding:6px 0;color:#666;">Cancelado por:</td><td>${_escHTML(usuarioNome)}</td></tr>
+        ${observacao ? `<tr><td style="padding:6px 0;color:#666;vertical-align:top">Motivo:</td><td style="color:#c0392b;font-weight:600">${_escHTML(observacao)}</td></tr>` : ''}
       </table>
     </div>
     <div style="background:#f4f7fb;padding:12px 28px;font-size:11px;color:#888;text-align:center;">
       Sistema de Compras Marfim · Este é um email automático.
     </div>
     <div style="background:#1a3c5e;padding:18px 28px;">
-      <div style="font-size:14px;font-weight:700;color:white;">${usuarioNome} — Marfim</div>
+      <div style="font-size:14px;font-weight:700;color:white;">${_escHTML(usuarioNome)} — Marfim</div>
     </div>
   </div>`;
 
@@ -1410,37 +1495,44 @@ function _enriquecerPedidosComNF(pedidos) {
       return { ...p, temNF, temDivQtd, temDivPreco, temDivPagto };
     });
   } catch(e) {
+    logErro('_enriquecerPedidosComNF: ' + e.message);
     return pedidos;
   }
 }
 
-function getHistorico(tipo, cod) {
+function getHistorico(tipo, cod, usuarioLogin) {
   try {
+    // Valida que usuário existe antes de retornar dados
+    if (!_getPerfilReal(usuarioLogin)) throw new Error('Autenticação inválida');
     const pedidos = sheetToArray(ABAS.PEDIDOS);
     const colMapa = { filial: 'COD_FILIAL', fornecedor: 'COD_FORNECEDOR' };
     if (!colMapa[tipo]) return [];
     const filtrados = pedidos.filter(p => String(p[colMapa[tipo]]).trim() === String(cod).trim());
     const enriquecidos = _enriquecerPedidosComNF(filtrados);
-    return enriquecidos.map(p => {
-      const itens = sheetToArray(ABAS.ITENS_PEDIDO).filter(i => String(i.ID_PEDIDO).trim() === String(p.ID_PEDIDO).trim());
+    const todosItens = sheetToArray(ABAS.ITENS_PEDIDO);
+    const resultado = enriquecidos.map(p => {
+      const itens = todosItens.filter(i => String(i.ID_PEDIDO).trim() === String(p.ID_PEDIDO).trim());
       return { ...p, itens };
     });
+    return resultado.sort((a, b) => new Date(b.DATA || 0) - new Date(a.DATA || 0));
   } catch(e) {
     logErro('getHistorico: ' + e.message);
     throw e;
   }
 }
 
-function getTodosPedidos() {
+function getTodosPedidos(usuarioLogin) {
   try {
     const sh = getSheet(ABAS.PEDIDOS);
     if (!sh) throw new Error('Aba PEDIDOS não encontrada — execute setupPlanilha() no Apps Script Editor.');
+    if (!_getPerfilReal(usuarioLogin)) throw new Error('Autenticação inválida');
     const pedidos = _enriquecerPedidosComNF(sheetToArray(ABAS.PEDIDOS));
     const todosItens = sheetToArray(ABAS.ITENS_PEDIDO);
-    return pedidos.map(p => {
+    const resultado = pedidos.map(p => {
       const itens = todosItens.filter(i => String(i.ID_PEDIDO).trim() === String(p.ID_PEDIDO).trim());
       return { ...p, itens };
     });
+    return resultado.sort((a, b) => new Date(b.DATA || 0) - new Date(a.DATA || 0));
   } catch(e) {
     logErro('getTodosPedidos: ' + e.message);
     throw e;
