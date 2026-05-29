@@ -1575,7 +1575,10 @@ function selecionarLookup(tipo, prefixo, registro) {
     tentarPreencherPreco();
     tentarPreencherTransportadora();
     const condPag = document.getElementById('ped-cond-pag');
-    if (condPag && !condPag.value.trim()) condPag.value = registro.COND_PAGAMENTO || '';
+    if (condPag && !condPag.value.trim()) {
+      condPag.value = registro.COND_PAGAMENTO || '';
+      if (condPag.value) atualizarCondPag();
+    }
   }
   if (tipo === 'filial' && prefixo === 'ped') {
     tentarPreencherTransportadora();
@@ -2002,7 +2005,7 @@ function adicionarItem() {
 
   if (!cod || !desc) { toast('Busque uma matéria-prima antes de adicionar', 'error'); return; }
   if (!qtd || qtd <= 0) { toast('Informe uma quantidade válida', 'error'); return; }
-  if (isNaN(preco) || preco < 0) { toast('Informe um preço válido', 'error'); return; }
+  if (isNaN(preco) || preco <= 0) { toast('Informe um preço válido (maior que zero)', 'error'); return; }
 
   const subtotal = qtd * preco;
   itensPedido.push({ cod, descricao: desc, quantidade: qtd, unidade: unid, preco, subtotal });
@@ -2081,6 +2084,7 @@ function confirmarPedido() {
   if (frete === 'FOB' && !document.getElementById('ped-transp-cod').value.trim()) { toast('Frete FOB requer transportadora', 'error'); return; }
   if (itensPedido.length === 0)  { toast('Adicione pelo menos um item', 'error'); return; }
   if (!condPag) { toast('Informe a condição de pagamento (ex: 30, 30/60 ou marque "À vista")', 'error'); return; }
+  if (prazo && !/^\d{2}\/\d{2}\/\d{4}$/.test(prazo)) { toast('Prazo de entrega inválido (use DD/MM/AAAA)', 'error'); return; }
 
   // Monta lista de destinatários
   const forn    = (_cache.fornecedor || []).find(f => String(f.COD).trim() === fornCod);
@@ -2136,7 +2140,10 @@ function fecharModal() {
   document.getElementById('modal-confirm').classList.remove('open');
 }
 
+let _pedidoEnviando = false;
 function enviarPedido() {
+  if (_pedidoEnviando) return;
+  _pedidoEnviando = true;
   fecharModal();
   toast('Enviando pedido...', 'info');
 
@@ -2159,6 +2166,7 @@ function enviarPedido() {
 
   google.script.run
     .withSuccessHandler(res => {
+      _pedidoEnviando = false;
       if (res.ok) {
         toast(`✓ ${res.msg} — ${res.id}`, 'success');
         limparPedido();
@@ -2166,7 +2174,7 @@ function enviarPedido() {
         toast('Erro: ' + res.msg, 'error');
       }
     })
-    .withFailureHandler(err => toast('Erro ao enviar: ' + err.message, 'error'))
+    .withFailureHandler(err => { _pedidoEnviando = false; toast('Erro ao enviar: ' + err.message, 'error'); })
     .salvarPedido(dados);
 }
 
@@ -2234,7 +2242,7 @@ function buscarHistorico(tipo) {
   google.script.run
     .withSuccessHandler(res => renderHistorico(res))
     .withFailureHandler(() => toast('Erro ao buscar histórico','error'))
-    .getHistorico(tipo, cod);
+    .getHistorico(tipo, cod, sessao?.usuario || '');
 }
 
 function carregarTodosPedidos() {
@@ -2250,7 +2258,7 @@ function carregarTodosPedidos() {
         escHTML(err && err.message ? err.message : 'verifique se setupPlanilha() foi executado') +
         '</div></td></tr>';
     })
-    .getTodosPedidos();
+    .getTodosPedidos(sessao?.usuario || '');
 }
 
 // Atualiza a lista do histórico sem fechar o painel de detalhe (usado após excluir NF)
@@ -2281,11 +2289,24 @@ function _fmtStatus(v) {
   const s = String(v || '').trim().toUpperCase();
   return _STATUS_VALIDOS.includes(s) ? s : '—';
 }
+function _badgeStatus(v) {
+  switch (String(v || '').trim().toUpperCase()) {
+    case 'ENVIADO':   return 'badge-blue';
+    case 'RECEBIDO':  return 'badge-green';
+    case 'CANCELADO': return 'badge-red';
+    default:          return 'badge-gray';
+  }
+}
 function _fmtObs(v) {
   if (!v && v !== 0) return '—';
   const s = String(v).trim();
   if (!s) return '—';
-  if (/^\d{4}-\d{2}-\d{2}T/.test(s)) return '—';  // ISO date
+  // ISO date → converte para DD/MM/AAAA em vez de suprimir
+  if (/^\d{4}-\d{2}-\d{2}/.test(s)) {
+    const d = new Date(s);
+    if (!isNaN(d)) return String(d.getUTCDate()).padStart(2,'0') + '/' +
+                          String(d.getUTCMonth()+1).padStart(2,'0') + '/' + d.getUTCFullYear();
+  }
   if (/^(SIM|NÃO|NAO)$/i.test(s)) return '—';      // flag value leaked
   if (/^\d+([.,]\d+)?$/.test(s)) return '—';        // pure number leaked
   return s;
@@ -2344,10 +2365,10 @@ function verDetalhe(idx) {
   const data = p.DATA ? new Date(p.DATA).toLocaleDateString('pt-BR') : '—';
 
   document.getElementById('hist-meta-grid').innerHTML = `
-    <div class="hist-meta-item"><label>ID Pedido</label><span>${p.ID_PEDIDO||'—'}</span></div>
+    <div class="hist-meta-item"><label>ID Pedido</label><span>${escHTML(String(p.ID_PEDIDO||'—'))}</span></div>
     <div class="hist-meta-item"><label>Data</label><span>${data}</span></div>
-    <div class="hist-meta-item"><label>Status</label><span><span class="badge badge-green">${escHTML(_fmtStatus(p.STATUS))}</span></span></div>
-    <div class="hist-meta-item"><label>Filial</label><span>${escHTML(String(p.NOME_FILIAL||''))} (${p.COD_FILIAL||''})</span></div>
+    <div class="hist-meta-item"><label>Status</label><span><span class="badge ${_badgeStatus(p.STATUS)}">${escHTML(_fmtStatus(p.STATUS))}</span></span></div>
+    <div class="hist-meta-item"><label>Filial</label><span>${escHTML(String(p.NOME_FILIAL||''))} (${escHTML(String(p.COD_FILIAL||''))})</span></div>
     <div class="hist-meta-item"><label>Fornecedor</label><span>${escHTML(String(p.NOME_FORNECEDOR||''))}</span></div>
     <div class="hist-meta-item"><label>Transportadora</label><span>${escHTML(String(p.NOME_TRANSPORTADORA||'—'))}</span></div>
     <div class="hist-meta-item"><label>Prazo</label><span>${escHTML(_fmtObs(p.PRAZO_ENTREGA)||'—')}</span></div>
@@ -2368,10 +2389,10 @@ function verDetalhe(idx) {
   document.getElementById('hist-itens-tbody').innerHTML = itens.length === 0
     ? '<tr><td colspan="6"><div class="empty-state">Sem itens registrados</div></td></tr>'
     : itens.map(i => `<tr>
-        <td><code>${i.COD_MP||''}</code></td>
+        <td><code>${escHTML(String(i.COD_MP||''))}</code></td>
         <td>${escHTML(String(i.DESCRICAO||''))}</td>
-        <td>${i.QUANTIDADE||''}</td>
-        <td>${i.UNIDADE||''}</td>
+        <td>${escHTML(String(i.QUANTIDADE||''))}</td>
+        <td>${escHTML(String(i.UNIDADE||''))}</td>
         <td>R$ ${parseFloat(i.PRECO_UNIT||0).toFixed(2)}</td>
         <td><strong>R$ ${parseFloat(i.SUBTOTAL||0).toFixed(2)}</strong></td>
       </tr>`).join('');
@@ -2416,6 +2437,14 @@ function renderRecebimentosDetalhe(recs, valorPedido) {
     };
   });
 
+  // Pre-compute per-NF totals for aggregate footer
+  const totaisNF = recs.map(r => {
+    const itens = r.itens || [];
+    const totalItens = itens.reduce((s, i) => s + parseFloat(i.SUBTOTAL_RECEBIDO||0), 0);
+    return parseFloat(r.VALOR_TOTAL_RECEBIDO||0) > 0 ? parseFloat(r.VALOR_TOTAL_RECEBIDO) : totalItens;
+  });
+  const somaTodasNFs = totaisNF.reduce((s, v) => s + v, 0);
+
   recSec.innerHTML = recs.map((r, ri) => {
     const dataRec = r.DATA_RECEBIMENTO ? new Date(r.DATA_RECEBIMENTO).toLocaleDateString('pt-BR') : '—';
     const itens = r.itens || [];
@@ -2459,7 +2488,7 @@ function renderRecebimentosDetalhe(recs, valorPedido) {
       <div class="rec-header">
         <h4>NF #${ri+1} — ${escHTML(String(r.NF_NUMERO||'—'))}</h4>
         ${badge}
-        <span style="font-size:12px;color:var(--text3);margin-left:auto">${r.ID_RECEBIMENTO} · ${dataRec} · ${escHTML(String(r.USUARIO||''))}</span>
+        <span style="font-size:12px;color:var(--text3);margin-left:auto">${escHTML(String(r.ID_RECEBIMENTO||''))} · ${dataRec} · ${escHTML(String(r.USUARIO||''))}</span>
         <button class="btn btn-outline btn-sm" style="margin-left:12px;color:var(--error);border-color:var(--error)" onclick="confirmarExcluirNFById('${escHTML(String(r.ID_RECEBIMENTO))}')">Excluir NF</button>
       </div>
       <div class="table-wrap">
@@ -2486,7 +2515,14 @@ function renderRecebimentosDetalhe(recs, valorPedido) {
       ${_fmtObs(r.OBSERVACAO) !== '—' ? `<p style="margin-top:8px;font-size:13px;color:var(--text2)"><strong>Obs.:</strong> ${escHTML(_fmtObs(r.OBSERVACAO))}</p>` : ''}
       ${_buildPagtoDetalhe(r)}
     </div>`;
-  }).join('');
+  }).join('') + (recs.length > 1 ? `
+    <div class="totals-row" style="margin-top:12px;border-top:2px solid var(--border);padding-top:10px">
+      <span class="total-label">Total de todas as NFs</span>
+      <span class="total-value" style="font-size:18px;color:${Math.abs(somaTodasNFs - parseFloat(valorPedido||0)) > 0.01 ? 'var(--error)' : 'var(--success)'}">
+        ${_fmtValor(somaTodasNFs)}
+      </span>
+      <span style="font-size:12px;color:var(--text3);margin-left:16px">de ${_fmtValor(valorPedido)} pedido</span>
+    </div>` : '');
 }
 
 // ════════════════════════════════════════════════════
@@ -2730,7 +2766,7 @@ function salvarCad(tipo) {
       }
     })
     .withFailureHandler(err => toast('Erro: ' + err.message, 'error'))
-    .salvarCadastro(tipo, dados);
+    .salvarCadastro(tipo, dados, sessao?.usuario || '');
 }
 
 function limparForm(prefixo) {
@@ -2915,7 +2951,7 @@ function executarExclusao() {
       }
     })
     .withFailureHandler(err => toast('Erro: ' + err.message, 'error'))
-    .excluirCadastro(tipo, cod);
+    .excluirCadastro(tipo, cod, sessao?.usuario || '');
 }
 
 // ════════════════════════════════════════════════════
@@ -3143,7 +3179,7 @@ function _fmtDataBR(d) {
 function _parsCondPag(v) {
   const s = String(v||'').trim().toUpperCase().normalize('NFD').replace(/[̀-ͯ]/g,'');
   if (!s) return { avista: false, dias: [] };
-  if (s === 'AV' || s === 'A VISTA' || s === '0') return { avista: true, dias: [] };
+  if (s === 'AV' || s === 'A VISTA' || s === 'AVISTA' || s === '0') return { avista: true, dias: [] };
   const nums = s.split(/[,\/\s]+/).map(n => parseInt(n,10)).filter(n => !isNaN(n) && n > 0);
   return { avista: false, dias: nums };
 }
@@ -3223,6 +3259,10 @@ function _renderPagtoNF() {
   const nfDataStr = document.getElementById('nf-data').value.trim();
   const podeCal   = /^\d{2}\/\d{2}\/\d{4}$/.test(nfDataStr);
 
+  // Data de entrega do pedido como referência alternativa
+  const _prazoEntregaParsed = _parseDatePagto(String(p.PRAZO_ENTREGA || ''));
+  const prazoEntregaStr = _prazoEntregaParsed ? _prazoEntregaParsed.str : null; // DD/MM/AAAA
+
   // Preserva valores já digitados pelo usuário antes de reconstruir o HTML
   const _valoresNF = {};
   cond.dias.forEach((_, i) => {
@@ -3238,15 +3278,26 @@ function _renderPagtoNF() {
     <div style="display:grid;gap:12px">
     ${cond.dias.map((d, i) => {
       let espStr = '(informe a data da NF primeiro)', espISO = '';
+      let espEntStr = '', espEntISO = '';
       if (podeCal) {
         const dt = calcDataPagtoUtil(nfDataStr, d);
         if (dt) { espStr = _fmtDataBR(dt); espISO = _isoDate(dt); }
         else espStr = '(data inválida)';
       }
+      if (prazoEntregaStr) {
+        const dtEnt = calcDataPagtoUtil(prazoEntregaStr, d);
+        if (dtEnt) { espEntStr = _fmtDataBR(dtEnt); espEntISO = _isoDate(dtEnt); }
+      }
+      // Mostra referência da entrega apenas se diferente da emissão
+      const mostrarEntrega = espEntISO && espEntISO !== espISO;
+      const labelEntrega = mostrarEntrega
+        ? `<span style="font-size:11px;color:var(--text3);margin-left:4px">ou <strong>${escHTML(espEntStr)}</strong> pela entrega</span>`
+        : '';
       return `<div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;padding:8px;background:var(--surface2);border-radius:var(--radius);border:1px solid var(--border)">
         <span style="min-width:100px;font-size:12px;font-weight:600;color:var(--text2)">Parcela ${i+1} — ${d} DD</span>
-        <span style="font-size:12px;color:var(--text2)">Venc. esperado: <strong id="pagto-esp-${i}">${escHTML(espStr)}</strong></span>
+        <span style="font-size:12px;color:var(--text2)">Venc. esperado: <strong id="pagto-esp-${i}">${escHTML(espStr)}</strong>${labelEntrega}</span>
         <input type="hidden" id="pagto-esp-iso-${i}" value="${escHTML(espISO)}">
+        <input type="hidden" id="pagto-esp-iso-entrega-${i}" value="${escHTML(espEntISO)}">
         <div style="display:flex;align-items:center;gap:6px;margin-left:auto">
           <label style="font-size:12px;font-weight:600;color:var(--text2)">Data na NF:</label>
           <input type="text" class="nf-edit-input" id="pagto-nf-${i}" placeholder="${podeCal ? 'DD/MM/AAAA' : 'Informe a data da NF'}" maxlength="10"
@@ -3275,51 +3326,87 @@ function _proximoDiaUtil(d) {
   else if (dow === 0) r.setDate(r.getDate() + 1);
   return r;
 }
+// Converte string ISO "yyyy-MM-dd" para Date LOCAL (evita UTC midnight vs local midnight)
+function _isoToLocalDate(isoStr) {
+  if (!isoStr) return null;
+  const p = isoStr.split('-').map(Number);
+  if (p.length < 3 || isNaN(p[0])) return null;
+  const d = new Date(p[0], p[1] - 1, p[2]);
+  return isNaN(d) ? null : d;
+}
+
+// Retorna true se nfDate (Date local) bate com a data ISO dada (aceitando próximo dia útil)
+function _matchesRefISO(nfDate, isoStr) {
+  const ref = _isoToLocalDate(isoStr);
+  if (!ref) return false;
+  const dow = ref.getDay();
+  const proxUtil = (dow === 6 || dow === 0) ? _proximoDiaUtil(ref) : null;
+  return nfDate.getTime() === ref.getTime() ||
+         (proxUtil != null && nfDate.getTime() === proxUtil.getTime());
+}
+
 function _verificarParcela(idx) {
-  const nfVal  = document.getElementById('pagto-nf-'+idx)?.value.trim() || '';
-  const espISO = document.getElementById('pagto-esp-iso-'+idx)?.value || '';
-  const badge  = document.getElementById('pagto-badge-'+idx);
+  const nfVal     = document.getElementById('pagto-nf-'+idx)?.value.trim() || '';
+  const espISO    = document.getElementById('pagto-esp-iso-'+idx)?.value || '';
+  const espEntISO = document.getElementById('pagto-esp-iso-entrega-'+idx)?.value || '';
+  const badge     = document.getElementById('pagto-badge-'+idx);
   if (!badge) return;
   if (!nfVal || !/^\d{2}\/\d{2}\/\d{4}$/.test(nfVal) || !espISO) { badge.style.display = 'none'; return; }
   const [dd,mm,aaaa] = nfVal.split('/');
   const nfDate  = new Date(parseInt(aaaa), parseInt(mm)-1, parseInt(dd));
-  const espDate = new Date(espISO);
-  const dow     = espDate.getDay();
-  const fimDeSemana = dow === 0 || dow === 6;
-  const proxUtil = fimDeSemana ? _proximoDiaUtil(espDate) : null;
-  const correto  = nfDate.getTime() === espDate.getTime() ||
-                   (proxUtil && nfDate.getTime() === proxUtil.getTime());
-  const diff     = Math.round((nfDate - espDate) / 86400000);
+  const espDate = _isoToLocalDate(espISO) || new Date(espISO);
+  const correto = _matchesRefISO(nfDate, espISO) || _matchesRefISO(nfDate, espEntISO);
+  const diff    = Math.round((nfDate - espDate) / 86400000);
   badge.style.display = '';
   if (correto)       { badge.className = 'badge badge-green';  badge.textContent = '✓ Correto'; }
   else if (diff < 0) { badge.className = 'badge badge-orange'; badge.textContent = `⚠ ${Math.abs(diff)}d antes`; }
   else               { badge.className = 'badge badge-red';    badge.textContent = `⚠ +${diff}d depois`; }
 }
 
+// Parseia data em formato DD/MM/AAAA ou ISO (yyyy-MM-dd...) vinda do Sheets.
+// Retorna { ms: timestamp UTC, str: "DD/MM/AAAA" } ou null se inválida.
+function _parseDatePagto(s) {
+  if (!s) return null;
+  if (/^\d{2}\/\d{2}\/\d{4}$/.test(s)) {
+    const [dd, mm, aaaa] = s.split('/').map(Number);
+    return { ms: Date.UTC(aaaa, mm - 1, dd), str: s };
+  }
+  if (/^\d{4}-\d{2}-\d{2}/.test(s)) {
+    const d = new Date(s);
+    if (isNaN(d)) return null;
+    return { ms: Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()),
+             str: String(d.getUTCDate()).padStart(2,'0') + '/' + String(d.getUTCMonth()+1).padStart(2,'0') + '/' + d.getUTCFullYear() };
+  }
+  return null;
+}
+
 function _buildPagtoDetalhe(r) {
-  const prazo     = String(r.PAGTO_PRAZO    ||'').trim();
-  const esperadas = String(r.PAGTO_ESPERADO ||'').split(',').filter(Boolean);
-  const informadas = String(r.PAGTO_NF      ||'').split(',').filter(Boolean);
+  const prazo      = String(r.PAGTO_PRAZO    ||'').trim();
+  const esperadas  = String(r.PAGTO_ESPERADO ||'').split(',').filter(Boolean);
+  const informadas = String(r.PAGTO_NF       ||'').split(',').filter(Boolean);
   if (!prazo && esperadas.length === 0) return '';
   const cond = _parsCondPag(prazo);
   if (cond.avista) return '<p style="font-size:12px;margin-top:8px;color:var(--text2)"><strong>Pagamento:</strong> À vista</p>';
   if (cond.dias.length === 0) return '';
   const rows = cond.dias.map((d, i) => {
-    const espISO = esperadas[i] || '';
-    const espStr = espISO ? new Date(espISO).toLocaleDateString('pt-BR') : '—';
-    let infStr = '—', div = false;
-    if (informadas[i] && /^\d{2}\/\d{2}\/\d{4}$/.test(informadas[i])) {
-      const [dd,mm,aaaa] = informadas[i].split('/');
-      const infDate = new Date(parseInt(aaaa), parseInt(mm)-1, parseInt(dd));
-      infStr = infDate.toLocaleDateString('pt-BR');
-      div = espISO ? infDate.getTime() !== new Date(espISO).getTime() : false;
+    const esp = _parseDatePagto(esperadas[i] || '');
+    const inf = _parseDatePagto(informadas[i] || '');
+    const espStr = esp ? esp.str : '—';
+    const infStr = inf ? inf.str : '—';
+    const div = esp && inf ? inf.ms !== esp.ms : false;
+    let diffTag = '';
+    if (div && esp && inf) {
+      const dias = Math.round((inf.ms - esp.ms) / 86400000);
+      diffTag = dias > 0
+        ? `<span class="badge badge-red" style="font-size:10px;padding:1px 6px">⚠ +${dias}d (maior)</span>`
+        : `<span class="badge badge-orange" style="font-size:10px;padding:1px 6px">⚠ ${Math.abs(dias)}d (menor)</span>`;
     }
     return `<div style="display:flex;gap:12px;align-items:center;font-size:12px;padding:3px 0;flex-wrap:wrap">
       <span style="color:var(--text2);min-width:100px">Parcela ${i+1} (${d}DD):</span>
       <span>Esperado <strong>${espStr}</strong></span>
       <span style="color:var(--text3)">→</span>
       <span>NF informou <strong style="color:${div?'var(--error)':'var(--success)'}">${infStr}</strong></span>
-      ${div ? '<span class="badge badge-red" style="font-size:10px;padding:1px 6px">⚠ Divergência</span>' : (infStr!=='—'?'<span class="badge badge-green" style="font-size:10px;padding:1px 6px">✓</span>':'')}
+      ${div ? diffTag : (infStr!=='—'?'<span class="badge badge-green" style="font-size:10px;padding:1px 6px">✓</span>':'')}
     </div>`;
   }).join('');
   return `<div style="border-top:1px solid var(--border);margin-top:10px;padding-top:10px">
@@ -3358,39 +3445,45 @@ function confirmarLancarNF() {
 
   // Coleta datas de pagamento informadas na NF
   const condPag = _parsCondPag(p.COND_PAGAMENTO);
-  let parcelasEsp = [], parcelasNF = [], temDivPagto = false;
+  let parcelasEsp = [], parcelasEspEntrega = [], parcelasNF = [], temDivPagto = false;
   if (!condPag.avista && condPag.dias.length > 0) {
     condPag.dias.forEach((d, i) => {
-      const espISO = document.getElementById('pagto-esp-iso-' + i)?.value || '';
-      const nfVal  = document.getElementById('pagto-nf-' + i)?.value.trim() || '';
+      const espISO    = document.getElementById('pagto-esp-iso-' + i)?.value || '';
+      const espEntISO = document.getElementById('pagto-esp-iso-entrega-' + i)?.value || '';
+      const nfVal     = document.getElementById('pagto-nf-' + i)?.value.trim() || '';
       parcelasEsp.push(espISO);
+      parcelasEspEntrega.push(espEntISO);
       parcelasNF.push(nfVal);
       if (espISO && nfVal && /^\d{2}\/\d{2}\/\d{4}$/.test(nfVal)) {
         const [dd, mm, aaaa] = nfVal.split('/');
-        const nfDate  = new Date(parseInt(aaaa), parseInt(mm)-1, parseInt(dd));
-        const espDate = new Date(espISO);
-        if (nfDate.getTime() !== espDate.getTime()) temDivPagto = true;
+        const nfDate = new Date(parseInt(aaaa), parseInt(mm)-1, parseInt(dd));
+        // Divergência só se não bater com nenhuma das duas referências (emissão e entrega)
+        if (!_matchesRefISO(nfDate, espISO) && !_matchesRefISO(nfDate, espEntISO)) {
+          temDivPagto = true;
+        }
       }
     });
   }
   if (temDivPagto) tudoIgual = false;
 
   _nfDadosPendente = {
-    idPedido:         p.ID_PEDIDO,
-    nfNumero:         nfNum,
-    nfData:           nfData,
-    codFilial:        p.COD_FILIAL,
-    nomeFilial:       p.NOME_FILIAL,
-    codFornecedor:    p.COD_FORNECEDOR,
-    nomeFornecedor:   p.NOME_FORNECEDOR,
-    usuarioLogado:    sessao.nome,
-    emailUsuario:     sessao.email  || '',
-    valorTotalPedido: isNaN(parseFloat(p.VALOR_TOTAL)) ? 0 : parseFloat(p.VALOR_TOTAL),
-    observacao:       document.getElementById('nf-obs').value.trim(),
-    condPagamento:    p.COND_PAGAMENTO || '',
-    pagtoEsperado:    parcelasEsp.join(','),
-    pagtoNF:          parcelasNF.join(','),
-    divPagto:         temDivPagto,
+    idPedido:              p.ID_PEDIDO,
+    nfNumero:              nfNum,
+    nfData:                nfData,
+    codFilial:             p.COD_FILIAL,
+    nomeFilial:            p.NOME_FILIAL,
+    codFornecedor:         p.COD_FORNECEDOR,
+    nomeFornecedor:        p.NOME_FORNECEDOR,
+    usuarioLogado:         sessao.nome,
+    emailUsuario:          sessao.email  || '',
+    valorTotalPedido:      isNaN(parseFloat(p.VALOR_TOTAL)) ? 0 : parseFloat(p.VALOR_TOTAL),
+    observacao:            document.getElementById('nf-obs').value.trim(),
+    condPagamento:         p.COND_PAGAMENTO || '',
+    pagtoEsperado:         parcelasEsp.join(','),
+    pagtoEsperadoEntrega:  parcelasEspEntrega.join(','),
+    pagtoNF:               parcelasNF.join(','),
+    divPagto:              temDivPagto,
+    prazoEntrega:          String(p.PRAZO_ENTREGA || ''),
     itens
   };
 
@@ -3405,15 +3498,19 @@ function confirmarLancarNF() {
   }
 }
 
+let _nfEnviando = false;
 function executarLancarNF() {
+  if (_nfEnviando) return;
   document.getElementById('modal-nf-confirm').classList.remove('open');
   if (!_nfDadosPendente) return;
+  _nfEnviando = true;
   const dados = _nfDadosPendente;
   _nfDadosPendente = null;
 
   toast('Registrando NF...', 'info');
   google.script.run
     .withSuccessHandler(res => {
+      _nfEnviando = false;
       if (!res.ok) { toast('Erro: ' + res.msg, 'error'); return; }
       let msg = `✓ ${res.msg} — ${res.id}`;
       const temDiv = res.divQtd || res.divPreco || res.divPagto;
@@ -3424,7 +3521,7 @@ function executarLancarNF() {
       toast(msg, temDiv ? 'error' : 'success');
       limparNF();
     })
-    .withFailureHandler(err => toast('Erro: ' + err.message, 'error'))
+    .withFailureHandler(err => { _nfEnviando = false; toast('Erro: ' + err.message, 'error'); })
     .salvarRecebimento(dados);
 }
 
