@@ -990,15 +990,39 @@ function _enviarEmailDivergencia(idRec, dados, temDivQtd, temDivPreco, temDivPag
     </tr>`;
   }).join('');
 
-  const secaoPagto = temDivPagto ? `
+  const secaoPagto = temDivPagto ? (() => {
+    const esperadas  = String(dados.pagtoEsperado || '').split(',').filter(Boolean);
+    const informadas = String(dados.pagtoNF       || '').split(',').filter(Boolean);
+    const rowsParcelas = esperadas.map((espISO, i) => {
+      const infStr = informadas[i] || '—';
+      let espStr = '—', espMs = null;
+      if (espISO) {
+        const [y, m, d] = espISO.split('-').map(Number);
+        espStr = String(d).padStart(2,'0') + '/' + String(m).padStart(2,'0') + '/' + y;
+        espMs = Date.UTC(y, m - 1, d);
+      }
+      let diffStr = '';
+      if (espMs !== null && infStr !== '—' && /^\d{2}\/\d{2}\/\d{4}$/.test(infStr)) {
+        const [dd, mm, aaaa] = infStr.split('/').map(Number);
+        const infMs = Date.UTC(aaaa, mm - 1, dd);
+        const diff  = Math.round((infMs - espMs) / 86400000);
+        if (diff > 0)      diffStr = ` <span style="color:#c0392b;font-size:11px">(+${diff} dias — prazo maior)</span>`;
+        else if (diff < 0) diffStr = ` <span style="color:#e8a020;font-size:11px">(${Math.abs(diff)} dias — prazo menor)</span>`;
+      }
+      return `<tr>
+        <td style="padding:4px 0;color:#666;width:90px;vertical-align:top">Parcela ${i+1}:</td>
+        <td style="padding:4px 0">Esperado <strong>${espStr}</strong> &nbsp;→&nbsp; NF <strong style="color:#c0392b">${infStr}</strong>${diffStr}</td>
+      </tr>`;
+    }).join('');
+    return `
     <div style="margin:20px 28px;padding:14px 16px;background:#fff3cd;border-left:4px solid #e8a020;border-radius:4px;">
-      <div style="font-weight:700;color:#5a4000;margin-bottom:6px;">⚠ Divergência de Prazo de Pagamento</div>
+      <div style="font-weight:700;color:#5a4000;margin-bottom:8px;">⚠ Divergência de Prazo de Pagamento</div>
       <table style="font-size:13px;width:100%;border-collapse:collapse;">
-        <tr><td style="padding:3px 0;color:#666;width:160px;">Condição do pedido:</td><td style="font-weight:600;">${dados.condPagamento||'—'}</td></tr>
-        <tr><td style="padding:3px 0;color:#666;">Datas esperadas:</td><td>${dados.pagtoEsperado||'—'}</td></tr>
-        <tr><td style="padding:3px 0;color:#666;">Datas na NF:</td><td style="color:#c0392b;font-weight:600;">${dados.pagtoNF||'—'}</td></tr>
+        <tr><td style="padding:4px 0;color:#666;width:90px">Condição:</td><td style="font-weight:600;">${dados.condPagamento||'—'}</td></tr>
+        ${rowsParcelas}
       </table>
-    </div>` : '';
+    </div>`;
+  })() : '';
 
   const htmlBody = `
   <div style="font-family:Arial,sans-serif;max-width:700px;margin:0 auto;border:1px solid #dde3ea;border-radius:6px;overflow:hidden;">
@@ -1051,7 +1075,28 @@ function _enviarEmailDivergencia(idRec, dados, temDivQtd, temDivPreco, temDivPag
       const pPed   = parseFloat(item.precoPedido)||0, pRec = parseFloat(item.precoRecebido)||0;
       return `${item.codMP} ${item.descricao} | Qtd: ${qtdPed}→${qtdRec} | Preço: ${pPed.toFixed(2)}→${pRec.toFixed(2)}`;
     }).join('\n') +
-    (temDivPagto ? `\n\nDivergência Pagto:\nCondição: ${dados.condPagamento}\nEsperado: ${dados.pagtoEsperado}\nNF: ${dados.pagtoNF}` : '');
+    (temDivPagto ? (() => {
+      const esperadas  = String(dados.pagtoEsperado || '').split(',').filter(Boolean);
+      const informadas = String(dados.pagtoNF       || '').split(',').filter(Boolean);
+      const linhas = esperadas.map((espISO, i) => {
+        const infStr = informadas[i] || '—';
+        let espStr = espISO;
+        if (espISO) {
+          const [y, m, d] = espISO.split('-').map(Number);
+          espStr = String(d).padStart(2,'0') + '/' + String(m).padStart(2,'0') + '/' + y;
+        }
+        let diffStr = '';
+        if (espISO && infStr !== '—' && /^\d{2}\/\d{2}\/\d{4}$/.test(infStr)) {
+          const [y, m, d] = espISO.split('-').map(Number);
+          const [dd, mm, aaaa] = infStr.split('/').map(Number);
+          const diff = Math.round((Date.UTC(aaaa, mm-1, dd) - Date.UTC(y, m-1, d)) / 86400000);
+          if (diff > 0)      diffStr = ` (+${diff}d — prazo maior)`;
+          else if (diff < 0) diffStr = ` (${Math.abs(diff)}d — prazo menor)`;
+        }
+        return `  Parcela ${i+1}: Esperado ${espStr} → NF ${infStr}${diffStr}`;
+      }).join('\n');
+      return `\n\nDivergência Pagto:\nCondição: ${dados.condPagamento}\n${linhas}`;
+    })() : '');
 
   MailApp.sendEmail({
     to:      destinatarios.join(','),
