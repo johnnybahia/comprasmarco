@@ -57,6 +57,12 @@ function logErro(msg) {
   } catch(e) {}
 }
 
+function _escHTML(s) {
+  return String(s == null ? '' : s)
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+
 // Gera salt aleatório de 16 bytes em hex
 function _gerarSalt() {
   const bytes = [];
@@ -981,8 +987,8 @@ function _enviarEmailDivergencia(idRec, dados, temDivQtd, temDivPreco, temDivPag
     const divP = Math.abs(precRec - precPed) > 0.001;
     const bg    = (divQ || divP) ? 'background:#fff3cd;' : '';
     return `<tr style="${bg}">
-      <td style="padding:8px 10px;border-bottom:1px solid #eee;font-family:monospace;font-size:12px;">${item.codMP||''}</td>
-      <td style="padding:8px 10px;border-bottom:1px solid #eee;font-size:13px;">${item.descricao||''}</td>
+      <td style="padding:8px 10px;border-bottom:1px solid #eee;font-family:monospace;font-size:12px;">${_escHTML(item.codMP)}</td>
+      <td style="padding:8px 10px;border-bottom:1px solid #eee;font-size:13px;">${_escHTML(item.descricao)}</td>
       <td style="padding:8px 10px;border-bottom:1px solid #eee;text-align:right;">${qtdPed.toFixed(3)}</td>
       <td style="padding:8px 10px;border-bottom:1px solid #eee;text-align:right;${divQ?'color:#c0392b;font-weight:bold;':''}">${qtdRec.toFixed(3)}${divQ?' ⚠':''}</td>
       <td style="padding:8px 10px;border-bottom:1px solid #eee;text-align:right;">R$ ${precPed.toFixed(2)}</td>
@@ -1018,7 +1024,7 @@ function _enviarEmailDivergencia(idRec, dados, temDivQtd, temDivPreco, temDivPag
     <div style="margin:20px 28px;padding:14px 16px;background:#fff3cd;border-left:4px solid #e8a020;border-radius:4px;">
       <div style="font-weight:700;color:#5a4000;margin-bottom:8px;">⚠ Divergência de Prazo de Pagamento</div>
       <table style="font-size:13px;width:100%;border-collapse:collapse;">
-        <tr><td style="padding:4px 0;color:#666;width:90px">Condição:</td><td style="font-weight:600;">${dados.condPagamento||'—'}</td></tr>
+        <tr><td style="padding:4px 0;color:#666;width:90px">Condição:</td><td style="font-weight:600;">${_escHTML(dados.condPagamento||'—')}</td></tr>
         ${rowsParcelas}
       </table>
     </div>`;
@@ -1029,8 +1035,8 @@ function _enviarEmailDivergencia(idRec, dados, temDivQtd, temDivPreco, temDivPag
     <div style="background:#1a3c5e;padding:20px 28px;">
       <img src="https://i.ibb.co/FGGjdsM/LOGO-MARFIM.jpg" alt="Marfim" style="height:48px;width:auto;border-radius:4px;margin-bottom:10px;display:block;">
       <div style="font-size:11px;font-weight:600;letter-spacing:3px;color:#e8a020;text-transform:uppercase;margin-bottom:4px;">Alerta de Divergência — Recebimento NF</div>
-      <div style="font-size:18px;font-weight:700;color:white;">${dados.idPedido} · NF ${dados.nfNumero}</div>
-      <div style="font-size:12px;color:rgba(255,255,255,0.65);margin-top:3px;">Registrado em ${dataFmt} por ${dados.usuarioLogado}</div>
+      <div style="font-size:18px;font-weight:700;color:white;">${_escHTML(dados.idPedido)} · NF ${_escHTML(dados.nfNumero)}</div>
+      <div style="font-size:12px;color:rgba(255,255,255,0.65);margin-top:3px;">Registrado em ${dataFmt} por ${_escHTML(dados.usuarioLogado)}</div>
     </div>
     <div style="background:#fdecea;border-left:4px solid #c0392b;padding:12px 28px;font-size:13px;color:#7b1a1a;">
       <strong>Divergência detectada em:</strong> ${divLabels}
@@ -1051,14 +1057,14 @@ function _enviarEmailDivergencia(idRec, dados, temDivQtd, temDivPreco, temDivPag
     ${secaoPagto}
     <div style="padding:16px 28px;">
       <table style="font-size:13px;width:100%;">
-        <tr><td style="color:#666;width:180px;">Pedido:</td><td><strong>${dados.idPedido}</strong></td></tr>
-        <tr><td style="color:#666;">Recebimento:</td><td><strong>${idRec}</strong></td></tr>
-        <tr><td style="color:#666;">NF Nº:</td><td>${dados.nfNumero}</td></tr>
-        <tr><td style="color:#666;">Data NF:</td><td>${dados.nfData||'—'}</td></tr>
-        <tr><td style="color:#666;">Filial:</td><td>${dados.nomeFilial} (${dados.codFilial})</td></tr>
-        <tr><td style="color:#666;">Fornecedor:</td><td>${dados.nomeFornecedor}</td></tr>
+        <tr><td style="color:#666;width:180px;">Pedido:</td><td><strong>${_escHTML(dados.idPedido)}</strong></td></tr>
+        <tr><td style="color:#666;">Recebimento:</td><td><strong>${_escHTML(idRec)}</strong></td></tr>
+        <tr><td style="color:#666;">NF Nº:</td><td>${_escHTML(dados.nfNumero)}</td></tr>
+        <tr><td style="color:#666;">Data NF:</td><td>${_escHTML(dados.nfData||'—')}</td></tr>
+        <tr><td style="color:#666;">Filial:</td><td>${_escHTML(dados.nomeFilial)} (${_escHTML(dados.codFilial)})</td></tr>
+        <tr><td style="color:#666;">Fornecedor:</td><td>${_escHTML(dados.nomeFornecedor)}</td></tr>
         <tr><td style="color:#666;">Total Recebido:</td><td><strong>R$ ${valorTotalRec.toFixed(2)}</strong></td></tr>
-        ${dados.observacao ? `<tr><td style="color:#666;">Observação:</td><td>${dados.observacao}</td></tr>` : ''}
+        ${dados.observacao ? `<tr><td style="color:#666;">Observação:</td><td>${_escHTML(dados.observacao)}</td></tr>` : ''}
       </table>
     </div>
     <div style="background:#f4f7fb;padding:12px 28px;font-size:11px;color:#888;text-align:center;">
