@@ -1068,27 +1068,40 @@ function _enviarEmailDivergencia(idRec, dados, temDivQtd, temDivPreco, temDivPag
   }).join('');
 
   const secaoPagto = temDivPagto ? (() => {
-    const esperadas  = String(dados.pagtoEsperado || '').split(',').filter(Boolean);
-    const informadas = String(dados.pagtoNF       || '').split(',').filter(Boolean);
+    const esperadas        = String(dados.pagtoEsperado        || '').split(',').filter(Boolean);
+    const esperadasEntrega = String(dados.pagtoEsperadoEntrega || '').split(',').filter(Boolean);
+    const informadas       = String(dados.pagtoNF              || '').split(',').filter(Boolean);
+
+    function _isoToDisplay(isoStr) {
+      if (!isoStr) return null;
+      const [y, m, d] = isoStr.split('-').map(Number);
+      if (!y) return null;
+      return { str: String(d).padStart(2,'0') + '/' + String(m).padStart(2,'0') + '/' + y,
+               ms: Date.UTC(y, m - 1, d) };
+    }
+
     const rowsParcelas = esperadas.map((espISO, i) => {
-      const infStr = informadas[i] || '—';
-      let espStr = '—', espMs = null;
-      if (espISO) {
-        const [y, m, d] = espISO.split('-').map(Number);
-        espStr = String(d).padStart(2,'0') + '/' + String(m).padStart(2,'0') + '/' + y;
-        espMs = Date.UTC(y, m - 1, d);
-      }
+      const infStr  = informadas[i] || '—';
+      const esp     = _isoToDisplay(espISO);
+      const espEnt  = _isoToDisplay(esperadasEntrega[i] || '');
+      const espStr  = esp ? esp.str : '—';
+
+      // Linha de referência alternativa (entrega) quando diferente da emissão
+      const altRefStr = (espEnt && espEnt.str !== espStr)
+        ? ` <span style="color:#666;font-size:11px">ou <strong>${espEnt.str}</strong> (pela entrega)</span>`
+        : '';
+
       let diffStr = '';
-      if (espMs !== null && infStr !== '—' && /^\d{2}\/\d{2}\/\d{4}$/.test(infStr)) {
+      if (esp && infStr !== '—' && /^\d{2}\/\d{2}\/\d{4}$/.test(infStr)) {
         const [dd, mm, aaaa] = infStr.split('/').map(Number);
         const infMs = Date.UTC(aaaa, mm - 1, dd);
-        const diff  = Math.round((infMs - espMs) / 86400000);
+        const diff  = Math.round((infMs - esp.ms) / 86400000);
         if (diff > 0)      diffStr = ` <span style="color:#c0392b;font-size:11px">(+${diff} dias — prazo maior)</span>`;
         else if (diff < 0) diffStr = ` <span style="color:#e8a020;font-size:11px">(${Math.abs(diff)} dias — prazo menor)</span>`;
       }
       return `<tr>
         <td style="padding:4px 0;color:#666;width:90px;vertical-align:top">Parcela ${i+1}:</td>
-        <td style="padding:4px 0">Esperado <strong>${espStr}</strong> &nbsp;→&nbsp; NF <strong style="color:#c0392b">${infStr}</strong>${diffStr}</td>
+        <td style="padding:4px 0">Esperado <strong>${espStr}</strong>${altRefStr} &nbsp;→&nbsp; NF <strong style="color:#c0392b">${infStr}</strong>${diffStr}</td>
       </tr>`;
     }).join('');
     return `

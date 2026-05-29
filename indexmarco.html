@@ -3259,6 +3259,10 @@ function _renderPagtoNF() {
   const nfDataStr = document.getElementById('nf-data').value.trim();
   const podeCal   = /^\d{2}\/\d{2}\/\d{4}$/.test(nfDataStr);
 
+  // Data de entrega do pedido como referência alternativa
+  const _prazoEntregaParsed = _parseDatePagto(String(p.PRAZO_ENTREGA || ''));
+  const prazoEntregaStr = _prazoEntregaParsed ? _prazoEntregaParsed.str : null; // DD/MM/AAAA
+
   // Preserva valores já digitados pelo usuário antes de reconstruir o HTML
   const _valoresNF = {};
   cond.dias.forEach((_, i) => {
@@ -3274,15 +3278,26 @@ function _renderPagtoNF() {
     <div style="display:grid;gap:12px">
     ${cond.dias.map((d, i) => {
       let espStr = '(informe a data da NF primeiro)', espISO = '';
+      let espEntStr = '', espEntISO = '';
       if (podeCal) {
         const dt = calcDataPagtoUtil(nfDataStr, d);
         if (dt) { espStr = _fmtDataBR(dt); espISO = _isoDate(dt); }
         else espStr = '(data inválida)';
       }
+      if (prazoEntregaStr) {
+        const dtEnt = calcDataPagtoUtil(prazoEntregaStr, d);
+        if (dtEnt) { espEntStr = _fmtDataBR(dtEnt); espEntISO = _isoDate(dtEnt); }
+      }
+      // Mostra referência da entrega apenas se diferente da emissão
+      const mostrarEntrega = espEntISO && espEntISO !== espISO;
+      const labelEntrega = mostrarEntrega
+        ? `<span style="font-size:11px;color:var(--text3);margin-left:4px">ou <strong>${escHTML(espEntStr)}</strong> pela entrega</span>`
+        : '';
       return `<div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;padding:8px;background:var(--surface2);border-radius:var(--radius);border:1px solid var(--border)">
         <span style="min-width:100px;font-size:12px;font-weight:600;color:var(--text2)">Parcela ${i+1} — ${d} DD</span>
-        <span style="font-size:12px;color:var(--text2)">Venc. esperado: <strong id="pagto-esp-${i}">${escHTML(espStr)}</strong></span>
+        <span style="font-size:12px;color:var(--text2)">Venc. esperado: <strong id="pagto-esp-${i}">${escHTML(espStr)}</strong>${labelEntrega}</span>
         <input type="hidden" id="pagto-esp-iso-${i}" value="${escHTML(espISO)}">
+        <input type="hidden" id="pagto-esp-iso-entrega-${i}" value="${escHTML(espEntISO)}">
         <div style="display:flex;align-items:center;gap:6px;margin-left:auto">
           <label style="font-size:12px;font-weight:600;color:var(--text2)">Data na NF:</label>
           <input type="text" class="nf-edit-input" id="pagto-nf-${i}" placeholder="${podeCal ? 'DD/MM/AAAA' : 'Informe a data da NF'}" maxlength="10"
@@ -3311,21 +3326,29 @@ function _proximoDiaUtil(d) {
   else if (dow === 0) r.setDate(r.getDate() + 1);
   return r;
 }
+// Retorna true se nfDate (Date local) bate com a data ISO dada (aceitando próximo dia útil)
+function _matchesRefISO(nfDate, isoStr) {
+  if (!isoStr) return false;
+  const ref = new Date(isoStr);
+  if (isNaN(ref)) return false;
+  const dow = ref.getDay();
+  const proxUtil = (dow === 6 || dow === 0) ? _proximoDiaUtil(ref) : null;
+  return nfDate.getTime() === ref.getTime() ||
+         (proxUtil != null && nfDate.getTime() === proxUtil.getTime());
+}
+
 function _verificarParcela(idx) {
-  const nfVal  = document.getElementById('pagto-nf-'+idx)?.value.trim() || '';
-  const espISO = document.getElementById('pagto-esp-iso-'+idx)?.value || '';
-  const badge  = document.getElementById('pagto-badge-'+idx);
+  const nfVal     = document.getElementById('pagto-nf-'+idx)?.value.trim() || '';
+  const espISO    = document.getElementById('pagto-esp-iso-'+idx)?.value || '';
+  const espEntISO = document.getElementById('pagto-esp-iso-entrega-'+idx)?.value || '';
+  const badge     = document.getElementById('pagto-badge-'+idx);
   if (!badge) return;
   if (!nfVal || !/^\d{2}\/\d{2}\/\d{4}$/.test(nfVal) || !espISO) { badge.style.display = 'none'; return; }
   const [dd,mm,aaaa] = nfVal.split('/');
   const nfDate  = new Date(parseInt(aaaa), parseInt(mm)-1, parseInt(dd));
   const espDate = new Date(espISO);
-  const dow     = espDate.getDay();
-  const fimDeSemana = dow === 0 || dow === 6;
-  const proxUtil = fimDeSemana ? _proximoDiaUtil(espDate) : null;
-  const correto  = nfDate.getTime() === espDate.getTime() ||
-                   (proxUtil && nfDate.getTime() === proxUtil.getTime());
-  const diff     = Math.round((nfDate - espDate) / 86400000);
+  const correto = _matchesRefISO(nfDate, espISO) || _matchesRefISO(nfDate, espEntISO);
+  const diff    = Math.round((nfDate - espDate) / 86400000);
   badge.style.display = '';
   if (correto)       { badge.className = 'badge badge-green';  badge.textContent = '✓ Correto'; }
   else if (diff < 0) { badge.className = 'badge badge-orange'; badge.textContent = `⚠ ${Math.abs(diff)}d antes`; }
@@ -3414,44 +3437,45 @@ function confirmarLancarNF() {
 
   // Coleta datas de pagamento informadas na NF
   const condPag = _parsCondPag(p.COND_PAGAMENTO);
-  let parcelasEsp = [], parcelasNF = [], temDivPagto = false;
+  let parcelasEsp = [], parcelasEspEntrega = [], parcelasNF = [], temDivPagto = false;
   if (!condPag.avista && condPag.dias.length > 0) {
     condPag.dias.forEach((d, i) => {
-      const espISO = document.getElementById('pagto-esp-iso-' + i)?.value || '';
-      const nfVal  = document.getElementById('pagto-nf-' + i)?.value.trim() || '';
+      const espISO    = document.getElementById('pagto-esp-iso-' + i)?.value || '';
+      const espEntISO = document.getElementById('pagto-esp-iso-entrega-' + i)?.value || '';
+      const nfVal     = document.getElementById('pagto-nf-' + i)?.value.trim() || '';
       parcelasEsp.push(espISO);
+      parcelasEspEntrega.push(espEntISO);
       parcelasNF.push(nfVal);
       if (espISO && nfVal && /^\d{2}\/\d{2}\/\d{4}$/.test(nfVal)) {
         const [dd, mm, aaaa] = nfVal.split('/');
-        const nfDate  = new Date(parseInt(aaaa), parseInt(mm)-1, parseInt(dd));
-        const espDate = new Date(espISO);
-        // Mesma tolerância de _verificarParcela: aceita próximo dia útil quando espDate é fim de semana
-        const dow = espDate.getDay();
-        const proxUtil = (dow === 6 || dow === 0) ? _proximoDiaUtil(espDate) : null;
-        const correto = nfDate.getTime() === espDate.getTime() ||
-                        (proxUtil && nfDate.getTime() === proxUtil.getTime());
-        if (!correto) temDivPagto = true;
+        const nfDate = new Date(parseInt(aaaa), parseInt(mm)-1, parseInt(dd));
+        // Divergência só se não bater com nenhuma das duas referências (emissão e entrega)
+        if (!_matchesRefISO(nfDate, espISO) && !_matchesRefISO(nfDate, espEntISO)) {
+          temDivPagto = true;
+        }
       }
     });
   }
   if (temDivPagto) tudoIgual = false;
 
   _nfDadosPendente = {
-    idPedido:         p.ID_PEDIDO,
-    nfNumero:         nfNum,
-    nfData:           nfData,
-    codFilial:        p.COD_FILIAL,
-    nomeFilial:       p.NOME_FILIAL,
-    codFornecedor:    p.COD_FORNECEDOR,
-    nomeFornecedor:   p.NOME_FORNECEDOR,
-    usuarioLogado:    sessao.nome,
-    emailUsuario:     sessao.email  || '',
-    valorTotalPedido: isNaN(parseFloat(p.VALOR_TOTAL)) ? 0 : parseFloat(p.VALOR_TOTAL),
-    observacao:       document.getElementById('nf-obs').value.trim(),
-    condPagamento:    p.COND_PAGAMENTO || '',
-    pagtoEsperado:    parcelasEsp.join(','),
-    pagtoNF:          parcelasNF.join(','),
-    divPagto:         temDivPagto,
+    idPedido:              p.ID_PEDIDO,
+    nfNumero:              nfNum,
+    nfData:                nfData,
+    codFilial:             p.COD_FILIAL,
+    nomeFilial:            p.NOME_FILIAL,
+    codFornecedor:         p.COD_FORNECEDOR,
+    nomeFornecedor:        p.NOME_FORNECEDOR,
+    usuarioLogado:         sessao.nome,
+    emailUsuario:          sessao.email  || '',
+    valorTotalPedido:      isNaN(parseFloat(p.VALOR_TOTAL)) ? 0 : parseFloat(p.VALOR_TOTAL),
+    observacao:            document.getElementById('nf-obs').value.trim(),
+    condPagamento:         p.COND_PAGAMENTO || '',
+    pagtoEsperado:         parcelasEsp.join(','),
+    pagtoEsperadoEntrega:  parcelasEspEntrega.join(','),
+    pagtoNF:               parcelasNF.join(','),
+    divPagto:              temDivPagto,
+    prazoEntrega:          String(p.PRAZO_ENTREGA || ''),
     itens
   };
 
