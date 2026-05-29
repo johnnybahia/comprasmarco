@@ -3326,11 +3326,19 @@ function _proximoDiaUtil(d) {
   else if (dow === 0) r.setDate(r.getDate() + 1);
   return r;
 }
+// Converte string ISO "yyyy-MM-dd" para Date LOCAL (evita UTC midnight vs local midnight)
+function _isoToLocalDate(isoStr) {
+  if (!isoStr) return null;
+  const p = isoStr.split('-').map(Number);
+  if (p.length < 3 || isNaN(p[0])) return null;
+  const d = new Date(p[0], p[1] - 1, p[2]);
+  return isNaN(d) ? null : d;
+}
+
 // Retorna true se nfDate (Date local) bate com a data ISO dada (aceitando próximo dia útil)
 function _matchesRefISO(nfDate, isoStr) {
-  if (!isoStr) return false;
-  const ref = new Date(isoStr);
-  if (isNaN(ref)) return false;
+  const ref = _isoToLocalDate(isoStr);
+  if (!ref) return false;
   const dow = ref.getDay();
   const proxUtil = (dow === 6 || dow === 0) ? _proximoDiaUtil(ref) : null;
   return nfDate.getTime() === ref.getTime() ||
@@ -3346,7 +3354,7 @@ function _verificarParcela(idx) {
   if (!nfVal || !/^\d{2}\/\d{2}\/\d{4}$/.test(nfVal) || !espISO) { badge.style.display = 'none'; return; }
   const [dd,mm,aaaa] = nfVal.split('/');
   const nfDate  = new Date(parseInt(aaaa), parseInt(mm)-1, parseInt(dd));
-  const espDate = new Date(espISO);
+  const espDate = _isoToLocalDate(espISO) || new Date(espISO);
   const correto = _matchesRefISO(nfDate, espISO) || _matchesRefISO(nfDate, espEntISO);
   const diff    = Math.round((nfDate - espDate) / 86400000);
   badge.style.display = '';
