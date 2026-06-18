@@ -64,12 +64,14 @@ function _escHTML(s) {
 }
 
 // Retorna o perfil real do usuário consultando a planilha; null se não encontrado.
+// Aceita tanto o login (USUARIO) quanto o nome de exibição (NOME), pois algumas
+// telas do frontend enviam sessao.nome em vez de sessao.usuario.
 function _getPerfilReal(usuarioLogin) {
   if (!usuarioLogin) return null;
+  const alvo = String(usuarioLogin).trim().toLowerCase();
   const users = sheetToArray(ABAS.USUARIOS);
-  const user = users.find(u =>
-    String(u.USUARIO).trim().toLowerCase() === String(usuarioLogin).trim().toLowerCase()
-  );
+  const user = users.find(u => String(u.USUARIO).trim().toLowerCase() === alvo)
+            || users.find(u => String(u.NOME).trim().toLowerCase() === alvo);
   return user ? String(user.PERFIL || '').toUpperCase().trim() : null;
 }
 
