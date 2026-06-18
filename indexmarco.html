@@ -1952,26 +1952,62 @@ function mascaraCNPJ(input) {
   input.value = v;
 }
 
+function preencherDadosCNPJ(prefixo, d) {
+  const set = (id, val) => { const el = document.getElementById(id); if (el && val) el.value = val; };
+  const nome = d.nome_fantasia || d.razao_social || '';
+  set('f-' + prefixo + '-nome',   nome);
+  set('f-' + prefixo + '-cep',    (d.cep || '').replace(/\D/g,'').replace(/^(\d{5})(\d{3})$/,'$1-$2'));
+  set('f-' + prefixo + '-end',    [d.logradouro, d.numero].filter(Boolean).join(', '));
+  set('f-' + prefixo + '-bairro', d.bairro   || '');
+  set('f-' + prefixo + '-cidade', d.municipio || '');
+  set('f-' + prefixo + '-estado', d.uf        || '');
+  toast('Dados preenchidos via CNPJ', 'success');
+}
+
+function classificarErroCNPJ(r) {
+  if (r.status === 429) return { tipo: 'rate-limit' };
+  if (r.status === 404) return { tipo: 'nao-encontrado' };
+  return { tipo: 'falha' };
+}
+
 function buscarCNPJ(prefixo) {
   const cnpjEl = document.getElementById('f-' + prefixo + '-cnpj');
   const cnpj   = cnpjEl.value.replace(/\D/g,'');
   if (cnpj.length !== 14) return;
 
   toast('Buscando CNPJ...', 'info');
+
   fetch('https://brasilapi.com.br/api/cnpj/v1/' + cnpj)
-    .then(r => { if (!r.ok) throw new Error(); return r.json(); })
-    .then(d => {
-      const set = (id, val) => { const el = document.getElementById(id); if (el && val) el.value = val; };
-      const nome = d.nome_fantasia || d.razao_social || '';
-      set('f-' + prefixo + '-nome',   nome);
-      set('f-' + prefixo + '-cep',    (d.cep || '').replace(/\D/g,'').replace(/^(\d{5})(\d{3})$/,'$1-$2'));
-      set('f-' + prefixo + '-end',    [d.logradouro, d.numero].filter(Boolean).join(', '));
-      set('f-' + prefixo + '-bairro', d.bairro   || '');
-      set('f-' + prefixo + '-cidade', d.municipio || '');
-      set('f-' + prefixo + '-estado', d.uf        || '');
-      toast('Dados preenchidos via CNPJ', 'success');
-    })
-    .catch(() => toast('CNPJ não encontrado na base pública', 'error'));
+    .then(r => { if (!r.ok) throw classificarErroCNPJ(r); return r.json(); })
+    .then(d => preencherDadosCNPJ(prefixo, d))
+    .catch(erroBrasilApi => {
+      // BrasilAPI falhou (fora do ar, rate limit ou CNPJ não encontrado) - tenta ReceitaWS como segunda fonte
+      fetch('https://www.receitaws.com.br/v1/cnpj/' + cnpj)
+        .then(r => { if (!r.ok) throw classificarErroCNPJ(r); return r.json(); })
+        .then(d => {
+          if (d.status === 'ERROR') throw { tipo: 'nao-encontrado' };
+          preencherDadosCNPJ(prefixo, {
+            nome_fantasia: d.fantasia,
+            razao_social:  d.nome,
+            cep:            d.cep,
+            logradouro:     d.logradouro,
+            numero:         d.numero,
+            bairro:         d.bairro,
+            municipio:      d.municipio,
+            uf:             d.uf
+          });
+        })
+        .catch(erroReceitaWs => {
+          const erros = [erroBrasilApi, erroReceitaWs || {}];
+          if (erros.some(e => e.tipo === 'nao-encontrado')) {
+            toast('CNPJ não encontrado na base pública', 'error');
+          } else if (erros.some(e => e.tipo === 'rate-limit')) {
+            toast('Muitas consultas agora, aguarde alguns segundos e tente novamente', 'error');
+          } else {
+            toast('Não foi possível consultar o CNPJ agora, tente novamente', 'error');
+          }
+        });
+    });
 }
 
 // ════════════════════════════════════════════════════
