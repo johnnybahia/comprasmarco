@@ -1607,6 +1607,20 @@ function reenviarPedidoRetificado(idPedido, usuarioLogado, emailUsuario, motivo)
     const statusAtual = String(get('STATUS') || '').trim().toUpperCase();
     if (statusAtual === 'CANCELADO') return { ok: false, msg: 'Pedido cancelado não pode ser reenviado' };
 
+    const logPedido = sheetToArray(ABAS.LOG_NF)
+      .filter(r => String(r.ID_PEDIDO).trim() === String(idPedido).trim());
+    const ultimaEdicao = logPedido
+      .filter(r => String(r.ACAO).trim() === 'EDIÇÃO')
+      .map(r => new Date(r.DATA_HORA).getTime())
+      .reduce((max, t) => Math.max(max, t), 0);
+    const ultimaRetificacao = logPedido
+      .filter(r => String(r.ACAO).trim() === 'RETIFICAÇÃO')
+      .map(r => new Date(r.DATA_HORA).getTime())
+      .reduce((max, t) => Math.max(max, t), 0);
+    if (ultimaEdicao === 0 || ultimaEdicao <= ultimaRetificacao) {
+      return { ok: false, msg: 'Não há correção pendente para reenviar — edite o pedido antes de retificar.' };
+    }
+
     const fornecedorCod = String(get('COD_FORNECEDOR') || '');
     const filialCod     = String(get('COD_FILIAL') || '');
     const nomeFilial    = String(get('NOME_FILIAL') || '');
