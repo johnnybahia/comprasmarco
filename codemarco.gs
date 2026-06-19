@@ -64,14 +64,13 @@ function _escHTML(s) {
 }
 
 // Retorna o perfil real do usuário consultando a planilha; null se não encontrado.
-// Aceita tanto o login (USUARIO) quanto o nome de exibição (NOME), pois algumas
-// telas do frontend enviam sessao.nome em vez de sessao.usuario.
+// Espera o LOGIN (coluna USUARIO) — nunca o nome de exibição.
 function _getPerfilReal(usuarioLogin) {
   if (!usuarioLogin) return null;
-  const alvo = String(usuarioLogin).trim().toLowerCase();
   const users = sheetToArray(ABAS.USUARIOS);
-  const user = users.find(u => String(u.USUARIO).trim().toLowerCase() === alvo)
-            || users.find(u => String(u.NOME).trim().toLowerCase() === alvo);
+  const user = users.find(u =>
+    String(u.USUARIO).trim().toLowerCase() === String(usuarioLogin).trim().toLowerCase()
+  );
   return user ? String(user.PERFIL || '').toUpperCase().trim() : null;
 }
 
@@ -1251,7 +1250,7 @@ function getLogNF(idPedido) {
   }
 }
 
-function excluirRecebimento(idRec, usuarioLogado, filiaisLiberadas, perfil) {
+function excluirRecebimento(idRec, usuarioLogado, filiaisLiberadas, perfil, usuarioLogin) {
   const lock = LockService.getScriptLock();
   try {
     lock.waitLock(15000);
@@ -1262,13 +1261,14 @@ function excluirRecebimento(idRec, usuarioLogado, filiaisLiberadas, perfil) {
     if (!rec) return { ok: false, msg: 'Recebimento não encontrado' };
 
     // Busca perfil real do usuário na planilha (não confia no param enviado pelo frontend)
-    const perfilReal = _getPerfilReal(usuarioLogado);
+    const loginReal = usuarioLogin || usuarioLogado;
+    const perfilReal = _getPerfilReal(loginReal);
     if (!perfilReal) return { ok: false, msg: 'Usuário não encontrado' };
 
     if (perfilReal !== 'ADMIN') {
       // Usuário não-ADMIN só pode excluir NFs das suas filiais liberadas
       const users = sheetToArray(ABAS.USUARIOS);
-      const user  = users.find(u => String(u.USUARIO).trim().toLowerCase() === String(usuarioLogado).trim().toLowerCase());
+      const user  = users.find(u => String(u.USUARIO).trim().toLowerCase() === String(loginReal).trim().toLowerCase());
       const liberadas = String(user?.FILIAIS_LIBERADAS || '').split(',').map(f => f.trim()).filter(Boolean);
       if (!liberadas.includes(String(rec.COD_FILIAL).trim())) {
         return { ok: false, msg: 'Sem permissão para excluir NF desta filial' };
@@ -1498,12 +1498,12 @@ function _enviarEmailCancelamento(rowData, headers, usuarioNome, emailUsuario, o
 // ============================================================
 
 // Correção interna: atualiza dados/itens do pedido. NÃO notifica o fornecedor.
-function editarPedido(idPedido, dados, usuarioLogado, motivo) {
+function editarPedido(idPedido, dados, usuarioLogado, motivo, usuarioLogin) {
   const lock = LockService.getScriptLock();
   try {
     lock.waitLock(15000);
 
-    const perfil = _getPerfilReal(usuarioLogado);
+    const perfil = _getPerfilReal(usuarioLogin || usuarioLogado);
     if (perfil !== 'ADMIN' && perfil !== 'COMPRAS') {
       return { ok: false, msg: 'Sem permissão para editar pedidos' };
     }
@@ -1584,12 +1584,12 @@ function editarPedido(idPedido, dados, usuarioLogado, motivo) {
 
 // Reenvia ao fornecedor a versão atual (já corrigida) do pedido, marcada como retificação.
 // Ação separada e explícita — só dispara email se o usuário chamar esta função.
-function reenviarPedidoRetificado(idPedido, usuarioLogado, emailUsuario, motivo) {
+function reenviarPedidoRetificado(idPedido, usuarioLogado, emailUsuario, motivo, usuarioLogin) {
   const lock = LockService.getScriptLock();
   try {
     lock.waitLock(15000);
 
-    const perfil = _getPerfilReal(usuarioLogado);
+    const perfil = _getPerfilReal(usuarioLogin || usuarioLogado);
     if (perfil !== 'ADMIN' && perfil !== 'COMPRAS') {
       return { ok: false, msg: 'Sem permissão para reenviar pedidos' };
     }

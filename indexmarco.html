@@ -2372,7 +2372,7 @@ function executarEditarPedido() {
       }
     })
     .withFailureHandler(err => { _pedidoEditando = false; toast('Erro ao salvar: ' + (err && err.message || String(err)), 'error'); })
-    .editarPedido(idPedido, dados, sessao?.nome || '', motivo);
+    .editarPedido(idPedido, dados, sessao?.nome || '', motivo, sessao?.usuario || '');
 }
 
 // ════════════════════════════════════════════════════
@@ -2416,7 +2416,7 @@ function executarRetificarPedido() {
       }
     })
     .withFailureHandler(err => { _pedidoRetificando = false; toast('Erro: ' + (err && err.message || String(err)), 'error'); })
-    .reenviarPedidoRetificado(p.ID_PEDIDO, sessao?.nome || '', sessao?.email || '', motivo);
+    .reenviarPedidoRetificado(p.ID_PEDIDO, sessao?.nome || '', sessao?.email || '', motivo, sessao?.usuario || '');
 }
 
 // ════════════════════════════════════════════════════
@@ -2933,7 +2933,7 @@ function executarExcluirNF() {
       }
     })
     .withFailureHandler(err => toast('Erro: ' + err.message, 'error'))
-    .excluirRecebimento(idRec, sessao?.nome || '', sessao?.filiaisLiberadas || [], sessao?.perfil || '');
+    .excluirRecebimento(idRec, sessao?.nome || '', sessao?.filiaisLiberadas || [], sessao?.perfil || '', sessao?.usuario || '');
 }
 
 // ════════════════════════════════════════════════════
