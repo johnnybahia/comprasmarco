@@ -441,6 +441,18 @@ table tr:hover td { background: #f5f7fb; }
 .modal p { color: var(--text2); font-size: 14px; margin-bottom: 20px; line-height: 1.5; }
 .modal-actions { display: flex; gap: 10px; justify-content: flex-end; }
 
+/* Pedidos com muitos itens: mantém título e botões visíveis, rolando só a lista de itens */
+#modal-confirm .modal {
+  display: flex; flex-direction: column;
+  max-height: calc(100vh - 48px);
+}
+#modal-confirm .modal h3 { flex-shrink: 0; }
+#modal-confirm-text { overflow-y: auto; min-height: 0; }
+#modal-confirm .modal-actions {
+  flex-shrink: 0; margin-top: 14px; padding-top: 14px;
+  border-top: 1px solid var(--border);
+}
+
 /* ── LOADING ── */
 .loading {
   display: inline-block; width: 14px; height: 14px;
