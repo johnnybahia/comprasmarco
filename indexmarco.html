@@ -288,6 +288,19 @@ body {
 }
 .ac-item span { color: var(--text2); }
 
+/* Dropdown largo: permite ler a descricao completa sem alterar o campo */
+.ac-dropdown.ac-wide {
+  right: auto;
+  min-width: 100%;
+  width: max-content;
+  max-width: min(560px, 70vw);
+  max-height: 280px;
+  border-radius: 0 var(--radius) var(--radius) var(--radius);
+}
+.ac-dropdown.ac-wide .ac-item { align-items: flex-start; }
+.ac-dropdown.ac-wide .ac-item code { margin-top: 1px; }
+.ac-dropdown.ac-wide .ac-item span { white-space: normal; line-height: 1.35; }
+
 /* ── EMAIL TAGS ── */
 .email-tags-wrap {
   border: 1px solid var(--border); border-radius: var(--radius);
@@ -682,7 +695,7 @@ table tr:hover td { background: #f5f7fb; }
             <div class="ac-wrap">
               <input type="text" id="item-cod" placeholder="Código ou nome"
                 onkeydown="if(event.key==='Enter'){fecharAC('item-cod');buscarMP();}">
-              <div class="ac-dropdown" id="ac-item-cod"></div>
+              <div class="ac-dropdown ac-wide" id="ac-item-cod"></div>
             </div>
           </div>
           <div class="field">
@@ -1532,7 +1545,7 @@ function registrarAutocompletes(tipo) {
     materia: [
       { inputId: 'item-cod', labelKey: 'DESCRICAO', onSelect: r => {
           document.getElementById('item-cod').value = r.COD;
-          document.getElementById('item-desc').value = r.DESCRICAO || '';
+          setDescricaoItem(r.DESCRICAO);
           document.getElementById('item-unidade').value = r.UNIDADE || '';
           tentarPreencherPreco();
         }
@@ -1568,7 +1581,7 @@ function setupAutocomplete(inputId, tipo, codKey, labelKey, onSelect) {
     if (filtered.length === 0) { dd.classList.remove('open'); return; }
 
     dd.innerHTML = filtered.map((r, i) =>
-      `<div class="ac-item" data-idx="${i}">
+      `<div class="ac-item" data-idx="${i}" title="${escHTML(String(r[codKey]) + ' - ' + String(r[labelKey] || ''))}">
         <code>${escHTML(String(r[codKey]))}</code>
         <span>${escHTML(String(r[labelKey] || ''))}</span>
       </div>`
@@ -1661,13 +1674,20 @@ function buscarLookup(tipo, prefixo) {
     .buscarCodigo(tipo, cod);
 }
 
+// Preenche a descricao e guarda o texto completo no tooltip do campo
+function setDescricaoItem(desc) {
+  const el = document.getElementById('item-desc');
+  el.value = desc || '';
+  el.title = desc || '';
+}
+
 function buscarMP() {
   const cod = document.getElementById('item-cod').value.trim();
   if (!cod) return;
 
   const found = (_cache.materia || []).find(r => String(r.COD).trim().toLowerCase() === cod.toLowerCase());
   if (found) {
-    document.getElementById('item-desc').value    = found.DESCRICAO || '';
+    setDescricaoItem(found.DESCRICAO);
     document.getElementById('item-unidade').value = found.UNIDADE || '';
     tentarPreencherPreco();
     return;
@@ -1676,7 +1696,7 @@ function buscarMP() {
   google.script.run
     .withSuccessHandler(res => {
       if (!res) { toast('Matéria-prima não encontrada', 'error'); return; }
-      document.getElementById('item-desc').value    = res.DESCRICAO || '';
+      setDescricaoItem(res.DESCRICAO);
       document.getElementById('item-unidade').value = res.UNIDADE || '';
       tentarPreencherPreco();
     })
@@ -2137,6 +2157,7 @@ function limparCamposItem() {
   ['item-cod','item-desc','item-unidade','item-qtd','item-preco'].forEach(id => {
     document.getElementById(id).value = '';
   });
+  document.getElementById('item-desc').title = '';
   document.getElementById('preco-hint').classList.remove('visible');
 }
 
