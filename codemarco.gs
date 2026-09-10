@@ -1494,18 +1494,20 @@ function _enviarEmailCancelamento(rowData, headers, usuarioNome, emailUsuario, o
 }
 
 // ============================================================
-// EDIÇÃO E RETIFICAÇÃO DE PEDIDOS
+// RETIFICAÇÃO DE PEDIDOS
 // ============================================================
 
-// Correção interna: atualiza dados/itens do pedido. NÃO notifica o fornecedor.
-function editarPedido(idPedido, dados, usuarioLogado, motivo, usuarioLogin) {
+// Corrige dados/itens de um pedido já enviado e reenvia ao fornecedor numa
+// única ação, avisando que o pedido foi atualizado. Ação sempre explícita
+// do usuário (botão dedicado), nunca efeito colateral de outra tela.
+function retificarPedido(idPedido, dados, usuarioLogado, motivo, usuarioLogin, emailUsuario) {
   const lock = LockService.getScriptLock();
   try {
     lock.waitLock(15000);
 
     const perfil = _getPerfilReal(usuarioLogin || usuarioLogado);
     if (perfil !== 'ADMIN' && perfil !== 'COMPRAS') {
-      return { ok: false, msg: 'Sem permissão para editar pedidos' };
+      return { ok: false, msg: 'Sem permissão para retificar pedidos' };
     }
 
     if (!Array.isArray(dados.itens) || dados.itens.length === 0) {
@@ -1517,6 +1519,7 @@ function editarPedido(idPedido, dados, usuarioLogado, motivo, usuarioLogin) {
     const headers = data[0].map(h => String(h).trim());
     const iId     = headers.indexOf('ID_PEDIDO');
     const iStatus = headers.indexOf('STATUS');
+    const iData   = headers.indexOf('DATA');
 
     let rowIdx = -1;
     for (let i = 1; i < data.length; i++) {
@@ -1525,16 +1528,27 @@ function editarPedido(idPedido, dados, usuarioLogado, motivo, usuarioLogin) {
     if (rowIdx < 0) return { ok: false, msg: 'Pedido não encontrado' };
 
     const statusAtual = String(data[rowIdx][iStatus] || '').trim().toUpperCase();
-    if (statusAtual === 'CANCELADO') return { ok: false, msg: 'Pedido cancelado não pode ser editado' };
+    if (statusAtual === 'CANCELADO') return { ok: false, msg: 'Pedido cancelado não pode ser retificado' };
 
-    // Bloqueia edição se já há NF lançada, para não divergir do que já foi recebido
+    // Bloqueia retificação se já há NF lançada, para não divergir do que já foi recebido
     const nfsLancadas = sheetToArray(ABAS.RECEBIMENTOS)
       .filter(r => String(r.ID_PEDIDO).trim() === String(idPedido).trim());
     if (nfsLancadas.length > 0) {
       const ids = nfsLancadas.map(r => r.ID_RECEBIMENTO).join(', ');
-      return { ok: false, msg: `Pedido possui ${nfsLancadas.length} NF(s) lançada(s) (${ids}). Exclua as NFs antes de editar.` };
+      return { ok: false, msg: `Pedido possui ${nfsLancadas.length} NF(s) lançada(s) (${ids}). Exclua as NFs antes de retificar.` };
     }
 
+    const fornecedor = buscarCodigo('fornecedor', dados.fornecedorCod);
+    if (!fornecedor || !fornecedor.EMAIL) {
+      return { ok: false, msg: 'Fornecedor sem email cadastrado — não é possível retificar' };
+    }
+    const emailsList = String(fornecedor.EMAIL).split(';').map(e => e.trim())
+      .filter(e => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e));
+    if (emailsList.length === 0) {
+      return { ok: false, msg: 'Email do fornecedor inválido — não é possível retificar' };
+    }
+
+    // Grava as correções no cabeçalho do pedido
     const setCol = (colName, val) => {
       const idx = headers.indexOf(colName);
       if (idx >= 0) sh.getRange(rowIdx + 1, idx + 1).setValue(val);
@@ -1571,73 +1585,8 @@ function editarPedido(idPedido, dados, usuarioLogado, motivo, usuarioLogin) {
       });
     });
 
-    _logNF('EDIÇÃO', '', idPedido, '', dados.filialCod, dados.filialNome, usuarioLogado, motivo || 'Correção interna do pedido');
-
-    return { ok: true, msg: 'Pedido corrigido internamente. O fornecedor ainda não foi notificado.' };
-  } catch(e) {
-    logErro('editarPedido: ' + e.message);
-    return { ok: false, msg: e.message };
-  } finally {
-    lock.releaseLock();
-  }
-}
-
-// Reenvia ao fornecedor a versão atual (já corrigida) do pedido, marcada como retificação.
-// Ação separada e explícita — só dispara email se o usuário chamar esta função.
-function reenviarPedidoRetificado(idPedido, usuarioLogado, emailUsuario, motivo, usuarioLogin) {
-  const lock = LockService.getScriptLock();
-  try {
-    lock.waitLock(15000);
-
-    const perfil = _getPerfilReal(usuarioLogin || usuarioLogado);
-    if (perfil !== 'ADMIN' && perfil !== 'COMPRAS') {
-      return { ok: false, msg: 'Sem permissão para reenviar pedidos' };
-    }
-
-    const sh = getSheet(ABAS.PEDIDOS);
-    const data = sh.getDataRange().getValues();
-    const headers = data[0].map(h => String(h).trim());
-    const iId = headers.indexOf('ID_PEDIDO');
-
-    let rowIdx = -1;
-    for (let i = 1; i < data.length; i++) {
-      if (String(data[i][iId]).trim() === String(idPedido).trim()) { rowIdx = i; break; }
-    }
-    if (rowIdx < 0) return { ok: false, msg: 'Pedido não encontrado' };
-
-    const get = col => { const idx = headers.indexOf(col); return idx >= 0 ? data[rowIdx][idx] : ''; };
-    const statusAtual = String(get('STATUS') || '').trim().toUpperCase();
-    if (statusAtual === 'CANCELADO') return { ok: false, msg: 'Pedido cancelado não pode ser reenviado' };
-
-    const logPedido = sheetToArray(ABAS.LOG_NF)
-      .filter(r => String(r.ID_PEDIDO).trim() === String(idPedido).trim());
-    const ultimaEdicao = logPedido
-      .filter(r => String(r.ACAO).trim() === 'EDIÇÃO')
-      .map(r => new Date(r.DATA_HORA).getTime())
-      .reduce((max, t) => Math.max(max, t), 0);
-    const ultimaRetificacao = logPedido
-      .filter(r => String(r.ACAO).trim() === 'RETIFICAÇÃO')
-      .map(r => new Date(r.DATA_HORA).getTime())
-      .reduce((max, t) => Math.max(max, t), 0);
-    if (ultimaEdicao === 0 || ultimaEdicao <= ultimaRetificacao) {
-      return { ok: false, msg: 'Não há correção pendente para reenviar — edite o pedido antes de retificar.' };
-    }
-
-    const fornecedorCod = String(get('COD_FORNECEDOR') || '');
-    const filialCod     = String(get('COD_FILIAL') || '');
-    const nomeFilial    = String(get('NOME_FILIAL') || '');
-
-    const fornecedor = buscarCodigo('fornecedor', fornecedorCod);
-    if (!fornecedor || !fornecedor.EMAIL) {
-      return { ok: false, msg: 'Fornecedor sem email cadastrado — não é possível reenviar' };
-    }
-    const emailsList = String(fornecedor.EMAIL).split(';').map(e => e.trim())
-      .filter(e => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e));
-    if (emailsList.length === 0) {
-      return { ok: false, msg: 'Email do fornecedor inválido — não é possível reenviar' };
-    }
-
-    const filial = buscarCodigo('filial', filialCod) || {};
+    // Reenvia ao fornecedor com os dados já corrigidos, marcado como retificação
+    const filial = buscarCodigo('filial', dados.filialCod) || {};
     const emailsFilial = String(filial.EMAIL_RESPONSAVEL || '')
       .split(';').map(e => e.trim()).filter(e => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e));
     const ccList = [...new Set([
@@ -1646,34 +1595,17 @@ function reenviarPedidoRetificado(idPedido, usuarioLogado, emailUsuario, motivo,
       ...(emailUsuario ? [emailUsuario] : [])
     ])].join(',');
 
-    const itens = sheetToArray(ABAS.ITENS_PEDIDO)
-      .filter(i => String(i.ID_PEDIDO).trim() === String(idPedido).trim())
-      .map(i => ({
-        cod: i.COD_MP, descricao: i.DESCRICAO, quantidade: i.QUANTIDADE,
-        unidade: i.UNIDADE, preco: i.PRECO_UNIT, subtotal: i.SUBTOTAL
-      }));
-    if (itens.length === 0) return { ok: false, msg: 'Pedido sem itens — não é possível reenviar' };
-
-    const dataPedidoRaw = get('DATA');
+    const dataPedidoRaw = iData >= 0 ? data[rowIdx][iData] : null;
     const dataPedido = dataPedidoRaw ? new Date(dataPedidoRaw) : new Date();
 
-    const dadosEmail = {
-      filialNome:         nomeFilial,
-      filialCNPJ:         filial.CNPJ || '',
-      filialEndereco:     [filial.ENDERECO, filial.BAIRRO, filial.CIDADE, filial.ESTADO].filter(Boolean).join(', '),
-      fornecedorNome:     get('NOME_FORNECEDOR'),
-      fornecedorCNPJ:     fornecedor.CNPJ || '',
+    const dadosEmail = Object.assign({}, dados, {
+      filialCNPJ:      filial.CNPJ      || '',
+      filialEndereco:  [filial.ENDERECO, filial.BAIRRO, filial.CIDADE, filial.ESTADO].filter(Boolean).join(', '),
+      fornecedorCNPJ:  fornecedor.CNPJ  || '',
       fornecedorEndereco: [fornecedor.ENDERECO, fornecedor.BAIRRO, fornecedor.CIDADE, fornecedor.ESTADO].filter(Boolean).join(', '),
-      frete:              get('FRETE'),
-      transportadoraNome: get('NOME_TRANSPORTADORA'),
-      prazoEntrega:       get('PRAZO_ENTREGA'),
-      condPagamento:      get('COND_PAGAMENTO'),
-      observacao:         get('OBSERVACAO'),
-      usuarioLogado:      usuarioLogado,
-      nomeRemetente:      usuarioLogado,
-      valorTotal:         get('VALOR_TOTAL'),
-      itens
-    };
+      usuarioLogado:   usuarioLogado,
+      nomeRemetente:   usuarioLogado
+    });
 
     const retif = { motivo: motivo || '' };
     const htmlEmail  = montarEmailHTML(idPedido, dataPedido, dadosEmail, retif);
@@ -1683,16 +1615,16 @@ function reenviarPedidoRetificado(idPedido, usuarioLogado, emailUsuario, motivo,
       to:       emailsList.join(','),
       cc:       ccList,
       replyTo:  'marco@marfim.ind.br',
-      subject:  `Pedido de Compra RETIFICADO ${idPedido} — ${nomeFilial}`,
+      subject:  `Pedido de Compra RETIFICADO ${idPedido} — ${dados.filialNome}`,
       body:     textoEmail,
       htmlBody: htmlEmail
     });
 
-    _logNF('RETIFICAÇÃO', '', idPedido, '', filialCod, nomeFilial, usuarioLogado, motivo || '');
+    _logNF('RETIFICAÇÃO', '', idPedido, '', dados.filialCod, dados.filialNome, usuarioLogado, motivo || '');
 
-    return { ok: true, msg: 'Pedido retificado reenviado ao fornecedor com sucesso' };
+    return { ok: true, msg: 'Pedido corrigido e reenviado ao fornecedor com sucesso' };
   } catch(e) {
-    logErro('reenviarPedidoRetificado: ' + e.message);
+    logErro('retificarPedido: ' + e.message);
     return { ok: false, msg: e.message };
   } finally {
     lock.releaseLock();

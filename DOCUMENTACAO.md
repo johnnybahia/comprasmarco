@@ -36,7 +36,9 @@ Definido em `setupPlanilha()` (`codemarco.gs`), constante `ABAS`:
 | `LOG_NF` | DATA_HORA, ACAO, ID_RECEBIMENTO, ID_PEDIDO, NF_NUMERO, COD_FILIAL, NOME_FILIAL, USUARIO, DETALHE |
 
 `LOG_NF` é a trilha de auditoria de um pedido. Ações registradas (`ACAO`): `LANÇAMENTO`,
-`EXCLUSÃO`, `CANCELAMENTO`, `EDIÇÃO`, `RETIFICAÇÃO`. Visível na tela de Histórico → detalhe do pedido.
+`EXCLUSÃO`, `CANCELAMENTO`, `RETIFICAÇÃO` (e `EDIÇÃO`, valor legado de pedidos corrigidos antes da
+fusão do fluxo de edição/retificação — não é mais gravado). Visível na tela de Histórico → detalhe
+do pedido.
 
 ## Perfis de usuário e permissões
 
@@ -45,8 +47,8 @@ Coluna `PERFIL` em `USUARIOS`. Quatro valores possíveis:
 | Perfil | Acesso |
 |---|---|
 | `ADMIN` | Tudo (Pedido, Histórico, NF, Cadastros). |
-| `COMPRAS` | Pedido + Histórico + NF. Sem Cadastros. Pode editar/retificar/cancelar pedidos e excluir NF. |
-| `USUARIO` | Pedido + Histórico. Sem NF, sem Cadastros. **Não pode** editar/retificar/cancelar pedidos já enviados. |
+| `COMPRAS` | Pedido + Histórico + NF. Sem Cadastros. Pode retificar/cancelar pedidos e excluir NF. |
+| `USUARIO` | Pedido + Histórico. Sem NF, sem Cadastros. **Não pode** retificar/cancelar pedidos já enviados. |
 | `FILIAL` | NF + Histórico filtrado pelas filiais autorizadas (`FILIAIS_LIBERADAS`). Não acessa "Novo Pedido". |
 
 Regras de gating ficam tanto no frontend (esconder botão/menu) quanto **revalidadas no backend**
@@ -67,18 +69,18 @@ usuário logado que não seja `FILIAL` pode criar e enviar pedidos.
 Lista pedidos e mostra detalhe: itens, NF recebida, log de auditoria, e ações disponíveis
 conforme perfil e status do pedido:
 
-- **✎ Editar Pedido** — corrige um pedido já enviado (dados/itens). Grava em `EDIÇÃo` no LOG_NF.
-  **Nunca envia email.** Bloqueado se já houver NF lançada para o pedido.
-- **📧 Retificar e Reenviar** — reenvia ao fornecedor a versão atual do pedido, marcado como
-  retificação (assunto e corpo do email avisam que substitui a versão anterior). Ação **separada
-  e explícita** — só dispara email se o usuário confirmar este botão especificamente (editar e
-  salvar nunca aciona isso automaticamente). **Bloqueado se não houver uma edição pendente**
-  (ou seja: pedido nunca editado, ou a última edição já foi retificada e não há edição mais nova
-  desde então).
+- **📧 Retificar e Reenviar** — abre o pedido no mesmo formulário de "Novo Pedido", com todos os
+  campos (dados do cabeçalho e itens) editáveis, inclusive edição inline de um item já lançado
+  (sem precisar excluir e relançar). Ao confirmar, salva as correções **e** reenvia ao fornecedor
+  numa única ação, marcado como retificação (assunto e corpo do email avisam que o pedido foi
+  atualizado e substitui a versão anterior). Se nenhum campo foi alterado desde a abertura do
+  formulário, o modal de confirmação avisa disso antes de enviar — mas não bloqueia o reenvio.
+  Bloqueado se já houver NF lançada para o pedido. Ação sempre explícita do usuário (botão
+  dedicado) — nunca dispara como efeito colateral de outra tela.
 - **Cancelar Pedido** — marca STATUS como CANCELADO e avisa o fornecedor por email. Bloqueado se
   já houver NF lançada.
 
-Editar/Retificar/Cancelar são restritos a `ADMIN`/`COMPRAS` (frontend e backend).
+Retificar/Cancelar são restritos a `ADMIN`/`COMPRAS` (frontend e backend).
 
 ### 3. Cadastros (`panel-cadastros`)
 CRUD de Fornecedores, Matérias-Primas, Transportadoras, Filiais e Usuários. Só `ADMIN`.
@@ -91,29 +93,26 @@ Permite excluir uma NF lançada (libera o pedido para novo lançamento, ou para 
 
 ## Regras de negócio importantes
 
-1. **Editar nunca envia email.** Só grava a correção internamente (`EDIÇÃO` no LOG_NF).
-2. **Retificar é sempre uma ação explícita do usuário** — nunca é disparada como efeito colateral
-   de editar/salvar.
-3. **Retificar exige uma edição pendente** — não é possível reenviar ao fornecedor se não houver
-   nenhuma alteração desde o último envio (evita reenvio duplicado/desnecessário).
-4. **Pedido com NF já lançada não pode ser editado, retificado nem cancelado** — evitaria
-   divergência entre o que foi enviado ao fornecedor e o que já foi fisicamente recebido.
-5. **Pedido cancelado não pode ser editado, retificado, nem cancelado de novo.**
-6. Verificação de perfil no backend sempre usa o **login** (`USUARIO`), nunca o nome de exibição.
+1. **Retificar é sempre uma ação explícita do usuário** — o botão "Retificar e Reenviar" é o único
+   caminho para corrigir um pedido já enviado, e sempre reenvia ao fornecedor ao ser confirmado.
+2. **Retificar sem alteração real não é bloqueado, apenas avisado** — se nada mudou desde que o
+   formulário foi aberto, o modal de confirmação alerta o usuário, mas permite reenviar mesmo
+   assim (ex.: fornecedor perdeu o email original).
+3. **Pedido com NF já lançada não pode ser retificado nem cancelado** — evitaria divergência entre
+   o que foi enviado ao fornecedor e o que já foi fisicamente recebido.
+4. **Pedido cancelado não pode ser retificado, nem cancelado de novo.**
+5. Verificação de perfil no backend sempre usa o **login** (`USUARIO`), nunca o nome de exibição.
 
 ## Histórico de alterações recentes (changelog)
 
-- **Corrige verificação de permissão usando login em vez do nome de exibição** — `editarPedido`,
-  `reenviarPedidoRetificado` e `excluirRecebimento` agora recebem o login (`sessao.usuario`) num
-  parâmetro dedicado só para a checagem de permissão; nome de exibição continua sendo usado no
-  LOG_NF e no email. Corrigiu também um segundo bug equivalente na checagem de filiais liberadas
-  de `excluirRecebimento`.
-- **Bloquear retificação sem edição pendente** — `reenviarPedidoRetificado` agora compara o
-  timestamp da última `EDIÇÃO` com o da última `RETIFICAÇÃO` no LOG_NF e recusa o reenvio se não
-  houver correção pendente.
-- **Adiciona edição interna e retificação de pedidos enviados** — feature completa: editar pedido
-  já enviado (correção interna, sem notificar fornecedor) + retificar e reenviar (ação separada e
-  explícita, só dispara email se o usuário confirmar).
+- **Funde edição e retificação num único fluxo** — remove o botão "Editar Pedido" (correção
+  silenciosa sem email) e o backend `editarPedido`/`reenviarPedidoRetificado` separados. Agora só
+  existe "Retificar e Reenviar", que abre o formulário completo do pedido (cabeçalho + itens,
+  com edição inline de item sem precisar excluir e relançar) e salva + reenvia ao fornecedor numa
+  única chamada (`retificarPedido`). Se nada mudou, o modal de confirmação avisa antes de enviar.
+- **Corrige verificação de permissão usando login em vez do nome de exibição** — funções de
+  pedido e `excluirRecebimento` recebem o login (`sessao.usuario`) num parâmetro dedicado só para
+  a checagem de permissão; nome de exibição continua sendo usado no LOG_NF e no email.
 - **Adiciona fallback ReceitaWS** — busca de CNPJ não falha mais quando a BrasilAPI aplica
   rate-limit (HTTP 429).
 - Histórico completo de commits: `git log --oneline`.
