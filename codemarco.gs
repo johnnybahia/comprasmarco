@@ -1510,6 +1510,11 @@ function retificarPedido(idPedido, dados, usuarioLogado, motivo, usuarioLogin, e
       return { ok: false, msg: 'Sem permissão para retificar pedidos' };
     }
 
+    const motivoTrim = String(motivo || '').trim();
+    if (!motivoTrim) {
+      return { ok: false, msg: 'Informe o motivo da retificação' };
+    }
+
     if (!Array.isArray(dados.itens) || dados.itens.length === 0) {
       return { ok: false, msg: 'O pedido deve ter pelo menos um item' };
     }
@@ -1607,7 +1612,7 @@ function retificarPedido(idPedido, dados, usuarioLogado, motivo, usuarioLogin, e
       nomeRemetente:   usuarioLogado
     });
 
-    const retif = { motivo: motivo || '' };
+    const retif = { motivo: motivoTrim };
     const htmlEmail  = montarEmailHTML(idPedido, dataPedido, dadosEmail, retif);
     const textoEmail = montarEmailTexto(idPedido, dataPedido, dadosEmail, retif);
 
@@ -1620,7 +1625,7 @@ function retificarPedido(idPedido, dados, usuarioLogado, motivo, usuarioLogin, e
       htmlBody: htmlEmail
     });
 
-    _logNF('RETIFICAÇÃO', '', idPedido, '', dados.filialCod, dados.filialNome, usuarioLogado, motivo || '');
+    _logNF('RETIFICAÇÃO', '', idPedido, '', dados.filialCod, dados.filialNome, usuarioLogado, motivoTrim);
 
     return { ok: true, msg: 'Pedido corrigido e reenviado ao fornecedor com sucesso' };
   } catch(e) {
