@@ -593,9 +593,9 @@ table tr:hover td { background: #f5f7fb; }
       <div class="card" id="ped-edit-banner" style="display:none;background:#fff3e0;border-left:4px solid #e65100;">
         <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">
           <div style="font-size:13px;color:#5a3000">
-            ✎ Editando o pedido <strong id="ped-edit-id"></strong> — correção interna; o fornecedor <strong>não</strong> será notificado por este salvamento.
+            🔁 Retificando o pedido <strong id="ped-edit-id"></strong> — ao salvar, um novo email será enviado ao fornecedor avisando que o pedido foi atualizado.
           </div>
-          <button type="button" class="btn btn-outline btn-sm" onclick="cancelarEdicaoPedido()">Cancelar edição</button>
+          <button type="button" class="btn btn-outline btn-sm" onclick="cancelarRetificacaoPedido()">Cancelar retificação</button>
         </div>
       </div>
 
@@ -716,7 +716,8 @@ table tr:hover td { background: #f5f7fb; }
             <div class="preco-hint" id="preco-hint">Preço sugerido do fornecedor</div>
           </div>
           <div>
-            <button class="btn btn-accent" onclick="adicionarItem()">+ Adicionar</button>
+            <button class="btn btn-accent" id="btn-add-item" onclick="adicionarItem()">+ Adicionar</button>
+            <button class="btn btn-outline" id="btn-cancelar-item" style="display:none;margin-left:6px" onclick="cancelarEdicaoItem()">Cancelar</button>
           </div>
         </div>
 
@@ -1326,22 +1327,6 @@ table tr:hover td { background: #f5f7fb; }
   </div>
 </div>
 
-<!-- MODAL SALVAR EDIÇÃO (correção interna) -->
-<div class="modal-backdrop" id="modal-editar-pedido">
-  <div class="modal">
-    <h3>💾 Salvar Correção do Pedido</h3>
-    <p id="modal-editar-text"></p>
-    <div class="field" style="margin-bottom:0">
-      <label>Motivo da correção (opcional)</label>
-      <textarea id="modal-editar-motivo" placeholder="Ex.: ajuste de quantidade do item X..." style="min-height:80px;width:100%;margin-top:6px"></textarea>
-    </div>
-    <div class="modal-actions" style="margin-top:16px">
-      <button class="btn btn-outline" onclick="fecharModalEditarPedido()">Voltar</button>
-      <button class="btn btn-success" onclick="executarEditarPedido()">Salvar Correção</button>
-    </div>
-  </div>
-</div>
-
 <!-- MODAL RETIFICAR E REENVIAR AO FORNECEDOR -->
 <div class="modal-backdrop" id="modal-retificar-pedido">
   <div class="modal">
@@ -1379,7 +1364,7 @@ table tr:hover td { background: #f5f7fb; }
 let sessao = null;
 let itensPedido = [];
 let totalPedido = 0;
-let _editandoPedidoId = null; // ID_PEDIDO em edição interna, ou null para "novo pedido"
+let _editandoPedidoId = null; // ID_PEDIDO em retificação, ou null para "novo pedido"
 let _cache = { fornecedor: [], materia: [], filial: [], transportadora: [] };
 let _matAtiva = null; // código da matéria sendo editada na tela de preços
 
@@ -2106,6 +2091,8 @@ function trocarSubtab(nome, btn) {
 // ════════════════════════════════════════════════════
 // PEDIDO — ITENS
 // ════════════════════════════════════════════════════
+let _itemEditandoIdx = null; // índice do item em edição inline, ou null para "adicionar novo"
+
 function adicionarItem() {
   const cod   = document.getElementById('item-cod').value.trim();
   const desc  = document.getElementById('item-desc').value.trim();
@@ -2118,14 +2105,48 @@ function adicionarItem() {
   if (isNaN(preco) || preco <= 0) { toast('Informe um preço válido (maior que zero)', 'error'); return; }
 
   const subtotal = qtd * preco;
-  itensPedido.push({ cod, descricao: desc, quantidade: qtd, unidade: unid, preco, subtotal });
+  const item = { cod, descricao: desc, quantidade: qtd, unidade: unid, preco, subtotal };
+
+  if (_itemEditandoIdx !== null) {
+    itensPedido[_itemEditandoIdx] = item;
+    _finalizarEdicaoItem();
+  } else {
+    itensPedido.push(item);
+  }
   renderItens();
   limparCamposItem();
   document.getElementById('item-cod').focus();
 }
 
+function editarItemUI(idx) {
+  const item = itensPedido[idx];
+  if (!item) return;
+  _itemEditandoIdx = idx;
+  document.getElementById('item-cod').value = item.cod;
+  setDescricaoItem(item.descricao);
+  document.getElementById('item-unidade').value = item.unidade;
+  document.getElementById('item-qtd').value     = item.quantidade;
+  document.getElementById('item-preco').value   = item.preco;
+  document.getElementById('preco-hint').classList.remove('visible');
+  document.getElementById('btn-add-item').textContent = '💾 Salvar Item';
+  document.getElementById('btn-cancelar-item').style.display = 'inline-block';
+  document.getElementById('item-cod').focus();
+}
+
+function cancelarEdicaoItem() {
+  _finalizarEdicaoItem();
+  limparCamposItem();
+}
+
+function _finalizarEdicaoItem() {
+  _itemEditandoIdx = null;
+  document.getElementById('btn-add-item').textContent = '+ Adicionar';
+  document.getElementById('btn-cancelar-item').style.display = 'none';
+}
+
 function removerItem(idx) {
   itensPedido.splice(idx, 1);
+  if (_itemEditandoIdx === idx) { _finalizarEdicaoItem(); limparCamposItem(); }
   renderItens();
 }
 
@@ -2146,7 +2167,10 @@ function renderItens() {
       <td>${escHTML(item.unidade)}</td>
       <td>R$ ${item.preco.toFixed(2)}</td>
       <td><strong>R$ ${item.subtotal.toFixed(2)}</strong></td>
-      <td><button class="btn-icon" onclick="removerItem(${idx})" title="Remover">✕</button></td>
+      <td>
+        <button class="btn-icon" onclick="editarItemUI(${idx})" title="Editar">✎</button>
+        <button class="btn-icon" onclick="removerItem(${idx})" title="Remover">✕</button>
+      </td>
     </tr>
   `).join('');
   document.getElementById('ped-total').textContent =
@@ -2164,6 +2188,7 @@ function limparCamposItem() {
 function limparPedido() {
   itensPedido = [];
   totalPedido = 0;
+  _finalizarEdicaoItem();
   ['ped-filial-cod','ped-filial-nome','ped-forn-cod','ped-forn-nome',
    'ped-transp-cod','ped-transp-nome','ped-prazo','ped-cond-pag','ped-obs'].forEach(id => {
     document.getElementById(id).value = '';
@@ -2180,6 +2205,44 @@ function limparPedido() {
 // ════════════════════════════════════════════════════
 // PEDIDO — ENVIO
 // ════════════════════════════════════════════════════
+// Lê o formulário de pedido no formato usado para salvar/comparar
+function _lerDadosFormPedido() {
+  return {
+    filialCod:          document.getElementById('ped-filial-cod').value.trim(),
+    filialNome:         document.getElementById('ped-filial-nome').value.trim(),
+    fornecedorCod:      document.getElementById('ped-forn-cod').value.trim(),
+    fornecedorNome:     document.getElementById('ped-forn-nome').value.trim(),
+    frete:              document.querySelector('input[name="ped-frete"]:checked').value,
+    transportadoraCod:  document.getElementById('ped-transp-cod').value.trim(),
+    transportadoraNome: document.getElementById('ped-transp-nome').value.trim(),
+    prazoEntrega:       document.getElementById('ped-prazo').value.trim(),
+    condPagamento:      document.getElementById('ped-cond-pag').value.trim(),
+    observacao:         document.getElementById('ped-obs').value.trim(),
+    valorTotal:         totalPedido,
+    itens:              itensPedido.map(i => Object.assign({}, i))
+  };
+}
+
+// Forma canônica do pedido (ignora nomes derivados/valores calculados) para detectar se algo mudou
+function _canonPedido(dados) {
+  return JSON.stringify({
+    filialCod:         dados.filialCod,
+    fornecedorCod:     dados.fornecedorCod,
+    frete:             dados.frete,
+    transportadoraCod: dados.frete === 'FOB' ? dados.transportadoraCod : '',
+    prazoEntrega:      dados.prazoEntrega,
+    condPagamento:     dados.condPagamento,
+    observacao:        dados.observacao,
+    itens: dados.itens.map(i => ({
+      cod:        String(i.cod),
+      descricao:  String(i.descricao),
+      quantidade: Math.round(Number(i.quantidade) * 100) / 100,
+      unidade:    String(i.unidade),
+      preco:      Math.round(Number(i.preco) * 100) / 100
+    }))
+  });
+}
+
 function confirmarPedido() {
   const filialCod  = document.getElementById('ped-filial-cod').value.trim();
   const filialNome = document.getElementById('ped-filial-nome').value.trim();
@@ -2198,10 +2261,14 @@ function confirmarPedido() {
   if (prazo && !/^\d{2}\/\d{2}\/\d{4}$/.test(prazo)) { toast('Prazo de entrega inválido (use DD/MM/AAAA)', 'error'); return; }
 
   if (_editandoPedidoId) {
-    document.getElementById('modal-editar-text').textContent =
-      `Salvar as correções no pedido ${_editandoPedidoId}? Esta alteração é interna — o fornecedor não será notificado automaticamente.`;
-    document.getElementById('modal-editar-motivo').value = '';
-    document.getElementById('modal-editar-pedido').classList.add('open');
+    const dadosAtuais = _lerDadosFormPedido();
+    const mudou = _canonPedido(dadosAtuais) !== _pedidoSnapshotOriginal;
+    _retificarPedidoPendente = dadosAtuais;
+    document.getElementById('modal-retificar-text').innerHTML = mudou
+      ? `Reenviar o pedido <strong>${escHTML(_editandoPedidoId)}</strong> ao fornecedor com os dados atuais? Um novo email será enviado marcado como retificação, avisando que o pedido foi atualizado.`
+      : `<strong style="color:#e65100">Nenhuma alteração foi detectada neste pedido.</strong> Deseja reenviar mesmo assim?`;
+    document.getElementById('modal-retificar-motivo').value = '';
+    document.getElementById('modal-retificar-pedido').classList.add('open');
     return;
   }
 
@@ -2298,9 +2365,13 @@ function enviarPedido() {
 }
 
 // ════════════════════════════════════════════════════
-// PEDIDO — EDIÇÃO INTERNA (correção sem notificar fornecedor)
+// PEDIDO — RETIFICAR E REENVIAR AO FORNECEDOR
+// (edita qualquer campo/item do pedido já enviado e reenvia numa única ação)
 // ════════════════════════════════════════════════════
-function editarPedidoUI(idx) {
+let _retificarPedidoPendente = null;
+let _pedidoSnapshotOriginal  = null; // forma canônica do pedido no momento em que a edição foi aberta
+
+function retificarPedidoUI(idx) {
   const p = (window._pedidosHistorico || [])[idx];
   if (!p) return;
 
@@ -2348,79 +2419,25 @@ function editarPedidoUI(idx) {
   }));
   renderItens();
 
-  document.getElementById('pedido-page-title').textContent = 'Editar Pedido ' + p.ID_PEDIDO;
+  // Snapshot para detectar depois se algo realmente mudou
+  _pedidoSnapshotOriginal = _canonPedido(_lerDadosFormPedido());
+
+  document.getElementById('pedido-page-title').textContent = 'Retificar Pedido ' + p.ID_PEDIDO;
   document.getElementById('ped-edit-id').textContent = p.ID_PEDIDO;
   document.getElementById('ped-edit-banner').style.display = 'block';
-  document.getElementById('btn-enviar-pedido').textContent = '💾 Salvar Correção';
+  document.getElementById('btn-enviar-pedido').textContent = '📧 Retificar e Reenviar';
 
   navegarPara('pedido', document.getElementById('nav-pedido'));
-  toast('Editando pedido ' + p.ID_PEDIDO, 'info');
+  toast('Retificando pedido ' + p.ID_PEDIDO, 'info');
 }
 
-function cancelarEdicaoPedido() {
+function cancelarRetificacaoPedido() {
   _editandoPedidoId = null;
+  _pedidoSnapshotOriginal = null;
   limparPedido();
   document.getElementById('pedido-page-title').textContent = 'Novo Pedido de Compra';
   document.getElementById('ped-edit-banner').style.display = 'none';
   document.getElementById('btn-enviar-pedido').textContent = '📧 Enviar Pedido';
-}
-
-function fecharModalEditarPedido() {
-  document.getElementById('modal-editar-pedido').classList.remove('open');
-}
-
-let _pedidoEditando = false;
-function executarEditarPedido() {
-  if (_pedidoEditando) return;
-  _pedidoEditando = true;
-  const idPedido = _editandoPedidoId;
-  const motivo   = document.getElementById('modal-editar-motivo').value.trim();
-  fecharModalEditarPedido();
-  toast('Salvando correção...', 'info');
-
-  const dados = {
-    filialCod:          document.getElementById('ped-filial-cod').value.trim(),
-    filialNome:         document.getElementById('ped-filial-nome').value.trim(),
-    fornecedorCod:      document.getElementById('ped-forn-cod').value.trim(),
-    fornecedorNome:     document.getElementById('ped-forn-nome').value.trim(),
-    frete:              document.querySelector('input[name="ped-frete"]:checked').value,
-    transportadoraCod:  document.getElementById('ped-transp-cod').value.trim(),
-    transportadoraNome: document.getElementById('ped-transp-nome').value.trim(),
-    prazoEntrega:       document.getElementById('ped-prazo').value.trim(),
-    condPagamento:      document.getElementById('ped-cond-pag').value.trim(),
-    observacao:         document.getElementById('ped-obs').value.trim(),
-    valorTotal:         totalPedido,
-    itens:              itensPedido
-  };
-
-  google.script.run
-    .withSuccessHandler(res => {
-      _pedidoEditando = false;
-      if (res && res.ok) {
-        toast('✓ ' + res.msg, 'success');
-        cancelarEdicaoPedido();
-        navegarPara('historico', document.getElementById('nav-historico'));
-      } else {
-        toast('Erro: ' + (res && res.msg || 'Erro desconhecido'), 'error');
-      }
-    })
-    .withFailureHandler(err => { _pedidoEditando = false; toast('Erro ao salvar: ' + (err && err.message || String(err)), 'error'); })
-    .editarPedido(idPedido, dados, sessao?.nome || '', motivo, sessao?.usuario || '');
-}
-
-// ════════════════════════════════════════════════════
-// PEDIDO — RETIFICAR E REENVIAR AO FORNECEDOR
-// ════════════════════════════════════════════════════
-let _retificarPedidoPendente = null;
-
-function abrirModalRetificar(idx) {
-  const p = (window._pedidosHistorico || [])[idx];
-  if (!p) return;
-  _retificarPedidoPendente = { idx, p };
-  document.getElementById('modal-retificar-text').textContent =
-    `Reenviar o pedido ${p.ID_PEDIDO} (${p.NOME_FORNECEDOR || p.COD_FORNECEDOR}) ao fornecedor com os dados atuais? Um novo email será enviado marcado como retificação.`;
-  document.getElementById('modal-retificar-motivo').value = '';
-  document.getElementById('modal-retificar-pedido').classList.add('open');
 }
 
 function fecharModalRetificar() {
@@ -2432,8 +2449,9 @@ let _pedidoRetificando = false;
 function executarRetificarPedido() {
   if (!_retificarPedidoPendente || _pedidoRetificando) return;
   _pedidoRetificando = true;
-  const { idx, p } = _retificarPedidoPendente;
-  const motivo = document.getElementById('modal-retificar-motivo').value.trim();
+  const idPedido = _editandoPedidoId;
+  const dados    = _retificarPedidoPendente;
+  const motivo   = document.getElementById('modal-retificar-motivo').value.trim();
   fecharModalRetificar();
   toast('Reenviando pedido ao fornecedor...', 'info');
 
@@ -2442,14 +2460,14 @@ function executarRetificarPedido() {
       _pedidoRetificando = false;
       if (res && res.ok) {
         toast('✓ ' + res.msg, 'success');
-        verDetalhe(idx);
-        _recarregarHistoricoSemFecharDetalhe();
+        cancelarRetificacaoPedido();
+        navegarPara('historico', document.getElementById('nav-historico'));
       } else {
         toast('Erro: ' + (res && res.msg || 'Erro desconhecido'), 'error');
       }
     })
     .withFailureHandler(err => { _pedidoRetificando = false; toast('Erro: ' + (err && err.message || String(err)), 'error'); })
-    .reenviarPedidoRetificado(p.ID_PEDIDO, sessao?.nome || '', sessao?.email || '', motivo, sessao?.usuario || '');
+    .retificarPedido(idPedido, dados, sessao?.nome || '', motivo, sessao?.usuario || '', sessao?.email || '');
 }
 
 // ════════════════════════════════════════════════════
@@ -2653,13 +2671,11 @@ function verDetalhe(idx) {
   const perfDet = (sessao?.perfil || '').toUpperCase();
   const podeGerenciarDet = (perfDet === 'ADMIN' || perfDet === 'COMPRAS') && String(p.STATUS||'').toUpperCase() !== 'CANCELADO';
   const podeCancelarDet  = podeGerenciarDet;
-  const podeEditarDet    = podeGerenciarDet && !p.temNF;
-  const podeRetificarDet = podeGerenciarDet;
+  const podeRetificarDet = podeGerenciarDet && !p.temNF;
   const actionsEl = document.getElementById('hist-detalhe-actions');
   if (actionsEl) {
     actionsEl.innerHTML = `
-      ${podeEditarDet ? `<button class="btn btn-outline btn-sm" style="margin-left:6px" onclick="editarPedidoUI(${idx})">✎ Editar Pedido</button>` : ''}
-      ${podeRetificarDet ? `<button class="btn btn-outline btn-sm" style="margin-left:6px;color:var(--navy);border-color:var(--navy)" onclick="abrirModalRetificar(${idx})">📧 Retificar e Reenviar</button>` : ''}
+      ${podeRetificarDet ? `<button class="btn btn-outline btn-sm" style="margin-left:6px;color:var(--navy);border-color:var(--navy)" onclick="retificarPedidoUI(${idx})">📧 Retificar e Reenviar</button>` : ''}
       ${podeCancelarDet ? `<button class="btn btn-sm" style="color:var(--error);border:1px solid var(--error);border-radius:var(--radius);background:transparent;cursor:pointer;padding:4px 14px;font-size:13px;margin-left:6px" onclick="abrirModalCancelar(${idx})">Cancelar Pedido</button>` : ''}
     `;
   }
