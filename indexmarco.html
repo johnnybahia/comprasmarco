@@ -593,7 +593,7 @@ table tr:hover td { background: #f5f7fb; }
       <div class="card" id="ped-edit-banner" style="display:none;background:#fff3e0;border-left:4px solid #e65100;">
         <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">
           <div style="font-size:13px;color:#5a3000">
-            🔁 Retificando o pedido <strong id="ped-edit-id"></strong> — ao salvar, um novo email será enviado ao fornecedor avisando que o pedido foi atualizado.
+            🔁 Retificando o pedido <strong id="ped-edit-id"></strong> — <strong>edite abaixo qualquer campo ou item</strong> (clique em ✎ na lista de itens para corrigir preço, quantidade ou descrição sem precisar excluir). Ao confirmar, um novo email será enviado ao fornecedor avisando que o pedido foi atualizado.
           </div>
           <button type="button" class="btn btn-outline btn-sm" onclick="cancelarRetificacaoPedido()">Cancelar retificação</button>
         </div>
@@ -1333,8 +1333,8 @@ table tr:hover td { background: #f5f7fb; }
     <h3>📧 Retificar e Reenviar ao Fornecedor</h3>
     <p id="modal-retificar-text"></p>
     <div class="field" style="margin-bottom:0">
-      <label>Motivo da retificação (recomendado — será incluído no email)</label>
-      <textarea id="modal-retificar-motivo" placeholder="Ex.: correção de preço unitário do item X..." style="min-height:80px;width:100%;margin-top:6px"></textarea>
+      <label>Motivo da retificação (obrigatório — será incluído no email)</label>
+      <textarea id="modal-retificar-motivo" required placeholder="Ex.: correção de preço unitário do item X..." style="min-height:80px;width:100%;margin-top:6px"></textarea>
     </div>
     <div class="modal-actions" style="margin-top:16px">
       <button class="btn btn-outline" onclick="fecharModalRetificar()">Voltar</button>
@@ -2448,10 +2448,12 @@ function fecharModalRetificar() {
 let _pedidoRetificando = false;
 function executarRetificarPedido() {
   if (!_retificarPedidoPendente || _pedidoRetificando) return;
+  const motivo = document.getElementById('modal-retificar-motivo').value.trim();
+  if (!motivo) { toast('Informe o motivo da retificação antes de reenviar', 'error'); return; }
+
   _pedidoRetificando = true;
   const idPedido = _editandoPedidoId;
   const dados    = _retificarPedidoPendente;
-  const motivo   = document.getElementById('modal-retificar-motivo').value.trim();
   fecharModalRetificar();
   toast('Reenviando pedido ao fornecedor...', 'info');
 
