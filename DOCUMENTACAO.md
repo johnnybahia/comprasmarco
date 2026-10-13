@@ -22,10 +22,10 @@ Definido em `setupPlanilha()` (`codemarco.gs`), constante `ABAS`:
 | Aba | Colunas |
 |---|---|
 | `USUARIOS` | COD, NOME, USUARIO, SENHA, EMAIL, PERFIL, FILIAIS_LIBERADAS |
-| `FORNECEDORES` | COD, NOME, CNPJ, EMAIL, CONTATO, COND_PAGAMENTO, CEP, BAIRRO, ENDERECO, CIDADE, ESTADO |
+| `FORNECEDORES` | COD, NOME, CNPJ, EMAIL, CONTATO, COND_PAGAMENTO, CEP, BAIRRO, ENDERECO, CIDADE, ESTADO, TELEFONE |
 | `MATERIAS_PRIMAS` | COD, DESCRICAO, UNIDADE, CATEGORIA |
 | `TRANSPORTADORAS` | COD, NOME, CNPJ, CONTATO, PRAZO, OBSERVACAO, CEP, BAIRRO, ENDERECO, CIDADE, ESTADO |
-| `FILIAIS` | COD, NOME, CNPJ, CEP, BAIRRO, ENDERECO, CIDADE, ESTADO, EMAIL_RESPONSAVEL, COD_TRANSPORTADORA |
+| `FILIAIS` | COD, NOME, CNPJ, CEP, BAIRRO, ENDERECO, CIDADE, ESTADO, EMAIL_RESPONSAVEL, COD_TRANSPORTADORA, INSCRICAO_ESTADUAL, TELEFONE |
 | `PEDIDOS` | ID_PEDIDO, DATA, COD_FILIAL, NOME_FILIAL, COD_FORNECEDOR, NOME_FORNECEDOR, FRETE, COD_TRANSPORTADORA, NOME_TRANSPORTADORA, PRAZO_ENTREGA, COND_PAGAMENTO, OBSERVACAO, USUARIO, VALOR_TOTAL, STATUS |
 | `ITENS_PEDIDO` | ID_PEDIDO, COD_MP, DESCRICAO, QUANTIDADE, UNIDADE, PRECO_UNIT, SUBTOTAL |
 | `PRECO_FORNECEDOR` | COD_FORNECEDOR, COD_MP, PRECO |
@@ -85,6 +85,15 @@ Retificar/Cancelar são restritos a `ADMIN`/`COMPRAS` (frontend e backend).
 ### 3. Cadastros (`panel-cadastros`)
 CRUD de Fornecedores, Matérias-Primas, Transportadoras, Filiais e Usuários. Só `ADMIN`.
 Busca de CNPJ com auto-fill (BrasilAPI, com fallback para ReceitaWS se houver rate-limit).
+
+- **Inscrição Estadual (filial)**: obrigatória para salvar uma filial (`ISENTO` é aceito). Não vem
+  da Receita Federal, então após a busca do CNPJ o frontend consulta a API pública do CNPJ.ws
+  (`buscarIE`) e preenche, só se o campo estiver vazio, a IE ativa da mesma UF do estabelecimento.
+  O botão "Buscar" ao lado do campo força nova consulta. CNPJ.ws limita ~3 consultas/min: se falhar,
+  digitar manualmente. A IE preenchida automaticamente precisa ser conferida antes de salvar.
+- **Telefone (filial e fornecedor)**: sempre digitação manual (sem auto-fill). O do fornecedor fica só no
+  cadastro; o da filial vai no email do pedido junto com IE e CEP.
+- `INSCRICAO_ESTADUAL` e `TELEFONE` são gravadas como texto (`_forcarTexto`) para não perder zeros à esquerda.
 
 ### 4. Lançar NF (`panel-nf`)
 Registra o recebimento de uma NF contra um pedido, compara quantidade/preço/condição de

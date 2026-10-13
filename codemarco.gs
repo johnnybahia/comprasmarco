@@ -210,10 +210,10 @@ function salvarCadastro(tipo, dados, usuarioLogado) {
     }
 
     const mapa = {
-      fornecedor:     { aba: ABAS.FORNECEDORES,   cols: ['COD','NOME','CNPJ','EMAIL','CONTATO','COND_PAGAMENTO','CEP','BAIRRO','ENDERECO','CIDADE','ESTADO'] },
+      fornecedor:     { aba: ABAS.FORNECEDORES,   cols: ['COD','NOME','CNPJ','EMAIL','CONTATO','COND_PAGAMENTO','CEP','BAIRRO','ENDERECO','CIDADE','ESTADO','TELEFONE'] },
       materia:        { aba: ABAS.MATERIAS,        cols: ['COD','DESCRICAO','UNIDADE','CATEGORIA'] },
       transportadora: { aba: ABAS.TRANSPORTADORAS, cols: ['COD','NOME','CNPJ','CONTATO','PRAZO','OBSERVACAO','CEP','BAIRRO','ENDERECO','CIDADE','ESTADO'] },
-      filial:         { aba: ABAS.FILIAIS,         cols: ['COD','NOME','CNPJ','CEP','BAIRRO','ENDERECO','CIDADE','ESTADO','EMAIL_RESPONSAVEL','COD_TRANSPORTADORA'] },
+      filial:         { aba: ABAS.FILIAIS,         cols: ['COD','NOME','CNPJ','CEP','BAIRRO','ENDERECO','CIDADE','ESTADO','EMAIL_RESPONSAVEL','COD_TRANSPORTADORA','INSCRICAO_ESTADUAL','TELEFONE'] },
       usuario:        { aba: ABAS.USUARIOS,        cols: ['COD','NOME','USUARIO','SENHA','EMAIL','PERFIL','FILIAIS_LIBERADAS'] }
     };
     if (!mapa[tipo]) return { ok: false, msg: 'Tipo inválido' };
@@ -258,6 +258,7 @@ function salvarCadastro(tipo, dados, usuarioLogado) {
           return allData[i][idx] !== undefined ? allData[i][idx] : '';
         });
         sh.getRange(i + 1, 1, 1, newRow.length).setValues([newRow]);
+        _forcarTexto(sh, i + 1, headers, dados);
         return { ok: true, msg: 'Atualizado com sucesso' };
       }
     }
@@ -268,6 +269,7 @@ function salvarCadastro(tipo, dados, usuarioLogado) {
     }
     const newRow = headers.map(h => dados[h] !== undefined ? dados[h] : '');
     sh.appendRow(newRow);
+    _forcarTexto(sh, sh.getLastRow(), headers, dados);
     return { ok: true, msg: 'Cadastrado com sucesso' };
   } catch(e) {
     logErro('salvarCadastro: ' + e.message);
@@ -275,6 +277,16 @@ function salvarCadastro(tipo, dados, usuarioLogado) {
   } finally {
     lock.releaseLock();
   }
+}
+
+// IE e telefone digitados só com números seriam convertidos em número pela planilha (perde zero à esquerda)
+const COLS_TEXTO = ['INSCRICAO_ESTADUAL', 'TELEFONE'];
+function _forcarTexto(sh, linha, headers, dados) {
+  COLS_TEXTO.forEach(col => {
+    const idx = headers.indexOf(col);
+    if (idx < 0 || dados[col] === undefined) return;
+    sh.getRange(linha, idx + 1).setNumberFormat('@').setValue(String(dados[col]));
+  });
 }
 
 function excluirCadastro(tipo, cod, usuarioLogado) {
@@ -494,6 +506,9 @@ function salvarPedido(dados) {
 
     const dadosEmail = Object.assign({}, dados, {
       filialCNPJ:      filial.CNPJ      || '',
+      filialIE:        String(filial.INSCRICAO_ESTADUAL || ''),
+      filialCEP:       String(filial.CEP || ''),
+      filialTelefone:  String(filial.TELEFONE || ''),
       filialEndereco:  [filial.ENDERECO, filial.BAIRRO, filial.CIDADE, filial.ESTADO].filter(Boolean).join(', '),
       fornecedorCNPJ:  fornecedor.CNPJ  || '',
       fornecedorEndereco: [fornecedor.ENDERECO, fornecedor.BAIRRO, fornecedor.CIDADE, fornecedor.ESTADO].filter(Boolean).join(', '),
@@ -567,7 +582,10 @@ function montarEmailHTML(idPedido, data, dados, retif) {
           <div style="font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#1a3c5e;margin-bottom:8px;">Comprador</div>
           <div style="font-size:14px;font-weight:700;color:#1a1a1a;">${_escHTML(dados.filialNome)}</div>
           ${dados.filialCNPJ ? `<div style="font-size:12px;color:#555;margin-top:3px;">CNPJ: ${_escHTML(dados.filialCNPJ)}</div>` : ''}
+          ${dados.filialIE ? `<div style="font-size:12px;color:#555;margin-top:3px;">Inscrição Estadual: ${_escHTML(dados.filialIE)}</div>` : ''}
           ${dados.filialEndereco ? `<div style="font-size:12px;color:#777;margin-top:3px;">${_escHTML(dados.filialEndereco)}</div>` : ''}
+          ${dados.filialCEP ? `<div style="font-size:12px;color:#777;margin-top:3px;">CEP: ${_escHTML(dados.filialCEP)}</div>` : ''}
+          ${dados.filialTelefone ? `<div style="font-size:12px;color:#555;margin-top:3px;">Tel. contato: ${_escHTML(dados.filialTelefone)}</div>` : ''}
         </td>
         <td style="width:50%;padding:16px 28px;vertical-align:top;">
           <div style="font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#1a3c5e;margin-bottom:8px;">Fornecedor</div>
@@ -672,7 +690,10 @@ function montarEmailTexto(idPedido, data, dados, retif) {
     '',
     'COMPRADOR (FILIAL)',
     `  ${dados.filialNome}${dados.filialCNPJ ? '  |  CNPJ: ' + dados.filialCNPJ : ''}`,
+    dados.filialIE ? `  Inscrição Estadual: ${dados.filialIE}` : '',
     dados.filialEndereco ? `  ${dados.filialEndereco}` : '',
+    dados.filialCEP ? `  CEP: ${dados.filialCEP}` : '',
+    dados.filialTelefone ? `  Tel. contato: ${dados.filialTelefone}` : '',
     '',
     'FORNECEDOR',
     `  ${dados.fornecedorNome}${dados.fornecedorCNPJ ? '  |  CNPJ: ' + dados.fornecedorCNPJ : ''}`,
@@ -755,6 +776,9 @@ function enviarEmailTestePedidos() {
     const dados = {
       filialNome:         String(ped.NOME_FILIAL      || ''),
       filialCNPJ:         String(filial.CNPJ          || ''),
+      filialIE:           String(filial.INSCRICAO_ESTADUAL || ''),
+      filialCEP:          String(filial.CEP           || ''),
+      filialTelefone:     String(filial.TELEFONE      || ''),
       filialEndereco:     [filial.ENDERECO, filial.BAIRRO, filial.CIDADE, filial.ESTADO].filter(Boolean).join(', '),
       fornecedorNome:     String(ped.NOME_FORNECEDOR  || ''),
       fornecedorCNPJ:     String(fornecedor.CNPJ      || ''),
@@ -1605,6 +1629,9 @@ function retificarPedido(idPedido, dados, usuarioLogado, motivo, usuarioLogin, e
 
     const dadosEmail = Object.assign({}, dados, {
       filialCNPJ:      filial.CNPJ      || '',
+      filialIE:        String(filial.INSCRICAO_ESTADUAL || ''),
+      filialCEP:       String(filial.CEP || ''),
+      filialTelefone:  String(filial.TELEFONE || ''),
       filialEndereco:  [filial.ENDERECO, filial.BAIRRO, filial.CIDADE, filial.ESTADO].filter(Boolean).join(', '),
       fornecedorCNPJ:  fornecedor.CNPJ  || '',
       fornecedorEndereco: [fornecedor.ENDERECO, fornecedor.BAIRRO, fornecedor.CIDADE, fornecedor.ESTADO].filter(Boolean).join(', '),
@@ -1712,10 +1739,10 @@ function setupPlanilha() {
 
   const estrutura = {
     USUARIOS:         ['COD','NOME','USUARIO','SENHA','EMAIL','PERFIL','FILIAIS_LIBERADAS'],
-    FORNECEDORES:     ['COD','NOME','CNPJ','EMAIL','CONTATO','COND_PAGAMENTO','CEP','BAIRRO','ENDERECO','CIDADE','ESTADO'],
+    FORNECEDORES:     ['COD','NOME','CNPJ','EMAIL','CONTATO','COND_PAGAMENTO','CEP','BAIRRO','ENDERECO','CIDADE','ESTADO','TELEFONE'],
     MATERIAS_PRIMAS:  ['COD','DESCRICAO','UNIDADE','CATEGORIA'],
     TRANSPORTADORAS:  ['COD','NOME','CNPJ','CONTATO','PRAZO','OBSERVACAO','CEP','BAIRRO','ENDERECO','CIDADE','ESTADO'],
-    FILIAIS:          ['COD','NOME','CNPJ','CEP','BAIRRO','ENDERECO','CIDADE','ESTADO','EMAIL_RESPONSAVEL','COD_TRANSPORTADORA'],
+    FILIAIS:          ['COD','NOME','CNPJ','CEP','BAIRRO','ENDERECO','CIDADE','ESTADO','EMAIL_RESPONSAVEL','COD_TRANSPORTADORA','INSCRICAO_ESTADUAL','TELEFONE'],
     PEDIDOS:          ['ID_PEDIDO','DATA','COD_FILIAL','NOME_FILIAL','COD_FORNECEDOR','NOME_FORNECEDOR','FRETE','COD_TRANSPORTADORA','NOME_TRANSPORTADORA','PRAZO_ENTREGA','COND_PAGAMENTO','OBSERVACAO','USUARIO','VALOR_TOTAL','STATUS'],
     ITENS_PEDIDO:     ['ID_PEDIDO','COD_MP','DESCRICAO','QUANTIDADE','UNIDADE','PRECO_UNIT','SUBTOTAL'],
     PRECO_FORNECEDOR:   ['COD_FORNECEDOR','COD_MP','PRECO'],
