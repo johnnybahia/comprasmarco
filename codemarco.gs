@@ -535,136 +535,189 @@ function salvarPedido(dados) {
   }
 }
 
+function _fmtBRL(v) {
+  const n = parseFloat(v) || 0;
+  const p = Math.abs(n).toFixed(2).split('.');
+  return (n < -0.004 ? '-' : '') + p[0].replace(/\B(?=(\d{3})+(?!\d))/g, '.') + ',' + p[1];
+}
+
+function _fmtQtd(v) {
+  const n = parseFloat(v);
+  if (isNaN(n)) return String(v == null ? '' : v);
+  const p = String(+n.toFixed(3)).split('.');
+  return p[0].replace(/\B(?=(\d{3})+(?!\d))/g, '.') + (p[1] ? ',' + p[1] : '');
+}
+
+// Compatibilidade de email (Gmail, Outlook desktop, apps de celular):
+// só <table> + estilos inline; sem flex, <style>, rgba nem margin/padding/borda em <div>
+// (Outlook ignora). Caixas com fundo/borda são <td>. Colunas lado a lado: divs inline-block
+// com fallback em tabela para o Outlook (comentários condicionais <!--[if mso]>).
 function montarEmailHTML(idPedido, data, dados, retif) {
   const dataFmt = Utilities.formatDate(data, Session.getScriptTimeZone(), 'dd/MM/yyyy');
-  const linhasItens = dados.itens.map(item => {
-    const descricaoLimpa = _escHTML(String(item.descricao || '').replace(/[\n\r]+/g, ' ').trim());
-    return `
+  const AZUL = '#1a3c5e', OURO = '#e8a020', LINHA = '#dde3ea', FUNDO = '#f4f7fb';
+  const F = 'font-family:Arial,sans-serif;';
+  const T0 = 'role="presentation" cellpadding="0" cellspacing="0" border="0"';
+  const LOGO = 'https://i.ibb.co/FGGjdsM/LOGO-MARFIM.jpg';
+  const cif = (dados.frete || 'CIF') === 'CIF';
+
+  const linhaDado = (nome, valor) => valor ? `
+          <tr>
+            <td valign="top" style="${F}width:74px;padding:5px 8px 3px 0;font-size:10px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:#8a96a3;white-space:nowrap;">${nome}</td>
+            <td valign="top" style="${F}padding:3px 0;font-size:13px;line-height:1.4;color:#222;">${_escHTML(valor)}</td>
+          </tr>` : '';
+
+  const cartao = (titulo, nome, linhas) => `
+        <table width="100%" ${T0} style="border-collapse:collapse;">
+          <tr>
+            <td bgcolor="${FUNDO}" style="background:${FUNDO};border:1px solid ${LINHA};border-top:3px solid ${AZUL};padding:14px 16px;">
+              <table width="100%" ${T0}>
+                <tr><td style="${F}padding-bottom:6px;font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:${AZUL};">${titulo}</td></tr>
+                <tr><td style="${F}padding-bottom:8px;font-size:15px;font-weight:700;color:#111;">${_escHTML(nome)}</td></tr>
+                <tr><td><table width="100%" ${T0}>${linhas}
+                </table></td></tr>
+              </table>
+            </td>
+          </tr>
+        </table>`;
+
+  const coluna = html => `
+        <div style="display:inline-block;width:100%;max-width:330px;vertical-align:top;font-size:13px;line-height:normal;">
+          <table width="100%" ${T0}><tr><td style="padding:0 5px 10px;">${html}</td></tr></table>
+        </div>`;
+
+  const caixa = (fundo, borda, cor, tamanho, conteudo, padTopo, padBase) => `
     <tr>
-      <td width="110" style="padding:9px 10px;border-bottom:1px solid #eee;font-family:monospace;font-size:11px;word-break:break-all;color:#1a3c5e;">${_escHTML(item.cod)}</td>
-      <td style="padding:9px 10px;border-bottom:1px solid #eee;font-size:12px;word-break:break-word;">${descricaoLimpa}</td>
-      <td width="50" style="padding:9px 10px;border-bottom:1px solid #eee;text-align:right;white-space:nowrap;font-size:12px;">${_escHTML(item.quantidade)}</td>
-      <td width="35" style="padding:9px 10px;border-bottom:1px solid #eee;text-align:left;white-space:nowrap;font-size:11px;color:#666;">${_escHTML(item.unidade)}</td>
-      <td width="90" style="padding:9px 10px;border-bottom:1px solid #eee;text-align:right;white-space:nowrap;font-size:12px;">R$&nbsp;${parseFloat(item.preco).toFixed(2)}</td>
-      <td width="90" style="padding:9px 10px;border-bottom:1px solid #eee;text-align:right;white-space:nowrap;font-size:12px;font-weight:600;">R$&nbsp;${parseFloat(item.subtotal).toFixed(2)}</td>
-    </tr>
-  `;
+      <td style="padding:${padTopo}px 20px ${padBase}px;">
+        <table width="100%" ${T0}><tr>
+          <td bgcolor="${fundo}" style="${F}background:${fundo};border-left:4px solid ${borda};padding:11px 14px;font-size:${tamanho}px;line-height:1.45;color:${cor};">${conteudo}</td>
+        </tr></table>
+      </td>
+    </tr>`;
+
+  const selo = (fundo, borda, cor, texto) => `<table ${T0}><tr><td bgcolor="${fundo}" style="${F}background:${fundo};border:1px solid ${borda};padding:2px 12px;font-size:13px;font-weight:700;color:${cor};">${texto}</td></tr></table>`;
+
+  const celulaResumo = (titulo, conteudo, divisoria) => `
+          <td valign="top" style="padding:12px 18px;${divisoria ? 'border-right:1px solid ' + LINHA + ';' : ''}">
+            <table ${T0}>
+              <tr><td style="${F}padding-bottom:4px;font-size:10px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:#8a96a3;">${titulo}</td></tr>
+              <tr><td style="${F}font-size:14px;line-height:1.3;">${conteudo}</td></tr>
+            </table>
+          </td>`;
+  const destaque = t => `<span style="font-size:14px;font-weight:700;color:${AZUL};">${t}</span>`;
+
+  const conteudoFrete = cif
+    ? selo('#e8f5e9', '#a5d6a7', '#2e7d32', 'CIF')
+    : `<table ${T0}><tr><td>${selo('#fff3e0', '#ffcc80', '#e65100', _escHTML(dados.frete))}</td></tr>
+                <tr><td style="${F}padding-top:5px;font-size:12px;color:#444;">${_escHTML(dados.transportadoraNome || '—')}</td></tr></table>`;
+
+  const celulasResumo = [
+    ['Prazo de entrega', destaque(_escHTML(dados.prazoEntrega || '—'))],
+    ['Frete', conteudoFrete]
+  ];
+  if (dados.condPagamento) celulasResumo.push(['Condição de pagamento', destaque(_escHTML(dados.condPagamento))]);
+  const resumo = celulasResumo.map((c, i) => celulaResumo(c[0], c[1], i < celulasResumo.length - 1)).join('');
+
+  const linhasItens = dados.itens.map((item, i) => {
+    const desc = _escHTML(String(item.descricao || '').replace(/[\n\r]+/g, ' ').trim());
+    const bg = i % 2 ? '#fafbfd' : '#ffffff';
+    const td = `${F}padding:10px 8px;border-bottom:1px solid #eceff3;`;
+    return `
+        <tr>
+          <td valign="top" bgcolor="${bg}" style="${td}font-size:13px;line-height:1.35;color:#222;">${desc}<br><span style="font-family:Consolas,'Courier New',monospace;font-size:10.5px;color:#8a96a3;">Cód. ${_escHTML(item.cod)}</span></td>
+          <td valign="top" align="right" bgcolor="${bg}" style="${td}font-size:13px;color:#222;white-space:nowrap;">${_escHTML(_fmtQtd(item.quantidade))} <span style="font-size:11px;color:#777;">${_escHTML(item.unidade)}</span><br><span style="font-size:11.5px;color:#777;">× R$&nbsp;${_fmtBRL(item.preco)}</span></td>
+          <td valign="top" align="right" bgcolor="${bg}" style="${td}font-size:13px;font-weight:700;color:#111;white-space:nowrap;">R$&nbsp;${_fmtBRL(item.subtotal)}</td>
+        </tr>`;
   }).join('');
 
+  const th = (t, al) => `<th align="${al}" bgcolor="${AZUL}" style="${F}padding:9px 8px;background:${AZUL};color:#ffffff;font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;white-space:nowrap;">${t}</th>`;
+  const nItens = dados.itens.length;
+  const assuntoResposta = encodeURIComponent('Re: Pedido ' + idPedido);
+
   return `
-  <div style="font-family:Arial,sans-serif;max-width:700px;margin:0 auto;border:1px solid #dde3ea;border-radius:6px;overflow:hidden;">
+  <!--[if mso]><table role="presentation" width="700" align="center" cellpadding="0" cellspacing="0"><tr><td><![endif]-->
+  <table width="100%" ${T0} style="max-width:700px;margin:0 auto;border-collapse:collapse;border:1px solid ${LINHA};background:#ffffff;">
 
     <!-- Cabeçalho -->
-    <div style="background:#1a3c5e;padding:20px 28px;display:flex;align-items:center;gap:18px;">
-      <img src="https://i.ibb.co/FGGjdsM/LOGO-MARFIM.jpg" alt="Marfim" style="height:52px;width:auto;border-radius:4px;flex-shrink:0;">
-      <div>
-        <div style="font-size:11px;font-weight:600;letter-spacing:3px;color:#e8a020;text-transform:uppercase;margin-bottom:4px;">${retif ? 'Pedido Retificado' : 'Pedido de Compra'}</div>
-        <div style="font-size:20px;font-weight:700;color:white;">${_escHTML(idPedido)}</div>
-        <div style="font-size:12px;color:rgba(255,255,255,0.6);margin-top:2px;">Emitido em ${dataFmt} · Solicitante: ${_escHTML(dados.usuarioLogado)}</div>
-      </div>
-    </div>
-
+    <tr>
+      <td bgcolor="${AZUL}" style="background:${AZUL};padding:18px 24px;">
+        <table width="100%" ${T0}>
+          <tr>
+            <td valign="middle" width="130"><img src="${LOGO}" alt="Marfim" height="48" style="display:block;height:48px;width:auto;border:0;font-family:Arial,sans-serif;font-size:18px;font-weight:700;color:#ffffff;"></td>
+            <td valign="middle" align="right" style="${F}font-size:12px;line-height:1.35;">
+              <span style="font-size:11px;font-weight:700;letter-spacing:3px;color:${OURO};text-transform:uppercase;">${retif ? 'Pedido Retificado' : 'Pedido de Compra'}</span><br>
+              <span style="font-size:24px;font-weight:700;color:#ffffff;line-height:1.3;">${_escHTML(idPedido)}</span><br>
+              <span style="font-size:12px;color:#b9c6d4;">Emitido em ${dataFmt} · Solicitante: ${_escHTML(dados.usuarioLogado)}</span>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
     ${retif ? `
     <!-- Aviso de retificação -->
-    <div style="background:#fff3e0;border-left:4px solid #e65100;padding:10px 28px;font-size:13px;color:#5a3000;">
-      <strong>Este pedido foi corrigido e substitui a versão anterior enviada para ${_escHTML(idPedido)}.</strong>${retif.motivo ? ' Motivo: ' + _escHTML(retif.motivo) : ''}
-    </div>` : ''}
+    <tr>
+      <td bgcolor="#fff3e0" style="${F}background:#fff3e0;border-left:4px solid #e65100;padding:10px 24px;font-size:13px;color:#5a3000;">
+        <strong>Este pedido foi corrigido e substitui a versão anterior enviada para ${_escHTML(idPedido)}.</strong>${retif.motivo ? ' Motivo: ' + _escHTML(retif.motivo) : ''}
+      </td>
+    </tr>` : ''}
 
-    <!-- Aviso NF -->
-    <div style="background:#fff8e1;border-left:4px solid #e8a020;padding:10px 28px;font-size:13px;color:#5a4000;">
-      <strong>Para a filial:</strong> ao receber esta entrega, informe o número <strong style="font-family:monospace;">${_escHTML(idPedido)}</strong> no sistema para registrar o recebimento da NF.
-    </div>
+    <!-- Resumo: entrega, frete, pagamento -->
+    <tr>
+      <td style="border-bottom:1px solid ${LINHA};">
+        <table width="100%" ${T0}><tr>${resumo}
+        </tr></table>
+      </td>
+    </tr>
 
-    <!-- Partes: Comprador × Fornecedor -->
-    <table style="width:100%;border-collapse:collapse;background:#f4f7fb;">
-      <tr>
-        <td style="width:50%;padding:16px 28px;vertical-align:top;border-right:1px solid #dde3ea;">
-          <div style="font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#1a3c5e;margin-bottom:8px;">Comprador</div>
-          <div style="font-size:14px;font-weight:700;color:#1a1a1a;">${_escHTML(dados.filialNome)}</div>
-          ${dados.filialCNPJ ? `<div style="font-size:12px;color:#555;margin-top:3px;">CNPJ: ${_escHTML(dados.filialCNPJ)}</div>` : ''}
-          ${dados.filialIE ? `<div style="font-size:12px;color:#555;margin-top:3px;">Inscrição Estadual: ${_escHTML(dados.filialIE)}</div>` : ''}
-          ${dados.filialEndereco ? `<div style="font-size:12px;color:#777;margin-top:3px;">${_escHTML(dados.filialEndereco)}</div>` : ''}
-          ${dados.filialCEP ? `<div style="font-size:12px;color:#777;margin-top:3px;">CEP: ${_escHTML(dados.filialCEP)}</div>` : ''}
-          ${dados.filialTelefone ? `<div style="font-size:12px;color:#555;margin-top:3px;">Tel. contato: ${_escHTML(dados.filialTelefone)}</div>` : ''}
-        </td>
-        <td style="width:50%;padding:16px 28px;vertical-align:top;">
-          <div style="font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#1a3c5e;margin-bottom:8px;">Fornecedor</div>
-          <div style="font-size:14px;font-weight:700;color:#1a1a1a;">${_escHTML(dados.fornecedorNome)}</div>
-          ${dados.fornecedorCNPJ ? `<div style="font-size:12px;color:#555;margin-top:3px;">CNPJ: ${_escHTML(dados.fornecedorCNPJ)}</div>` : ''}
-          ${dados.fornecedorEndereco ? `<div style="font-size:12px;color:#777;margin-top:3px;">${_escHTML(dados.fornecedorEndereco)}</div>` : ''}
-        </td>
-      </tr>
-    </table>
-
-    <!-- Entrega -->
-    <table width="100%" style="border-collapse:collapse;background:#fff;border-top:1px solid #dde3ea;border-bottom:1px solid #dde3ea;" cellpadding="0" cellspacing="0">
-      <tr>
-        <td width="80" style="padding:14px 20px;vertical-align:top;border-right:1px solid #dde3ea;white-space:nowrap;">
-          <div style="font-size:11px;font-weight:600;color:#888;text-transform:uppercase;letter-spacing:1px;margin-bottom:5px;">Frete</div>
-          <span style="display:inline-block;background:${dados.frete==='CIF'?'#e8f5e9':'#fff3e0'};border:1px solid ${dados.frete==='CIF'?'#a5d6a7':'#ffcc80'};border-radius:4px;padding:2px 12px;font-size:13px;font-weight:700;color:${dados.frete==='CIF'?'#2e7d32':'#e65100'};">${dados.frete || 'CIF'}</span>
-        </td>
-        ${dados.frete !== 'CIF' ? `
-        <td style="padding:14px 20px;vertical-align:top;border-right:1px solid #dde3ea;">
-          <div style="font-size:11px;font-weight:600;color:#888;text-transform:uppercase;letter-spacing:1px;margin-bottom:5px;">Transportadora</div>
-          <div style="font-size:13px;color:#1a1a1a;">${_escHTML(dados.transportadoraNome || '—')}</div>
-        </td>` : ''}
-        <td width="140" style="padding:14px 20px;vertical-align:top;white-space:nowrap;${dados.condPagamento ? 'border-right:1px solid #dde3ea;' : ''}">
-          <div style="font-size:11px;font-weight:600;color:#888;text-transform:uppercase;letter-spacing:1px;margin-bottom:5px;">Prazo de Entrega</div>
-          <div style="font-size:13px;color:#1a1a1a;">${_escHTML(dados.prazoEntrega || '—')}</div>
-        </td>
-        ${dados.condPagamento ? `
-        <td width="140" style="padding:14px 20px;vertical-align:top;white-space:nowrap;">
-          <div style="font-size:11px;font-weight:600;color:#888;text-transform:uppercase;letter-spacing:1px;margin-bottom:5px;">Condição de Pagamento</div>
-          <div style="font-size:13px;color:#1a1a1a;">${_escHTML(dados.condPagamento)}</div>
-        </td>` : ''}
-      </tr>
-    </table>
+    <!-- Comprador × Fornecedor -->
+    <tr>
+      <td style="font-size:0;padding:14px 15px 4px;">
+        <!--[if mso]><table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr><td width="50%" valign="top"><![endif]-->${coluna(cartao('Comprador', dados.filialNome,
+          linhaDado('CNPJ', dados.filialCNPJ) +
+          linhaDado('Insc. Estadual', dados.filialIE) +
+          linhaDado('Endereço', dados.filialEndereco) +
+          linhaDado('CEP', dados.filialCEP) +
+          linhaDado('Tel. contato', dados.filialTelefone)))}
+        <!--[if mso]></td><td width="50%" valign="top"><![endif]-->${coluna(cartao('Fornecedor', dados.fornecedorNome,
+          linhaDado('CNPJ', dados.fornecedorCNPJ) +
+          linhaDado('Endereço', dados.fornecedorEndereco)))}
+        <!--[if mso]></td></tr></table><![endif]-->
+      </td>
+    </tr>
 
     <!-- Itens -->
-    <div style="padding:20px 20px;background:#fff;">
-      <table width="100%" style="border-collapse:collapse;" cellpadding="0" cellspacing="0">
-        <thead>
-          <tr style="background:#1a3c5e;color:white;">
-            <th width="110" style="padding:10px 10px;text-align:left;font-size:11px;font-weight:600;">Código</th>
-            <th style="padding:10px 10px;text-align:left;font-size:11px;font-weight:600;">Descrição</th>
-            <th width="50" style="padding:10px 10px;text-align:right;font-size:11px;font-weight:600;white-space:nowrap;">Qtd</th>
-            <th width="35" style="padding:10px 10px;text-align:left;font-size:11px;font-weight:600;white-space:nowrap;">Un</th>
-            <th width="90" style="padding:10px 10px;text-align:right;font-size:11px;font-weight:600;white-space:nowrap;">Preço Unit.</th>
-            <th width="90" style="padding:10px 10px;text-align:right;font-size:11px;font-weight:600;white-space:nowrap;">Subtotal</th>
-          </tr>
-        </thead>
-        <tbody>${linhasItens}</tbody>
-        <tfoot>
-          <tr style="background:#1a3c5e;">
-            <td colspan="5" style="padding:14px 12px;text-align:right;font-weight:700;font-size:13px;color:rgba(255,255,255,0.85);letter-spacing:1px;text-transform:uppercase;">TOTAL DO PEDIDO</td>
-            <td style="padding:14px 12px;text-align:right;font-weight:800;font-size:18px;color:#e8a020;white-space:nowrap;">R$&nbsp;${parseFloat(dados.valorTotal).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})}</td>
-          </tr>
-        </tfoot>
-      </table>
-      ${dados.observacao ? `<div style="margin-top:16px;padding:12px 14px;background:#f9f9f9;border-left:3px solid #1a3c5e;border-radius:3px;font-size:13px;color:#333;"><strong>Observações:</strong> ${_escHTML(dados.observacao)}</div>` : ''}
-    </div>
+    <tr>
+      <td style="padding:10px 20px 0;">
+        <table width="100%" ${T0} style="border-collapse:collapse;">
+          <thead>
+            <tr bgcolor="${AZUL}" style="background:${AZUL};">${th('Descrição', 'left')}${th('Qtd. × preço', 'right')}${th('Subtotal', 'right')}</tr>
+          </thead>
+          <tbody>${linhasItens}
+          </tbody>
+          <tfoot>
+            <tr bgcolor="${AZUL}" style="background:${AZUL};">
+              <td colspan="2" bgcolor="${AZUL}" style="${F}background:${AZUL};padding:14px 8px;font-size:12px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:#d6e0ea;">Total do pedido <span style="font-weight:400;letter-spacing:0;text-transform:none;color:#9fb2c6;">· ${nItens} ${nItens === 1 ? 'item' : 'itens'}</span></td>
+              <td align="right" bgcolor="${AZUL}" style="${F}background:${AZUL};padding:14px 8px;font-size:20px;font-weight:800;color:${OURO};white-space:nowrap;">R$&nbsp;${_fmtBRL(dados.valorTotal)}</td>
+            </tr>
+          </tfoot>
+        </table>
+      </td>
+    </tr>
+    ${dados.observacao ? caixa('#f9f9f9', AZUL, '#333333', 13,
+      `<strong>Observações:</strong> ${_escHTML(dados.observacao)}`, 14, 0) : ''}
+    ${caixa('#fff8e1', OURO, '#5a4000', 12.5,
+      `<strong>Recebimento (filial):</strong> ao receber esta entrega, informe o número <strong style="font-family:Consolas,'Courier New',monospace;">${_escHTML(idPedido)}</strong> no sistema para registrar a NF.`, 14, 18)}
 
-    <!-- Responder -->
-    <div style="background:#f4f7fb;padding:14px 28px;border-top:1px solid #dde3ea;text-align:center;">
-      <span style="font-size:13px;color:#555;">Dúvidas ou confirmações? Responda diretamente para </span>
-      <a href="mailto:marco@marfim.ind.br?subject=Re: Pedido ${idPedido}" style="font-size:13px;font-weight:700;color:#1a3c5e;text-decoration:none;">marco@marfim.ind.br</a>
-    </div>
+    <!-- Rodapé -->
+    <tr>
+      <td bgcolor="${FUNDO}" style="${F}background:${FUNDO};border-top:1px solid ${LINHA};padding:14px 24px;font-size:13px;line-height:1.5;color:#555;">
+        <strong style="color:#111;">${_escHTML(dados.nomeRemetente || dados.usuarioLogado)}</strong> — Marfim<br>
+        <span style="font-size:12px;">Dúvidas ou confirmações? Responda este e-mail ou escreva para
+        <a href="mailto:marco@marfim.ind.br?subject=${assuntoResposta}" style="color:${AZUL};font-weight:700;text-decoration:none;">marco@marfim.ind.br</a></span>
+      </td>
+    </tr>
 
-    <!-- Assinatura -->
-    <div style="background:#1a3c5e;padding:18px 28px;">
-      <table style="width:100%;border-collapse:collapse;">
-        <tr>
-          <td style="vertical-align:middle;width:90px;">
-            <img src="https://i.ibb.co/FGGjdsM/LOGO-MARFIM.jpg" alt="Marfim" style="height:52px;width:auto;display:block;border-radius:4px;">
-          </td>
-          <td style="vertical-align:middle;padding-left:16px;border-left:1px solid rgba(255,255,255,0.2);">
-            <div style="font-size:14px;font-weight:700;color:white;">${dados.nomeRemetente || dados.usuarioLogado}</div>
-          </td>
-        </tr>
-      </table>
-    </div>
-
-  </div>`;
+  </table>
+  <!--[if mso]></td></tr></table><![endif]-->`;
 }
 
 function montarEmailTexto(idPedido, data, dados, retif) {
@@ -674,7 +727,7 @@ function montarEmailTexto(idPedido, data, dados, retif) {
 
   const linhasItens = dados.itens.map((item, i) =>
     `  ${String(i+1).padStart(2,'0')}. ${item.descricao}\n` +
-    `      Qtd: ${item.quantidade} ${item.unidade}  |  Unit: R$ ${parseFloat(item.preco).toFixed(2)}  |  Subtotal: R$ ${parseFloat(item.subtotal).toFixed(2)}`
+    `      Qtd: ${_fmtQtd(item.quantidade)} ${item.unidade}  |  Unit: R$ ${_fmtBRL(item.preco)}  |  Subtotal: R$ ${_fmtBRL(item.subtotal)}`
   ).join('\n');
 
   const frete = dados.frete || 'CIF';
@@ -690,14 +743,14 @@ function montarEmailTexto(idPedido, data, dados, retif) {
     '',
     'COMPRADOR (FILIAL)',
     `  ${dados.filialNome}${dados.filialCNPJ ? '  |  CNPJ: ' + dados.filialCNPJ : ''}`,
-    dados.filialIE ? `  Inscrição Estadual: ${dados.filialIE}` : '',
-    dados.filialEndereco ? `  ${dados.filialEndereco}` : '',
-    dados.filialCEP ? `  CEP: ${dados.filialCEP}` : '',
-    dados.filialTelefone ? `  Tel. contato: ${dados.filialTelefone}` : '',
+    dados.filialIE ? `  Inscrição Estadual: ${dados.filialIE}` : null,
+    dados.filialEndereco ? `  ${dados.filialEndereco}` : null,
+    dados.filialCEP ? `  CEP: ${dados.filialCEP}` : null,
+    dados.filialTelefone ? `  Tel. contato: ${dados.filialTelefone}` : null,
     '',
     'FORNECEDOR',
     `  ${dados.fornecedorNome}${dados.fornecedorCNPJ ? '  |  CNPJ: ' + dados.fornecedorCNPJ : ''}`,
-    dados.fornecedorEndereco ? `  ${dados.fornecedorEndereco}` : '',
+    dados.fornecedorEndereco ? `  ${dados.fornecedorEndereco}` : null,
     '',
     sep,
     `Modalidade de Frete : ${frete}`,
@@ -710,7 +763,7 @@ function montarEmailTexto(idPedido, data, dados, retif) {
     linhasItens,
     '',
     sep,
-    `TOTAL DO PEDIDO : R$ ${parseFloat(dados.valorTotal).toFixed(2)}`,
+    `TOTAL DO PEDIDO : R$ ${_fmtBRL(dados.valorTotal)}`,
     sep,
     dados.observacao ? `\nObservações: ${dados.observacao}\n` : '',
     '',

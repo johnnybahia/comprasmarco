@@ -95,6 +95,17 @@ Busca de CNPJ com auto-fill (BrasilAPI, com fallback para ReceitaWS se houver ra
   cadastro; o da filial vai no email do pedido junto com IE e CEP.
 - `INSCRICAO_ESTADUAL` e `TELEFONE` são gravadas como texto (`_forcarTexto`) para não perder zeros à esquerda.
 
+### Email do pedido (`montarEmailHTML` / `montarEmailTexto`)
+Usado por `salvarPedido`, retificação e `enviarEmailTestePedidos`. Regras para não quebrar no Gmail/Outlook:
+- Só `<table>` + estilos **inline**. Sem `display:flex`, `<style>`, `rgba()`, `position`, `@media`; sem
+  margin/padding/borda em `<div>` (Outlook ignora) — caixas com fundo ou borda são `<td>`.
+- Fundos também em `bgcolor`. Texto sempre escapado com `_escHTML`; valores com `_fmtBRL` / `_fmtQtd` (padrão BR).
+- Comprador × Fornecedor lado a lado: `div` inline-block (empilha sozinho no celular) com tabela de
+  fallback para Outlook em comentários condicionais `<!--[if mso]>`.
+- Gmail corta o email acima de ~102 KB de HTML: cada item custa ~1 KB, então ~85 itens é o limite.
+- **Testar após mudar o layout**: rodar `enviarEmailTestePedidos` no editor do Apps Script e abrir os
+  emails de teste no Gmail (web e celular) e no Outlook.
+
 ### 4. Lançar NF (`panel-nf`)
 Registra o recebimento de uma NF contra um pedido, compara quantidade/preço/condição de
 pagamento esperados vs. recebidos, grava divergências e dispara email de alerta se houver.
