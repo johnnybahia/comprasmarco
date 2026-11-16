@@ -1,6 +1,9 @@
 // ============================================================
 // CONFIGURAÇÃO — altere apenas esta seção
 // ============================================================
+const VERSAO      = '1.0.0';
+const VERSAO_DATA = '16/11/2026';
+
 const SHEET_ID = '1jJkc5LWZnTK4am6oAg_gPHdDJ-NqwT4fYSbY3-r2S_E';
 
 const ABAS = {
@@ -23,7 +26,10 @@ const ABAS = {
 // ENTRY POINT
 // ============================================================
 function doGet() {
-  return HtmlService.createHtmlOutputFromFile('Index')
+  const tpl = HtmlService.createTemplateFromFile('Index');
+  tpl.versao = VERSAO;
+  tpl.versaoData = VERSAO_DATA;
+  return tpl.evaluate()
     .setTitle('Compras Marfim')
     .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
 }
@@ -522,7 +528,8 @@ function salvarPedido(dados) {
       replyTo: 'marco@marfim.ind.br',
       subject: `Pedido de Compra ${idPedido} — ${dados.filialNome}`,
       body: textoEmail,
-      htmlBody: htmlEmail
+      htmlBody: htmlEmail,
+      attachments: _anexoPedidoPDF(idPedido, dataHoje, dadosEmail)
     });
 
     return { ok: true, msg: 'Pedido salvo e email enviado com sucesso', id: idPedido };
@@ -718,6 +725,86 @@ function montarEmailHTML(idPedido, data, dados, retif) {
 
   </table>
   <!--[if mso]></td></tr></table><![endif]-->`;
+}
+
+// PDF do pedido (modelo "Ordem de Compra"), anexado ao e-mail.
+// Só <table> e estilos inline: o conversor HTML→PDF do Apps Script não suporta flex.
+function _anexoPedidoPDF(idPedido, data, dados, retif) {
+  try {
+    return [montarPedidoPDF(idPedido, data, dados, retif)];
+  } catch (e) {
+    logErro('PDF do pedido ' + idPedido + ': ' + e.message);
+    return [];
+  }
+}
+
+function montarPedidoPDF(idPedido, data, dados, retif) {
+  const dataFmt = Utilities.formatDate(data, Session.getScriptTimeZone(), 'dd/MM/yyyy');
+  const AZUL = '#1a3c5e', BORDA = '#999999', CINZA = '#e9edf2';
+  const F = 'font-family:Arial,sans-serif;';
+  const cel = (extra, txt) => `<td style="${F}padding:6px;border:1px solid ${BORDA};font-size:11px;${extra}">${txt}</td>`;
+  const th  = (al, w, t) => `<th align="${al}" bgcolor="${CINZA}" style="${F}padding:6px;border:1px solid ${BORDA};font-size:10px;${w ? 'width:' + w + ';' : ''}">${t}</th>`;
+
+  let logo = `<span style="${F}font-size:24px;font-weight:700;color:${AZUL};">MARFIM</span>`;
+  try {
+    const b = UrlFetchApp.fetch('https://i.ibb.co/FGGjdsM/LOGO-MARFIM.jpg').getBlob();
+    logo = `<img src="data:${b.getContentType()};base64,${Utilities.base64Encode(b.getBytes())}" height="50" alt="Marfim">`;
+  } catch (e) { logErro('PDF logo: ' + e.message); }
+
+  const linhas = dados.itens.map((item, i) => `<tr>
+    ${cel('text-align:center;', i + 1)}
+    ${cel('', _escHTML(item.cod))}
+    ${cel('', _escHTML(String(item.descricao || '').replace(/[\n\r]+/g, ' ').trim()))}
+    ${cel('text-align:right;', _escHTML(_fmtQtd(item.quantidade)))}
+    ${cel('text-align:center;', _escHTML(item.unidade))}
+    ${cel('text-align:right;', _fmtBRL(item.preco))}
+    ${cel('text-align:right;', _fmtBRL(item.subtotal))}
+  </tr>`).join('');
+
+  const cif = (dados.frete || 'CIF') === 'CIF';
+  const freteTxt = _escHTML(dados.frete || 'CIF') + (!cif && dados.transportadoraNome ? ' — ' + _escHTML(dados.transportadoraNome) : '');
+  const comp = (rot, v) => v ? `<br>${rot}${_escHTML(v)}` : '';
+
+  const html = `<html><body style="${F}color:#222;">
+  <table width="100%" style="border-collapse:collapse;border-bottom:3px solid ${AZUL};"><tr>
+    <td valign="bottom" style="${F}padding-bottom:8px;">${logo}<br>
+      <span style="font-size:10px;color:#666;">${_escHTML(dados.filialNome)}${dados.filialCNPJ ? ' · CNPJ ' + _escHTML(dados.filialCNPJ) : ''}${dados.filialIE ? ' · IE ' + _escHTML(dados.filialIE) : ''}</span></td>
+    <td valign="bottom" align="right" style="${F}padding-bottom:8px;">
+      <span style="font-size:18px;font-weight:700;">${retif ? 'ORDEM DE COMPRA — RETIFICADA' : 'ORDEM DE COMPRA'}</span><br>
+      <span style="font-size:15px;font-weight:700;color:${AZUL};">Nº ${_escHTML(idPedido)}</span><br>
+      <span style="font-size:11px;">Data: ${dataFmt}</span></td>
+  </tr></table>
+  ${retif ? `<p style="${F}font-size:11px;color:#5a3000;background:#fff3e0;padding:6px;margin:8px 0 0;"><b>Este pedido substitui a versão anterior.</b>${retif.motivo ? ' Motivo: ' + _escHTML(retif.motivo) : ''}</p>` : ''}
+  <table width="100%" style="border-collapse:collapse;margin-top:12px;"><tr>
+    <td width="50%" valign="top" style="${F}padding:8px 10px;border:1px solid ${BORDA};font-size:11px;"><b>FORNECEDOR</b><br>${_escHTML(dados.fornecedorNome)}${comp('CNPJ ', dados.fornecedorCNPJ)}${comp('', dados.fornecedorEndereco)}</td>
+    <td width="50%" valign="top" style="${F}padding:8px 10px;border:1px solid ${BORDA};font-size:11px;"><b>ENTREGA / FATURAMENTO</b><br>${_escHTML(dados.filialNome)}${comp('', dados.filialEndereco)}${comp('CEP ', dados.filialCEP)}${comp('Tel. ', dados.filialTelefone)}</td>
+  </tr></table>
+  <table width="100%" style="border-collapse:collapse;margin-top:6px;"><tr>
+    ${cel('', '<b>Prazo de entrega:</b> ' + _escHTML(dados.prazoEntrega || '—'))}
+    ${cel('', '<b>Frete:</b> ' + freteTxt)}
+    ${cel('', '<b>Pagamento:</b> ' + _escHTML(dados.condPagamento || '—'))}
+    ${cel('', '<b>Solicitante:</b> ' + _escHTML(dados.usuarioLogado))}
+  </tr></table>
+  <table width="100%" style="border-collapse:collapse;margin-top:12px;">
+    <thead><tr>${th('center', '30px', 'Item')}${th('center', '70px', 'Código')}${th('left', '', 'Descrição')}${th('right', '', 'Qtd.')}${th('center', '', 'Un.')}${th('right', '', 'Unit. (R$)')}${th('right', '', 'Total (R$)')}</tr></thead>
+    <tbody>${linhas}</tbody>
+    <tfoot><tr>
+      <td colspan="6" align="right" bgcolor="${CINZA}" style="${F}padding:8px;border:1px solid ${BORDA};font-size:11px;"><b>TOTAL GERAL</b></td>
+      <td align="right" bgcolor="${CINZA}" style="${F}padding:8px;border:1px solid ${BORDA};font-size:12px;"><b>${_fmtBRL(dados.valorTotal)}</b></td>
+    </tr></tfoot>
+  </table>
+  ${dados.observacao ? `<p style="${F}font-size:11px;margin-top:12px;"><b>Observações:</b> ${_escHTML(dados.observacao)}</p>` : ''}
+  <p style="${F}font-size:11px;color:#555;">Ao receber a mercadoria, a filial deve informar o nº ${_escHTML(idPedido)} no sistema para registro da NF.</p>
+  <table width="100%" style="border-collapse:collapse;margin-top:50px;"><tr>
+    <td width="45%" align="center" style="${F}border-top:1px solid #333;padding-top:4px;font-size:11px;">${_escHTML(dados.nomeRemetente || dados.usuarioLogado)} — Marfim<br><span style="font-size:10px;">Comprador</span></td>
+    <td></td>
+    <td width="45%" align="center" style="${F}border-top:1px solid #333;padding-top:4px;font-size:11px;">${_escHTML(dados.fornecedorNome)}<br><span style="font-size:10px;">De acordo / data</span></td>
+  </tr></table>
+  </body></html>`;
+
+  return Utilities.newBlob(html, 'text/html', 'pedido.html')
+    .getAs('application/pdf')
+    .setName('Pedido_' + idPedido + (retif ? '_RETIFICADO' : '') + '.pdf');
 }
 
 function montarEmailTexto(idPedido, data, dados, retif) {
@@ -1702,7 +1789,8 @@ function retificarPedido(idPedido, dados, usuarioLogado, motivo, usuarioLogin, e
       replyTo:  'marco@marfim.ind.br',
       subject:  `Pedido de Compra RETIFICADO ${idPedido} — ${dados.filialNome}`,
       body:     textoEmail,
-      htmlBody: htmlEmail
+      htmlBody: htmlEmail,
+      attachments: _anexoPedidoPDF(idPedido, dataPedido, dadosEmail, retif)
     });
 
     _logNF('RETIFICAÇÃO', '', idPedido, '', dados.filialCod, dados.filialNome, usuarioLogado, motivoTrim);
